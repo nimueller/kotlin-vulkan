@@ -29,7 +29,7 @@ object WindowFactory {
 
         GLFWErrorCallback.create { error, description ->
             logger.error("GLFW Error $error: $description")
-        }
+        }.set()
 
         val initSuccessful = glfwInit()
         check(initSuccessful) { "Unable to initialize GLFW" }
