@@ -1,0 +1,35 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <option name="scopesOrder">
+      <list>
+        <option value="All Changed Files" />
+        <option value="Open Files" />
+        <option value="Production" />
+        <option value="Project Files" />
+        <option value="Scratches and Consoles" />
+        <option value="Tests" />
+      </list>
+    </option>
+    <inspection_tool class="ConstantConditions" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="SUGGEST_NULLABLE_ANNOTATIONS" value="false" />
+      <option name="DONT_REPORT_TRUE_ASSERT_STATEMENTS" value="true" />
+    </inspection_tool>
+    <inspection_tool class="ConstantValue" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="DONT_REPORT_TRUE_ASSERT_STATEMENTS" value="true" />
+    </inspection_tool>
+    <inspection_tool class="DataFlowIssueMerged" />
+    <inspection_tool class="DirectUseOfResultType" enabled="true" level="WEAK WARNING" enabled_by_default="true" />
+    <inspection_tool class="FieldDeclarationSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="LocalVariableDeclarationSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="LoggingConditionDisagreesWithLogStatement" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="MethodCallSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="MethodSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="NestedClassSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="NewExpressionSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="OptionalOfNullableMisuseMerged" />
+    <inspection_tool class="Reformat" enabled="true" level="WEAK WARNING" enabled_by_default="true" />
+    <inspection_tool class="TestCaseInProductCode" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="VariableUseSideOnly" enabled="true" level="ERROR" enabled_by_default="true" />
+  </profile>
+</component>

@@ -1,0 +1,16 @@
+[versions]
+kotlin = "2.1.0"
+kotlinxSerialization = "1.8.0"
+lwjgl = "3.3.6"
+
+[libraries]
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlinxSerializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+lwjgl-core = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }
+lwjgl-glfw = { module = "org.lwjgl:lwjgl-glfw", version.ref = "lwjgl" }
+lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
+lwjgl-vulkan = { module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl" }
+
+[plugins]
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
