@@ -1,5 +1,6 @@
 package dev.cryptospace.vulkan.core
 
+import dev.cryptospace.vulkan.AppConfig.useValidationLayers
 import dev.cryptospace.vulkan.Vulkan
 import dev.cryptospace.vulkan.utils.getLogger
 import dev.cryptospace.vulkan.utils.pushStringList
@@ -18,13 +19,15 @@ import org.lwjgl.vulkan.VkApplicationInfo
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkInstanceCreateInfo
 
-class VkInstanceFactory(
-    private val useValidationLayers: Boolean,
-    private val validationLayers: VulkanValidationLayers
-) {
-    fun createInstance(): VkInstance = MemoryStack.stackPush().use { stack ->
+object VkInstanceFactory {
+    @JvmStatic
+    private val logger = getLogger<Vulkan>()
+
+    fun createInstance(
+        validationLayers: VulkanValidationLayers
+    ): VkInstance = MemoryStack.stackPush().use { stack ->
         val appInfo = stack.createApplicationInfo()
-        val createInfo = stack.createInstanceCreateInfo(appInfo)
+        val createInfo = stack.createInstanceCreateInfo(appInfo, validationLayers)
         val instance = stack.createVulkanInstance(createInfo)
 
         return VkInstance(instance[0], createInfo)
@@ -43,7 +46,10 @@ class VkInstanceFactory(
         return appInfo
     }
 
-    private fun MemoryStack.createInstanceCreateInfo(appInfo: VkApplicationInfo): VkInstanceCreateInfo {
+    private fun MemoryStack.createInstanceCreateInfo(
+        appInfo: VkApplicationInfo,
+        validationLayers: VulkanValidationLayers
+    ): VkInstanceCreateInfo {
         val glfwExtensions = glfwGetRequiredInstanceExtensions()
         checkNotNull(glfwExtensions) { "Unable to get GLFW Vulkan extensions" }
 
@@ -74,10 +80,4 @@ class VkInstanceFactory(
         check(result == VK_SUCCESS) { "Failed to create Vulkan instance: $result" }
         return instance
     }
-
-    companion object {
-        @JvmStatic
-        private val logger = getLogger<Vulkan>()
-    }
-
 }
