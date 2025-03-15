@@ -1,4 +1,4 @@
-package dev.cryptospace.vulkan
+package dev.cryptospace.vulkan.utils
 
 import org.slf4j.Logger
 

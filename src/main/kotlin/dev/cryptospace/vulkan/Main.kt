@@ -1,5 +1,6 @@
 package dev.cryptospace.vulkan
 
+import dev.cryptospace.vulkan.utils.getLogger
 import org.lwjgl.glfw.GLFW.GLFW_CLIENT_API
 import org.lwjgl.glfw.GLFW.GLFW_FALSE
 import org.lwjgl.glfw.GLFW.GLFW_NO_API
@@ -27,7 +28,7 @@ fun main() {
 
 object Main {
     @JvmStatic
-    val logger = getLogger<Main>()
+    private val logger = getLogger<Main>()
 
     fun start() {
         if (useWayland()) {
@@ -47,12 +48,12 @@ object Main {
             val window = createWindow()
             val vulkan = Vulkan(
                 useValidationLayers = AppConfig.useValidationLayers,
-                validationLayers = AppConfig.validationLayers
+                validationLayerNames = AppConfig.validationLayers
             )
 
             try {
                 glfwShowWindow(window.handle)
-                loop(window)
+//                loop(window)
             } finally {
                 vulkan.close()
             }
