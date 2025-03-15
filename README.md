@@ -34,5 +34,5 @@ Supports the following CLI properties:
 
 ```bash
 -Duse-x11 # Use X11 instead of Wayland, only works on Linux in a Wayland session. Otherwise ignored.
--Duse-validation-layers # Enable Vulkan validation layers for debugging. Not recommended for performance.
+-Duse-validation-layers # Enable Vulkan validation layers for debugging. Not recommended for performance. Requires Vulkan SDK to be installed.
 ```
