@@ -1,5 +1,6 @@
 plugins {
     idea
+    application
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinxSerialization)
 }
@@ -49,6 +50,10 @@ fun ExternalModuleDependency.natives() {
     artifact {
         classifier = "natives-macos"
     }
+}
+
+application {
+    mainClass.set("dev.cryptospace.vulkan.MainKt")
 }
 
 idea {
