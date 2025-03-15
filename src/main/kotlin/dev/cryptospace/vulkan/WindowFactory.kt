@@ -27,7 +27,9 @@ object WindowFactory {
     init {
         setGlfwInitHints()
 
-        GLFWErrorCallback.createPrint().set()
+        GLFWErrorCallback.create { error, description ->
+            logger.error("GLFW Error $error: $description")
+        }
 
         val initSuccessful = glfwInit()
         check(initSuccessful) { "Unable to initialize GLFW" }
