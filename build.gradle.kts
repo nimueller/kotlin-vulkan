@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation(libs.kotlin.stdlib)
+    implementation(libs.bundles.logging)
 
     implementation(libs.lwjgl.core)
     implementation(libs.lwjgl.core) {
