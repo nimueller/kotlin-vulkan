@@ -1,5 +1,7 @@
 package dev.cryptospace.vulkan
 
+import dev.cryptospace.vulkan.core.VK_KHRONOS_VALIDATION_LAYER_NAME
+
 object AppConfig {
 
     val preferX11 by lazy { exists("use-x11") }

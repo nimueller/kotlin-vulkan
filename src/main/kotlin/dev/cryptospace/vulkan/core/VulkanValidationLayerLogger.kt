@@ -83,6 +83,7 @@ class VulkanValidationLayerLogger(private val vulkanInstance: VkInstance) : VkDe
     }
 
     companion object {
+
         @JvmStatic
         private val logger = getLogger<VulkanValidationLayerLogger>()
     }

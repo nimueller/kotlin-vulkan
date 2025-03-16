@@ -1,7 +1,6 @@
 package dev.cryptospace.vulkan.core
 
 import dev.cryptospace.vulkan.AppConfig.useValidationLayers
-import dev.cryptospace.vulkan.Vulkan
 import dev.cryptospace.vulkan.utils.getLogger
 import dev.cryptospace.vulkan.utils.pushStringList
 import dev.cryptospace.vulkan.utils.pushStrings

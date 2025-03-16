@@ -1,5 +1,6 @@
 package dev.cryptospace.vulkan
 
+import dev.cryptospace.vulkan.core.Vulkan
 import dev.cryptospace.vulkan.utils.getLogger
 import org.lwjgl.glfw.GLFW.glfwPollEvents
 import org.lwjgl.glfw.GLFW.glfwShowWindow
