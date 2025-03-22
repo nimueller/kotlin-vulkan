@@ -1,5 +1,7 @@
 package dev.cryptospace.anvil.core
 
+import dev.cryptospace.anvil.core.window.Window
+
 class MainLoop(private val engine: Engine) {
 
     fun loop() {

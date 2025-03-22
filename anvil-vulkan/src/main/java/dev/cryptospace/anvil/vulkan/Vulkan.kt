@@ -2,21 +2,26 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.AppConfig
 import dev.cryptospace.anvil.core.AppConfig.useValidationLayers
+import dev.cryptospace.anvil.core.RenderingApi
 import dev.cryptospace.anvil.core.RenderingSystem
-import dev.cryptospace.anvil.core.WindowSystem
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.window.Window
+import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDevice.Companion.pickBestDevice
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
-import dev.cryptospace.vulkan.core.device.LogicalDevice
-import dev.cryptospace.vulkan.core.device.PhysicalDevice
-import dev.cryptospace.vulkan.core.device.PhysicalDevice.Companion.pickBestDevice
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
 
-class VulkanRenderingSystem(windowSystem: WindowSystem) : RenderingSystem {
+object Vulkan : RenderingSystem() {
 
+    @JvmStatic
+    private val logger = logger<Vulkan>()
+
+    override val renderingApi = RenderingApi.VULKAN
     private val validationLayers =
         VulkanValidationLayers(if (useValidationLayers) AppConfig.validationLayers else emptyList())
-    private val instance = VkInstanceFactory(windowSystem).createInstance(validationLayers)
+    val instance = VkInstanceFactory.createInstance(validationLayers)
     private val validationLayerLogger = VulkanValidationLayerLogger(instance).apply { if (useValidationLayers) set() }
     private val physicalDevices = PhysicalDevice.listPhysicalDevices(instance).also { physicalDevices ->
         logger.info("Found physical devices: $physicalDevices")
@@ -25,21 +30,31 @@ class VulkanRenderingSystem(windowSystem: WindowSystem) : RenderingSystem {
         logger.info("Selected best physical device: $physicalDevice")
     }
     private val logicalDevice = LogicalDevice.create(physicalDevice)
+    private val windowSurfaces = mutableMapOf<Window, VulkanSurface>()
 
-    override fun close() {
+    override fun initWindow(window: Window) {
+        val surface = window.createSurface()
+        windowSurfaces[window] = surface
+        logger.info("Created Vulkan surface for window: $window")
+    }
+
+    override fun destroy() {
+        physicalDevices.forEach { it.close() }
+        logicalDevice.close()
+
+        windowSurfaces.forEach { _, surface ->
+            surface.close()
+        }
+
         if (useValidationLayers) {
             validationLayerLogger.destroy()
         }
 
-        physicalDevices.forEach { it.close() }
-        logicalDevice.close()
         vkDestroyInstance(instance, null)
     }
 
-    companion object {
-
-        @JvmStatic
-        private val logger = logger<VulkanRenderingSystem>()
+    override fun toString(): String {
+        return "Vulkan"
     }
 
 }

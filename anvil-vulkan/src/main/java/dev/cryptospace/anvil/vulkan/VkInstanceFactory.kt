@@ -1,10 +1,10 @@
 package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.AppConfig
-import dev.cryptospace.anvil.core.WindowSystem
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.core.putAllStrings
+import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -18,7 +18,10 @@ import org.lwjgl.vulkan.VkApplicationInfo
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkInstanceCreateInfo
 
-class VkInstanceFactory(private val windowSystem: WindowSystem) {
+object VkInstanceFactory {
+
+    @JvmStatic
+    private val logger = logger<VkInstanceFactory>()
 
     fun createInstance(
         validationLayers: VulkanValidationLayers
@@ -47,7 +50,7 @@ class VkInstanceFactory(private val windowSystem: WindowSystem) {
         appInfo: VkApplicationInfo,
         validationLayers: VulkanValidationLayers
     ): VkInstanceCreateInfo {
-        val windowSystemExtensions = windowSystem.getRequiredVulkanExtensions()
+        val windowSystemExtensions = Glfw.getRequiredVulkanExtensions()
         val additionalExtensions = getAdditionalVulkanExtensions()
 
         val extensions = mallocPointer(windowSystemExtensions.size + additionalExtensions.size)
@@ -82,12 +85,6 @@ class VkInstanceFactory(private val windowSystem: WindowSystem) {
         val result = vkCreateInstance(createInfo, null, instance)
         check(result == VK_SUCCESS) { "Failed to create Vulkan instance: $result" }
         return instance
-    }
-
-    companion object {
-
-        @JvmStatic
-        private val logger = logger<VkInstanceFactory>()
     }
 
 }

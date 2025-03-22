@@ -1,22 +1,21 @@
 package dev.cryptospace.anvil.core
 
+import dev.cryptospace.anvil.core.window.Glfw
+
 class Engine(
-    renderingApi: RenderingApi,
-    windowSystemCreator: () -> WindowSystem,
     renderingSystemCreator: () -> RenderingSystem
 ) : AutoCloseable {
 
-    private val windowSystem: WindowSystem = windowSystemCreator().also { it.renderingApi = renderingApi }
     private val renderingSystem: RenderingSystem = renderingSystemCreator()
-    val mainWindow = windowSystem.createWindow()
+    val mainWindow = Glfw.createWindow(renderingSystem)
 
     fun update() {
-        windowSystem.update()
+        Glfw.update()
     }
 
     override fun close() {
-        windowSystem.close()
         renderingSystem.close()
+        Glfw.close()
     }
 
 }

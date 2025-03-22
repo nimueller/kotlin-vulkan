@@ -1,6 +1,8 @@
-package dev.cryptospace.vulkan.core.device
+package dev.cryptospace.anvil.vulkan.device
 
+import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.toPointerList
+import dev.cryptospace.anvil.vulkan.Vulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_QUEUE_GRAPHICS_BIT
 import org.lwjgl.vulkan.VK10.vkEnumeratePhysicalDevices
@@ -13,7 +15,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceFeatures
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties
 import org.lwjgl.vulkan.VkQueueFamilyProperties
 
-data class PhysicalDevice(val handle: VkPhysicalDevice) : AutoCloseable {
+data class PhysicalDevice(val handle: VkPhysicalDevice) : NativeResource() {
 
     val properties =
         VkPhysicalDeviceProperties.malloc().apply {
@@ -42,7 +44,8 @@ data class PhysicalDevice(val handle: VkPhysicalDevice) : AutoCloseable {
         return name
     }
 
-    override fun close() {
+    override fun destroy() {
+        check(Vulkan.isAlive) { "Vulkan is already destroyed" }
         properties.free()
         features.free()
         queueFamilies.free()

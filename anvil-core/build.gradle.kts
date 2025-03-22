@@ -5,4 +5,5 @@ plugins {
 dependencies {
     api(libs.slf4j.api)
     api(libs.lwjgl.core)
+    api(libs.lwjgl.glfw)
 }

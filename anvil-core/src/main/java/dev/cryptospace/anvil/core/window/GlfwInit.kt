@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.glfw
+package dev.cryptospace.anvil.core.window
 
 import dev.cryptospace.anvil.core.AppConfig
 import dev.cryptospace.anvil.core.logger
@@ -11,10 +11,10 @@ import org.lwjgl.glfw.GLFW.glfwPlatformSupported
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.system.Platform
 
-object GlfwInitProcess {
+object GlfwInit {
 
     @JvmStatic
-    private val logger = logger<GlfwInitProcess>()
+    private val logger = logger<GlfwInit>()
 
     fun init() {
         setGlfwInitHints()
@@ -60,5 +60,4 @@ object GlfwInitProcess {
 
         return waylandSupported
     }
-
 }

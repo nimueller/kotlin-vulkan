@@ -8,5 +8,4 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 include("anvil-core")
 include("anvil-vulkan")
-include("anvil-glfw")
 include("anvil-app")

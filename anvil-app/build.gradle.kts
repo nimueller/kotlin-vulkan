@@ -6,7 +6,6 @@ plugins {
 dependencies {
     api(projects.anvilCore)
 
-    implementation(projects.anvilGlfw)
     implementation(projects.anvilVulkan)
 
     runtimeOnly(libs.logback.classic)
