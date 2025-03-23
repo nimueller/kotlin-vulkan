@@ -28,7 +28,7 @@ object LogicalDeviceFactory {
             val graphicsQueueFamily = device.graphicsQueueFamilyIndex
             check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }
 
-            val presentQueueFamily = device.getPresentationQueueFamilyIndex(surface)
+            val presentQueueFamily = device.presentQueueFamilyIndex
             check(presentQueueFamily >= 0) { "Got an invalid present_queue family index" }
 
             val queueCreateInfo = buildQueueCreateInfo(stack, graphicsQueueFamily, presentQueueFamily)
@@ -39,8 +39,7 @@ object LogicalDeviceFactory {
             return LogicalDevice(
                 vulkan = vulkan,
                 handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
-                physicalDevice = device,
-                presentationQueueFamilyIndex = presentQueueFamily
+                physicalDevice = device
             )
         }
 

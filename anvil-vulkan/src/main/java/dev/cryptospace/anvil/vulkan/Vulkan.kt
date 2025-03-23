@@ -26,6 +26,10 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
     }
 
     private val physicalDevices = PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
+        physicalDevices.forEach { physicalDevice ->
+            physicalDevice.refreshPresentQueueFamilyIndex(surface)
+        }
+
         logger.info("Found physical devices: $physicalDevices")
     }
 
