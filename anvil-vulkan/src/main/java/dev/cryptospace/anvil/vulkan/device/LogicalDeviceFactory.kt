@@ -39,7 +39,8 @@ object LogicalDeviceFactory {
             return LogicalDevice(
                 vulkan = vulkan,
                 handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
-                physicalDevice = device
+                physicalDevice = device,
+                presentationQueueFamilyIndex = presentQueueFamily
             )
         }
 
@@ -50,6 +51,8 @@ object LogicalDeviceFactory {
     ): VkDeviceQueueCreateInfo.Buffer {
         val uniqueIndices = setOf(graphicsQueueFamily, presentQueueFamily)
         val queueCreateInfoPointer = VkDeviceQueueCreateInfo.malloc(uniqueIndices.size, stack)
+
+        logger.info("Found unique queue family indices: $uniqueIndices")
 
         for (queueFamilyIndex in uniqueIndices) {
             val queueCreateInfo = VkDeviceQueueCreateInfo.calloc(stack)
