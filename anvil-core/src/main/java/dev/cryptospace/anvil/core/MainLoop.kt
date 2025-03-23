@@ -5,7 +5,7 @@ import dev.cryptospace.anvil.core.window.Window
 class MainLoop(private val engine: Engine) {
 
     fun loop() {
-        loop(engine.mainWindow)
+        loop(engine.window)
     }
 
     private fun loop(window: Window) {

@@ -24,10 +24,11 @@ object VkInstanceFactory {
     private val logger = logger<VkInstanceFactory>()
 
     fun createInstance(
+        glfw: Glfw,
         validationLayers: VulkanValidationLayers
     ): VkInstance = MemoryStack.stackPush().use { stack ->
         val appInfo = stack.createApplicationInfo()
-        val createInfo = stack.createInstanceCreateInfo(appInfo, validationLayers)
+        val createInfo = stack.createInstanceCreateInfo(glfw, appInfo, validationLayers)
         val instance = stack.createVulkanInstance(createInfo)
 
         return VkInstance(instance[0], createInfo)
@@ -47,10 +48,11 @@ object VkInstanceFactory {
     }
 
     private fun MemoryStack.createInstanceCreateInfo(
+        glfw: Glfw,
         appInfo: VkApplicationInfo,
         validationLayers: VulkanValidationLayers
     ): VkInstanceCreateInfo {
-        val windowSystemExtensions = Glfw.getRequiredVulkanExtensions()
+        val windowSystemExtensions = glfw.getRequiredVulkanExtensions()
         val additionalExtensions = getAdditionalVulkanExtensions()
 
         val extensions = mallocPointer(windowSystemExtensions.size + additionalExtensions.size)

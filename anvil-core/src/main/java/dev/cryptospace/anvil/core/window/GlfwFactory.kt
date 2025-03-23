@@ -1,22 +1,33 @@
 package dev.cryptospace.anvil.core.window
 
 import dev.cryptospace.anvil.core.AppConfig
+import dev.cryptospace.anvil.core.RenderingApi
 import dev.cryptospace.anvil.core.logger
+import org.lwjgl.glfw.GLFW.GLFW_CLIENT_API
+import org.lwjgl.glfw.GLFW.GLFW_FALSE
+import org.lwjgl.glfw.GLFW.GLFW_NO_API
+import org.lwjgl.glfw.GLFW.GLFW_OPENGL_API
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_WAYLAND
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_X11
+import org.lwjgl.glfw.GLFW.GLFW_RESIZABLE
+import org.lwjgl.glfw.GLFW.GLFW_VISIBLE
+import org.lwjgl.glfw.GLFW.glfwCreateWindow
+import org.lwjgl.glfw.GLFW.glfwDefaultWindowHints
 import org.lwjgl.glfw.GLFW.glfwInit
 import org.lwjgl.glfw.GLFW.glfwInitHint
 import org.lwjgl.glfw.GLFW.glfwPlatformSupported
+import org.lwjgl.glfw.GLFW.glfwWindowHint
 import org.lwjgl.glfw.GLFWErrorCallback
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.Platform
 
-object GlfwInit {
+object GlfwFactory {
 
     @JvmStatic
-    private val logger = logger<GlfwInit>()
+    private val logger = logger<GlfwFactory>()
 
-    fun init() {
+    init {
         setGlfwInitHints()
 
         GLFWErrorCallback.create { error, description ->
@@ -60,4 +71,26 @@ object GlfwInit {
 
         return waylandSupported
     }
+
+    private fun createWindow(renderingApi: RenderingApi): Window {
+        val clientApi = when (renderingApi) {
+            RenderingApi.OPENGL -> GLFW_OPENGL_API
+            RenderingApi.VULKAN -> GLFW_NO_API
+        }
+
+        glfwDefaultWindowHints()
+        glfwWindowHint(GLFW_CLIENT_API, clientApi)
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE)
+
+        val windowHandle = glfwCreateWindow(800, 600, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
+        check(windowHandle != MemoryUtil.NULL) { "Unable to create window" }
+        return Window(windowHandle)
+    }
+
+    fun create(renderingApi: RenderingApi): Glfw {
+        val window = createWindow(renderingApi)
+        return Glfw(window)
+    }
+
 }
