@@ -1,8 +1,10 @@
 package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.vulkan.Vulkan
 import dev.cryptospace.anvil.vulkan.VulkanSurface
+import dev.cryptospace.anvil.vulkan.device.suitable.SupportsRequiredExtensionsCriteria
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
@@ -72,11 +74,13 @@ object LogicalDeviceFactory {
         queueCreateInfoBuffer: VkDeviceQueueCreateInfo.Buffer,
         features: VkPhysicalDeviceFeatures
     ): VkDeviceCreateInfo {
+        val enabledExtensions = stack.pushStringList(SupportsRequiredExtensionsCriteria.requiredExtensionNames)
+
         val deviceCreateInfo = VkDeviceCreateInfo.calloc(stack)
             .sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
             .pQueueCreateInfos(queueCreateInfoBuffer)
             .ppEnabledLayerNames(stack.mallocPointer(0))
-            .ppEnabledExtensionNames(stack.mallocPointer(0))
+            .ppEnabledExtensionNames(enabledExtensions)
             .pEnabledFeatures(features)
         return deviceCreateInfo
     }

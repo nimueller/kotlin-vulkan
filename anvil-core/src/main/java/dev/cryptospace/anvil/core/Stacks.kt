@@ -7,9 +7,9 @@ fun MemoryStack.pushStrings(vararg strings: String): PointerBuffer {
     return pushStringList(strings.toList())
 }
 
-fun MemoryStack.pushStringList(list: List<String>): PointerBuffer {
-    val pointer = mallocPointer(list.size)
-    pointer.putAllStrings(this, list)
+fun MemoryStack.pushStringList(strings: Collection<String>): PointerBuffer {
+    val pointer = mallocPointer(strings.size)
+    pointer.putAllStrings(this, strings)
     pointer.flip()
     return pointer
 }

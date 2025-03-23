@@ -6,7 +6,7 @@ import org.lwjgl.vulkan.KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME
 
 object SupportsRequiredExtensionsCriteria : PhysicalDeviceSuitableCriteria {
 
-    private val requiredExtensionNames = setOf(
+    val requiredExtensionNames = setOf(
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     )
 

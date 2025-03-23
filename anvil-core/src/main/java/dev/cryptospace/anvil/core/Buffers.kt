@@ -31,7 +31,7 @@ fun PointerBuffer.putAll(list: List<Long>) {
 /**
  * Pushes a list of strings to this buffer.
  */
-fun PointerBuffer.putAllStrings(stack: MemoryStack, list: List<String>) {
+fun PointerBuffer.putAllStrings(stack: MemoryStack, list: Collection<String>) {
     list.forEach { string ->
         val pointer = stack.UTF8(string)
         this.put(pointer)
