@@ -29,6 +29,10 @@ abstract class NativeResource : AutoCloseable {
 
     protected abstract fun destroy()
 
+    fun validateNotDestroyed() {
+        check(isAlive) { "Resource is already destroyed" }
+    }
+
     companion object {
 
         @JvmStatic

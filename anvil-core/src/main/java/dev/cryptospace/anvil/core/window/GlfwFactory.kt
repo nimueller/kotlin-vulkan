@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.core.window
 import dev.cryptospace.anvil.core.AppConfig
 import dev.cryptospace.anvil.core.RenderingApi
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.native.Address
 import org.lwjgl.glfw.GLFW.GLFW_CLIENT_API
 import org.lwjgl.glfw.GLFW.GLFW_FALSE
 import org.lwjgl.glfw.GLFW.GLFW_NO_API
@@ -85,7 +86,7 @@ object GlfwFactory {
 
         val windowHandle = glfwCreateWindow(800, 600, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
         check(windowHandle != MemoryUtil.NULL) { "Unable to create window" }
-        return Window(windowHandle)
+        return Window(Address(windowHandle))
     }
 
     fun create(renderingApi: RenderingApi): Glfw {

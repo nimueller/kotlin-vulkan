@@ -27,13 +27,13 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
 
     private val physicalDevices = PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
         physicalDevices.forEach { physicalDevice ->
-            physicalDevice.refreshPresentQueueFamilyIndex(surface)
+            physicalDevice.initSurface(surface)
         }
 
         logger.info("Found physical devices: $physicalDevices")
     }
 
-    private val physicalDevice = physicalDevices.pickBestDevice().also { physicalDevice ->
+    private val physicalDevice = physicalDevices.pickBestDevice(surface).also { physicalDevice ->
         logger.info("Selected best physical device: $physicalDevice")
     }
 

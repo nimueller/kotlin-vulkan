@@ -3,8 +3,11 @@ package dev.cryptospace.anvil.vulkan.device
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.toPointerList
 import dev.cryptospace.anvil.vulkan.Vulkan
-import dev.cryptospace.anvil.vulkan.VulkanSurface
 import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
+import dev.cryptospace.anvil.vulkan.getVulkanPointerBuffer
+import dev.cryptospace.anvil.vulkan.surface.Surface
+import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
+import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetailsFactory
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
 import org.lwjgl.vulkan.VK10.VK_FALSE
@@ -64,11 +67,18 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
 
     var presentQueueFamilyIndex = -1
         private set
+    lateinit var swapChainDetails: SurfaceSwapChainDetails
+        private set
 
-    fun refreshPresentQueueFamilyIndex(surface: VulkanSurface) {
-        check(isAlive) { "device is already destroyed" }
-        check(surface.isAlive) { "surface is already destroyed" }
+    fun initSurface(surface: Surface) {
+        this.validateNotDestroyed()
+        surface.validateNotDestroyed()
 
+        refreshPresentQueueFamily(surface)
+        swapChainDetails = SurfaceSwapChainDetailsFactory.create(this, surface)
+    }
+
+    private fun refreshPresentQueueFamily(surface: Surface) {
         presentQueueFamilyIndex = -1
 
         MemoryStack.stackPush().use { stack ->
@@ -78,7 +88,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
                 val result = vkGetPhysicalDeviceSurfaceSupportKHR(
                     handle,
                     index,
-                    surface.handle,
+                    surface.address.handle,
                     presentSupport
                 )
                 check(result == VK_SUCCESS) { "Failed to query for surface support capabilities" }
@@ -106,29 +116,28 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
 
     companion object {
 
-        fun List<PhysicalDevice>.pickBestDevice(): PhysicalDevice {
-            val selectedDevice = firstOrNull { isPhysicalDeviceSuitable(it) }
+        fun List<PhysicalDevice>.pickBestDevice(surface: Surface): PhysicalDevice {
+            val selectedDevice = firstOrNull { device ->
+                PhysicalDeviceSuitableCriteria.allCriteriaSatisfied(device, surface)
+            }
             checkNotNull(selectedDevice) { "Failed to find a suitable GPU" }
             return selectedDevice
         }
 
-        fun listPhysicalDevices(vulkan: Vulkan) = MemoryStack.stackPush().use { stack ->
+        fun listPhysicalDevices(vulkan: Vulkan): List<PhysicalDevice> {
             val instance = vulkan.instance
 
-            val deviceCountBuffer = stack.mallocInt(1)
-            vkEnumeratePhysicalDevices(instance, deviceCountBuffer, null)
-            check(deviceCountBuffer[0] != 0) { "Failed to find GPUs with Vulkan support" }
+            val result = getVulkanPointerBuffer { countBuffer, pointerBuffer ->
+                vkEnumeratePhysicalDevices(instance, countBuffer, pointerBuffer)
+            }
 
-            val devicesBuffer = stack.mallocPointer(1)
-            vkEnumeratePhysicalDevices(instance, deviceCountBuffer, devicesBuffer)
+            if (result == null) {
+                error("Failed to find GPUs with Vulkan support")
+            }
 
-            return@use devicesBuffer.toPointerList()
+            return result.toPointerList()
                 .map { VkPhysicalDevice(it, instance) }
                 .map { PhysicalDevice(vulkan, it) }
-        }
-
-        private fun isPhysicalDeviceSuitable(device: PhysicalDevice): Boolean {
-            return PhysicalDeviceSuitableCriteria.allCriteriaSatisfied(device)
         }
     }
 }
