@@ -14,21 +14,36 @@ dependencies {
     runtimeOnly(libs.lwjgl.openal) { natives() }
     runtimeOnly(libs.lwjgl.vulkan) {
         // Vulkan driver must be manually included for macOS and is pre-installed on Windows and Linux
-        artifact {
-            classifier = "natives-macos"
+        if (System.getProperty("os.name").lowercase().contains("mac")) {
+            artifact {
+                classifier = "natives-macos"
+            }
         }
     }
 }
 
 fun ExternalModuleDependency.natives() {
-    artifact {
-        classifier = "natives-windows"
-    }
-    artifact {
-        classifier = "natives-linux"
-    }
-    artifact {
-        classifier = "natives-macos"
+    val osName = System.getProperty("os.name").lowercase()
+    when {
+        osName.contains("win") -> {
+            artifact {
+                classifier = "natives-windows"
+            }
+        }
+
+        osName.contains("linux") -> {
+            artifact {
+                classifier = "natives-linux"
+            }
+        }
+
+        osName.contains("mac") -> {
+            artifact {
+                classifier = "natives-macos"
+            }
+        }
+
+        else -> error("Unsupported operating system: $osName")
     }
 }
 

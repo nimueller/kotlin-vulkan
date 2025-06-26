@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/anvil-app/anvil.anvil-app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/anvil-app/anvil.anvil-app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/anvil-vulkan/anvil.anvil-vulkan.test.iml" filepath="$PROJECT_DIR$/.idea/modules/anvil-vulkan/anvil.anvil-vulkan.test.iml" />
     </modules>
   </component>
 </project>

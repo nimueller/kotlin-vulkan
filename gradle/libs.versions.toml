@@ -1,8 +1,11 @@
 [versions]
-kotlin = "2.1.+"
 lwjgl = "3.3.+"
 slf4j = "2.0.+"
 logback = "1.5.+"
+mockito = "5.4.+"
+ktlint = "12.1.+"
+sonarlint = "2.0.+"
+junit = "5.10.+"
 
 [libraries]
 lwjgl-core = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }
@@ -11,3 +14,16 @@ lwjgl-openal = { module = "org.lwjgl:lwjgl-openal", version.ref = "lwjgl" }
 lwjgl-vulkan = { module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito" }
+
+[plugins]
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+sonarlint = { id = "se.solrike.sonarlint", version.ref = "sonarlint" }
+
+[bundles]
+test = ["junit-api", "junit-engine", "junit-params", "mockito-core", "mockito-kotlin"]

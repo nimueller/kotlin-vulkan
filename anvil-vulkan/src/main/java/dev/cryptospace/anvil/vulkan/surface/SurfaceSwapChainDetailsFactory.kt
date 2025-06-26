@@ -12,8 +12,10 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR
 import org.lwjgl.vulkan.VkSurfaceFormatKHR
 
 object SurfaceSwapChainDetailsFactory {
-
-    fun create(physicalDevice: PhysicalDevice, surface: Surface): SurfaceSwapChainDetails {
+    fun create(
+        physicalDevice: PhysicalDevice,
+        surface: Surface,
+    ): SurfaceSwapChainDetails {
         physicalDevice.validateNotDestroyed()
         surface.validateNotDestroyed()
 
@@ -29,14 +31,18 @@ object SurfaceSwapChainDetailsFactory {
         )
     }
 
-    private fun getCapabilities(surface: Surface, physicalDevice: PhysicalDevice): SurfaceCapabilities {
+    private fun getCapabilities(
+        surface: Surface,
+        physicalDevice: PhysicalDevice,
+    ): SurfaceCapabilities {
         MemoryStack.stackPush().use { stack ->
             val capabilities = VkSurfaceCapabilitiesKHR.malloc(stack)
-            val result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-                physicalDevice.handle,
-                surface.address.handle,
-                capabilities
-            )
+            val result =
+                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                    physicalDevice.handle,
+                    surface.address.handle,
+                    capabilities,
+                )
             check(result == VK_SUCCESS) { "Failed to get surface capabilities" }
             return SurfaceCapabilities(
                 device = physicalDevice,
@@ -45,18 +51,22 @@ object SurfaceSwapChainDetailsFactory {
         }
     }
 
-    private fun getFormats(surface: Surface, physicalDevice: PhysicalDevice): List<SurfaceFormat> {
-        val formats = getVulkanBuffer(
-            bufferInitializer = { VkSurfaceFormatKHR.malloc(it) },
-            bufferQuery = { countBuffer, resultBuffer ->
-                vkGetPhysicalDeviceSurfaceFormatsKHR(
-                    physicalDevice.handle,
-                    surface.address.handle,
-                    countBuffer,
-                    resultBuffer
-                )
-            }
-        )
+    private fun getFormats(
+        surface: Surface,
+        physicalDevice: PhysicalDevice,
+    ): List<SurfaceFormat> {
+        val formats =
+            getVulkanBuffer(
+                bufferInitializer = { VkSurfaceFormatKHR.malloc(it) },
+                bufferQuery = { countBuffer, resultBuffer ->
+                    vkGetPhysicalDeviceSurfaceFormatsKHR(
+                        physicalDevice.handle,
+                        surface.address.handle,
+                        countBuffer,
+                        resultBuffer,
+                    )
+                },
+            )
 
         return formats.map {
             SurfaceFormat(
@@ -66,17 +76,21 @@ object SurfaceSwapChainDetailsFactory {
         }
     }
 
-    private fun getPresentModes(surface: Surface, physicalDevice: PhysicalDevice): List<SurfacePresentMode> {
-        val presentModes = getVulkanBuffer(
-            bufferQuery = { countBuffer, resultBuffer ->
-                vkGetPhysicalDeviceSurfacePresentModesKHR(
-                    physicalDevice.handle,
-                    surface.address.handle,
-                    countBuffer,
-                    resultBuffer
-                )
-            }
-        )
+    private fun getPresentModes(
+        surface: Surface,
+        physicalDevice: PhysicalDevice,
+    ): List<SurfacePresentMode> {
+        val presentModes =
+            getVulkanBuffer(
+                bufferQuery = { countBuffer, resultBuffer ->
+                    vkGetPhysicalDeviceSurfacePresentModesKHR(
+                        physicalDevice.handle,
+                        surface.address.handle,
+                        countBuffer,
+                        resultBuffer,
+                    )
+                },
+            )
 
         if (presentModes == null) {
             return emptyList()
@@ -89,5 +103,4 @@ object SurfaceSwapChainDetailsFactory {
             )
         }
     }
-
 }
