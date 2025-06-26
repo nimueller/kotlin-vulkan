@@ -130,9 +130,12 @@ class VulkanExtensionsTest {
     fun `getVulkanBuffer for StructBuffer returns filled buffer`() {
         val buffer =
             getVulkanBuffer(
-                bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(16)) },
+                bufferInitializer = { size -> DummyStruct.Buffer(ByteBuffer.allocateDirect(size)) },
                 bufferQuery = { countBuffer, resultBuffer ->
-                    if (resultBuffer == null) countBuffer.put(0, 2)
+                    if (resultBuffer == null) {
+                        countBuffer.put(0, 2)
+                    }
+
                     VK_SUCCESS
                 },
             )

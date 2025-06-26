@@ -22,6 +22,7 @@ val libs = extensions.getByType(VersionCatalogsExtension::class.java).named("lib
 dependencies {
     implementation(kotlin("stdlib"))
 
+    testImplementation(kotlin("test"))
     testImplementation(libs.getBundle("test"))
 
     testRuntimeOnly(libs.getLibrary("lwjgl-core")) { natives() }
