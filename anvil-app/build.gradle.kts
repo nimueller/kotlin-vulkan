@@ -48,5 +48,5 @@ fun ExternalModuleDependency.natives() {
 }
 
 application {
-    mainClass.set("dev.cryptospace.vulkan.MainKt")
+    mainClass.set("dev.cryptospace.anvil.app.MainKt")
 }

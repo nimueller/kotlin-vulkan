@@ -4,7 +4,6 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     idea
-    application
 
     kotlin("jvm")
     kotlin("plugin.power-assert")
