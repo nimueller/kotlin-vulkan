@@ -93,5 +93,4 @@ object GlfwFactory {
         val window = createWindow(renderingApi)
         return Glfw(window)
     }
-
 }

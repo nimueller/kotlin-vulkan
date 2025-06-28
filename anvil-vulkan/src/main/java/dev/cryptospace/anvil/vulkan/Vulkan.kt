@@ -61,5 +61,4 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
         @JvmStatic
         private val logger = logger<Vulkan>()
     }
-
 }

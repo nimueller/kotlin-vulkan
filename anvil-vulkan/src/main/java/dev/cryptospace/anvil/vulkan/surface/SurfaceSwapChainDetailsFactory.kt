@@ -12,10 +12,7 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR
 import org.lwjgl.vulkan.VkSurfaceFormatKHR
 
 object SurfaceSwapChainDetailsFactory {
-    fun create(
-        physicalDevice: PhysicalDevice,
-        surface: Surface,
-    ): SurfaceSwapChainDetails {
+    fun create(physicalDevice: PhysicalDevice, surface: Surface): SurfaceSwapChainDetails {
         physicalDevice.validateNotDestroyed()
         surface.validateNotDestroyed()
 
@@ -31,10 +28,7 @@ object SurfaceSwapChainDetailsFactory {
         )
     }
 
-    private fun getCapabilities(
-        surface: Surface,
-        physicalDevice: PhysicalDevice,
-    ): SurfaceCapabilities {
+    private fun getCapabilities(surface: Surface, physicalDevice: PhysicalDevice): SurfaceCapabilities {
         MemoryStack.stackPush().use { stack ->
             val capabilities = VkSurfaceCapabilitiesKHR.malloc(stack)
             val result =
@@ -51,10 +45,7 @@ object SurfaceSwapChainDetailsFactory {
         }
     }
 
-    private fun getFormats(
-        surface: Surface,
-        physicalDevice: PhysicalDevice,
-    ): List<SurfaceFormat> {
+    private fun getFormats(surface: Surface, physicalDevice: PhysicalDevice): List<SurfaceFormat> {
         val formats =
             getVulkanBuffer(
                 bufferInitializer = { VkSurfaceFormatKHR.malloc(it) },
@@ -76,10 +67,7 @@ object SurfaceSwapChainDetailsFactory {
         }
     }
 
-    private fun getPresentModes(
-        surface: Surface,
-        physicalDevice: PhysicalDevice,
-    ): List<SurfacePresentMode> {
+    private fun getPresentModes(surface: Surface, physicalDevice: PhysicalDevice): List<SurfacePresentMode> {
         val presentModes =
             getVulkanBuffer(
                 bufferQuery = { countBuffer, resultBuffer ->

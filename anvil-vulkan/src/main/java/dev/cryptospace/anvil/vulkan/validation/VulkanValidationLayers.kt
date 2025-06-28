@@ -50,5 +50,4 @@ class VulkanValidationLayers(val requestedLayerNames: List<String>) {
         @JvmStatic
         private val logger = logger<VulkanValidationLayers>()
     }
-
 }

@@ -18,5 +18,4 @@ data class Glfw(val window: Window) : NativeResource() {
     override fun toString(): String {
         return "Glfw"
     }
-
 }

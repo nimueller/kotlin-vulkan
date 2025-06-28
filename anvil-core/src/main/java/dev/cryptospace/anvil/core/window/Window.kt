@@ -19,5 +19,4 @@ data class Window(val address: Address) : NativeResource() {
     override fun toString(): String {
         return address.toString()
     }
-
 }

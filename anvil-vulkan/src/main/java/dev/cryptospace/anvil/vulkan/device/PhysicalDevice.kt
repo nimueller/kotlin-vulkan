@@ -89,7 +89,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
                     handle,
                     index,
                     surface.address.handle,
-                    presentSupport
+                    presentSupport,
                 )
                 check(result == VK_SUCCESS) { "Failed to query for surface support capabilities" }
 

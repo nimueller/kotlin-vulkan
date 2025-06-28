@@ -6,5 +6,5 @@ data class SurfaceSwapChainDetails(
     val physicalDevice: PhysicalDevice,
     val surfaceCapabilities: SurfaceCapabilities,
     val formats: List<SurfaceFormat>,
-    val presentModes: List<SurfacePresentMode>
+    val presentModes: List<SurfacePresentMode>,
 )

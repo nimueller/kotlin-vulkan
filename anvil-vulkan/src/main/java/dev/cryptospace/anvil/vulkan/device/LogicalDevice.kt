@@ -11,7 +11,7 @@ import org.lwjgl.vulkan.VkQueue
 data class LogicalDevice(
     val vulkan: Vulkan,
     val handle: VkDevice,
-    val physicalDevice: PhysicalDevice
+    val physicalDevice: PhysicalDevice,
 ) : NativeResource() {
 
     val graphicsQueue =
@@ -31,5 +31,4 @@ data class LogicalDevice(
         check(vulkan.isAlive) { "Vulkan is already destroyed" }
         vkDestroyDevice(handle, null)
     }
-
 }

@@ -15,5 +15,4 @@ object AppConfig {
     private fun getArray(key: String, vararg default: String): List<String> {
         return System.getProperty(key)?.split(",") ?: default.toList()
     }
-
 }

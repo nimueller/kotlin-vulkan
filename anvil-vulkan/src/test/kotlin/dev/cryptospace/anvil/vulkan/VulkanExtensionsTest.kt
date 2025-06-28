@@ -14,10 +14,7 @@ class VulkanExtensionsTest {
         address: Long,
         container: ByteBuffer?,
     ) : Struct<DummyStruct>(address, container) {
-        override fun create(
-            address: Long,
-            container: ByteBuffer?,
-        ): DummyStruct = DummyStruct(address, container)
+        override fun create(address: Long, container: ByteBuffer?): DummyStruct = DummyStruct(address, container)
 
         override fun sizeof(): Int = 0
 

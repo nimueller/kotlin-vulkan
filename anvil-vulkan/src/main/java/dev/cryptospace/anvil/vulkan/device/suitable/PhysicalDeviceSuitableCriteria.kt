@@ -12,7 +12,7 @@ fun interface PhysicalDeviceSuitableCriteria {
         private val allCriteria = listOf(
             SupportsRequiredQueuesCriteria,
             SupportsRequiredExtensionsCriteria,
-            SupportsAdequateSwapChain
+            SupportsAdequateSwapChain,
         )
 
         fun allCriteriaSatisfied(device: PhysicalDevice, surface: Surface): Boolean {

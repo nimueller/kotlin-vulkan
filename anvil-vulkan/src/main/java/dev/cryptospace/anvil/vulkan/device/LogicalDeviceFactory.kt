@@ -21,11 +21,7 @@ object LogicalDeviceFactory {
     @JvmStatic
     private val logger = logger<LogicalDevice>()
 
-    fun create(
-        vulkan: Vulkan,
-        device: PhysicalDevice,
-        surface: Surface
-    ): LogicalDevice =
+    fun create(vulkan: Vulkan, device: PhysicalDevice, surface: Surface): LogicalDevice =
         MemoryStack.stackPush().use { stack ->
             val graphicsQueueFamily = device.graphicsQueueFamilyIndex
             check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }
@@ -41,14 +37,14 @@ object LogicalDeviceFactory {
             return LogicalDevice(
                 vulkan = vulkan,
                 handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
-                physicalDevice = device
+                physicalDevice = device,
             )
         }
 
     private fun buildQueueCreateInfo(
         stack: MemoryStack,
         graphicsQueueFamily: Int,
-        presentQueueFamily: Int
+        presentQueueFamily: Int,
     ): VkDeviceQueueCreateInfo.Buffer {
         val uniqueIndices = setOf(graphicsQueueFamily, presentQueueFamily)
         val queueCreateInfoPointer = VkDeviceQueueCreateInfo.malloc(uniqueIndices.size, stack)
@@ -72,7 +68,7 @@ object LogicalDeviceFactory {
     private fun buildDeviceCreateInfo(
         stack: MemoryStack,
         queueCreateInfoBuffer: VkDeviceQueueCreateInfo.Buffer,
-        features: VkPhysicalDeviceFeatures
+        features: VkPhysicalDeviceFeatures,
     ): VkDeviceCreateInfo {
         val enabledExtensions = stack.pushStringList(SupportsRequiredExtensionsCriteria.requiredExtensionNames)
 
@@ -88,7 +84,7 @@ object LogicalDeviceFactory {
     private fun buildDevice(
         stack: MemoryStack,
         device: PhysicalDevice,
-        deviceCreateInfo: VkDeviceCreateInfo
+        deviceCreateInfo: VkDeviceCreateInfo,
     ): PointerBuffer {
         val devicePointer = stack.mallocPointer(1)
         val result = vkCreateDevice(device.handle, deviceCreateInfo, null, devicePointer)

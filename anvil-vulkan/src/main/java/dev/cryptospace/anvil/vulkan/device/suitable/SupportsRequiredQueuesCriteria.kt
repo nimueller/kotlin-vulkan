@@ -15,5 +15,4 @@ object SupportsRequiredQueuesCriteria : PhysicalDeviceSuitableCriteria {
         logger.info("${device.name} supports present queue: $supportsPresentQueue")
         return supportsGraphicsQueue && supportsPresentQueue
     }
-
 }

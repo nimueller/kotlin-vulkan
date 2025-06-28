@@ -23,16 +23,14 @@ object VkInstanceFactory {
     @JvmStatic
     private val logger = logger<VkInstanceFactory>()
 
-    fun createInstance(
-        glfw: Glfw,
-        validationLayers: VulkanValidationLayers
-    ): VkInstance = MemoryStack.stackPush().use { stack ->
-        val appInfo = stack.createApplicationInfo()
-        val createInfo = stack.createInstanceCreateInfo(glfw, appInfo, validationLayers)
-        val instance = stack.createVulkanInstance(createInfo)
+    fun createInstance(glfw: Glfw, validationLayers: VulkanValidationLayers): VkInstance =
+        MemoryStack.stackPush().use { stack ->
+            val appInfo = stack.createApplicationInfo()
+            val createInfo = stack.createInstanceCreateInfo(glfw, appInfo, validationLayers)
+            val instance = stack.createVulkanInstance(createInfo)
 
-        return VkInstance(instance[0], createInfo)
-    }
+            return VkInstance(instance[0], createInfo)
+        }
 
     private fun MemoryStack.createApplicationInfo(): VkApplicationInfo {
         val appInfo = VkApplicationInfo.calloc(this).apply {
@@ -50,7 +48,7 @@ object VkInstanceFactory {
     private fun MemoryStack.createInstanceCreateInfo(
         glfw: Glfw,
         appInfo: VkApplicationInfo,
-        validationLayers: VulkanValidationLayers
+        validationLayers: VulkanValidationLayers,
     ): VkInstanceCreateInfo {
         val windowSystemExtensions = glfw.getRequiredVulkanExtensions()
         val additionalExtensions = getAdditionalVulkanExtensions()
@@ -88,5 +86,4 @@ object VkInstanceFactory {
         check(result == VK_SUCCESS) { "Failed to create Vulkan instance: $result" }
         return instance
     }
-
 }

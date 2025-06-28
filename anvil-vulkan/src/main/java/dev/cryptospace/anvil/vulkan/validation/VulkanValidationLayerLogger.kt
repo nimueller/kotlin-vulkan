@@ -62,12 +62,7 @@ class VulkanValidationLayerLogger(private val vulkanInstance: VkInstance) : VkDe
         logger.info("Vulkan validation layer logging destroyed")
     }
 
-    override fun invoke(
-        messageSeverity: Int,
-        messageTypes: Int,
-        pCallbackData: Long,
-        pUserData: Long
-    ): Int {
+    override fun invoke(messageSeverity: Int, messageTypes: Int, pCallbackData: Long, pUserData: Long): Int {
         val callbackData = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
         val message = callbackData.pMessageString()
 

@@ -6,7 +6,7 @@ import dev.cryptospace.anvil.core.window.GlfwFactory
 
 class Engine(
     renderingApi: RenderingApi,
-    renderingSystemCreator: (Glfw) -> RenderingSystem
+    renderingSystemCreator: (Glfw) -> RenderingSystem,
 ) : NativeResource() {
 
     val glfw = GlfwFactory.create(renderingApi)
@@ -26,5 +26,4 @@ class Engine(
     override fun toString(): String {
         return "Engine"
     }
-
 }
