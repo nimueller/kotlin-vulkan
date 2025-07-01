@@ -5,7 +5,7 @@ logback = "1.5.+"
 mockito = "5.4.+"
 ktlint = "12.1.+"
 sonarlint = "2.0.+"
-junit = "5.10.+"
+junit = "5.13.+"
 
 [libraries]
 lwjgl-core = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl" }
