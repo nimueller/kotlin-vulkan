@@ -10,17 +10,14 @@ import java.nio.ByteBuffer
 import kotlin.test.Test
 
 class VulkanExtensionsTest {
-    class DummyStruct(
-        address: Long,
-        container: ByteBuffer?,
-    ) : Struct<DummyStruct>(address, container) {
+    class DummyStruct(address: Long, container: ByteBuffer?) : Struct<DummyStruct>(address, container) {
+
         override fun create(address: Long, container: ByteBuffer?): DummyStruct = DummyStruct(address, container)
 
         override fun sizeof(): Int = 0
 
-        class Buffer(
-            container: ByteBuffer,
-        ) : StructBuffer<DummyStruct, Buffer>(container, container.remaining()) {
+        class Buffer(container: ByteBuffer) : StructBuffer<DummyStruct, Buffer>(container, container.remaining()) {
+
             override fun getElementFactory(): DummyStruct = DummyStruct(0, null)
 
             override fun self(): Buffer = this
@@ -41,7 +38,7 @@ class VulkanExtensionsTest {
     @Test
     fun `getVulkanPointerBuffer returns null if count is zero`() {
         val buffer =
-            getVulkanPointerBuffer { countBuffer, resultBuffer ->
+            _.queryVulkanPointerBuffer { countBuffer, resultBuffer ->
                 countBuffer.put(0, 0)
                 VK_SUCCESS
             }
@@ -52,7 +49,7 @@ class VulkanExtensionsTest {
     fun `getVulkanPointerBuffer returns filled PointerBuffer on success`() {
         val dummyAddresses = longArrayOf(0x1L, 0x2L, 0x3L)
         val buffer =
-            getVulkanPointerBuffer { countBuffer, resultBuffer ->
+            _.queryVulkanPointerBuffer { countBuffer, resultBuffer ->
                 if (resultBuffer == null) {
                     countBuffer.put(0, dummyAddresses.size)
                 } else {
@@ -72,14 +69,14 @@ class VulkanExtensionsTest {
     @Test
     fun `getVulkanPointerBuffer throws on error code`() {
         assertThrows(IllegalStateException::class.java) {
-            getVulkanPointerBuffer { _, _ -> VK_ERROR_UNKNOWN }
+            _.queryVulkanPointerBuffer { _, _ -> VK_ERROR_UNKNOWN }
         }
     }
 
     @Test
     fun `getVulkanBuffer returns null if count is zero`() {
         val buffer =
-            getVulkanBuffer { countBuffer, resultBuffer ->
+            _.queryVulkanIntBuffer { countBuffer, resultBuffer ->
                 countBuffer.put(0, 0)
                 VK_SUCCESS
             }
@@ -90,7 +87,7 @@ class VulkanExtensionsTest {
     fun `getVulkanBuffer returns filled IntBuffer on success`() {
         val data = intArrayOf(2, 4, 6, 8)
         val buffer =
-            getVulkanBuffer { countBuffer, resultBuffer ->
+            _.queryVulkanIntBuffer { countBuffer, resultBuffer ->
                 if (resultBuffer == null) {
                     countBuffer.put(0, data.size)
                 } else {
@@ -106,46 +103,43 @@ class VulkanExtensionsTest {
     @Test
     fun `getVulkanBuffer throws on error code`() {
         assertThrows(IllegalStateException::class.java) {
-            getVulkanBuffer { _, _ -> VK_ERROR_UNKNOWN }
+            _.queryVulkanIntBuffer { _, _ -> VK_ERROR_UNKNOWN }
         }
     }
 
     @Test
     fun `getVulkanBuffer for StructBuffer returns empty buffer if count is zero`() {
         val buffer =
-            getVulkanBuffer(
+            _.queryVulkanStructBuffer(
                 bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(0)) },
-                bufferQuery = { countBuffer, _ ->
-                    countBuffer.put(0, 0)
-                    VK_SUCCESS
-                },
-            )
+            ) { countBuffer, _ ->
+                countBuffer.put(0, 0)
+                VK_SUCCESS
+            }
         assert(buffer.remaining() == 0)
     }
 
     @Test
     fun `getVulkanBuffer for StructBuffer returns filled buffer`() {
         val buffer =
-            getVulkanBuffer(
+            _.queryVulkanStructBuffer(
                 bufferInitializer = { size -> DummyStruct.Buffer(ByteBuffer.allocateDirect(size)) },
-                bufferQuery = { countBuffer, resultBuffer ->
-                    if (resultBuffer == null) {
-                        countBuffer.put(0, 2)
-                    }
+            ) { countBuffer, resultBuffer ->
+                if (resultBuffer == null) {
+                    countBuffer.put(0, 2)
+                }
 
-                    VK_SUCCESS
-                },
-            )
+                VK_SUCCESS
+            }
         assert(buffer.remaining() == 2)
     }
 
     @Test
     fun `getVulkanBuffer for StructBuffer throws on error code`() {
         assertThrows(IllegalStateException::class.java) {
-            getVulkanBuffer(
+            _.queryVulkanStructBuffer(
                 bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(0)) },
-                bufferQuery = { _, _ -> VK_ERROR_UNKNOWN },
-            )
+            ) { _, _ -> VK_ERROR_UNKNOWN }
         }
     }
 }

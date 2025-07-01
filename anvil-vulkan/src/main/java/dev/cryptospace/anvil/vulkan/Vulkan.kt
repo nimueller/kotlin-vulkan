@@ -12,12 +12,39 @@ import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
 
+/**
+ * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
+ *
+ * This class handles initialization and cleanup of core Vulkan components.
+ *
+ * @property glfw GLFW window system integration for surface creation
+ * @constructor Creates a new Vulkan rendering system with the specified GLFW instance
+ */
 class Vulkan(glfw: Glfw) : RenderingSystem() {
 
-    private val validationLayers =
-        VulkanValidationLayers(if (useValidationLayers) AppConfig.validationLayers else emptyList())
+    /**
+     * Manages Vulkan validation layers for debugging and error checking.
+     * Initialized from [AppConfig.validationLayers] if provided, otherwise creates default validation layers.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val validationLayers =
+        AppConfig.validationLayers.let { layers ->
+            if (layers == null) {
+                VulkanValidationLayers()
+            } else {
+                VulkanValidationLayers(layers)
+            }
+        }
 
-    val instance = VkInstanceFactory.createInstance(glfw, validationLayers)
+    /**
+     * The main Vulkan instance handle created by [VkInstanceFactory].
+     *
+     * This instance serves as the primary connection point to the Vulkan API and is required
+     * for creating other Vulkan objects. It is configured with the specified validation layers
+     * and GLFW integration.
+     */
+    val instance =
+        VkInstanceFactory.createInstance(glfw, validationLayers)
 
     private val validationLayerLogger = VulkanValidationLayerLogger(instance).apply { if (useValidationLayers) set() }
 
@@ -52,9 +79,7 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
         vkDestroyInstance(instance, null)
     }
 
-    override fun toString(): String {
-        return "Vulkan"
-    }
+    override fun toString(): String = "Vulkan"
 
     companion object {
 

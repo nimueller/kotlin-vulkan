@@ -1,13 +1,13 @@
 package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.core.toPointerList
 import dev.cryptospace.anvil.vulkan.Vulkan
 import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
-import dev.cryptospace.anvil.vulkan.getVulkanPointerBuffer
+import dev.cryptospace.anvil.vulkan.queryVulkanPointerBuffer
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetailsFactory
+import dev.cryptospace.anvil.vulkan.transform
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
 import org.lwjgl.vulkan.VK10.VK_FALSE
@@ -103,9 +103,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
         error("Failed to find a suitable queue family which supported presentation queue")
     }
 
-    override fun toString(): String {
-        return "${this::class.simpleName}(name=$name)"
-    }
+    override fun toString(): String = "${this::class.simpleName}(name=$name)"
 
     override fun destroy() {
         check(vulkan.isAlive) { "Vulkan is already destroyed" }
@@ -126,18 +124,14 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
 
         fun listPhysicalDevices(vulkan: Vulkan): List<PhysicalDevice> {
             val instance = vulkan.instance
-
-            val result = getVulkanPointerBuffer { countBuffer, pointerBuffer ->
-                vkEnumeratePhysicalDevices(instance, countBuffer, pointerBuffer)
+            return MemoryStack.stackPush().use { stack ->
+                stack.queryVulkanPointerBuffer { countBuffer, pointerBuffer ->
+                    vkEnumeratePhysicalDevices(instance, countBuffer, pointerBuffer)
+                }.transform { address ->
+                    val handle = VkPhysicalDevice(address, instance)
+                    PhysicalDevice(vulkan, handle)
+                }
             }
-
-            if (result == null) {
-                error("Failed to find GPUs with Vulkan support")
-            }
-
-            return result.toPointerList()
-                .map { VkPhysicalDevice(it, instance) }
-                .map { PhysicalDevice(vulkan, it) }
         }
     }
 }

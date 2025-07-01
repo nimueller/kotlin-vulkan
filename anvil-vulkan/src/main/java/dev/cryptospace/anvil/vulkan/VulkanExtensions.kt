@@ -106,57 +106,14 @@ fun Int.validateVulkanSuccess() {
 }
 
 /**
- * Fetches a Vulkan pointer buffer using the provided query function.
- * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the result.
- *
- * Example:
- * ```kotlin
- * val extensions = getVulkanPointerBuffer { countBuffer, resultBuffer ->
- *     vkEnumerateInstanceExtensionProperties(
- *         null as String?,
- *         countBuffer,
- *         resultBuffer
- *     )
- * }
- * ```
- *
- * @param bufferQuery A lambda that is called **twice**:
- *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to `countBuffer`).
- *   2. Second, with an appropriately sized `resultBuffer` to retrieve the actual data.
- * The lambda takes two parameters:
- *   - `countBuffer`: an `IntBuffer` to store the count of elements queried.
- *   - `resultBuffer`: an optional `PointerBuffer` to hold the actual results, or `null` on the first call.
- * The lambda should return a Vulkan operation result code.
- *
- * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length arrays.
- *
- * @return A `PointerBuffer` containing the requested data if successful, or `null` if no data was available.
- * @throws IllegalStateException if any Vulkan operation does not succeed.
- */
-inline fun getVulkanPointerBuffer(bufferQuery: MemoryStack.(IntBuffer, PointerBuffer?) -> Int): PointerBuffer? {
-    return MemoryStack.stackPush().use { stack ->
-        val countBuffer = stack.mallocInt(1)
-        stack.bufferQuery(countBuffer, null).validateVulkanSuccess()
-
-        if (countBuffer[0] == 0) {
-            return null
-        }
-
-        val buffer = stack.mallocPointer(countBuffer[0])
-        stack.bufferQuery(countBuffer, buffer).validateVulkanSuccess()
-
-        buffer
-    }
-}
-
-/**
  * Fetches a Vulkan integer buffer using the provided query function.
- * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the result.
+ * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the
+ * result.
  *
  * Example:
  * ```kotlin
- * val presentModes = getVulkanBuffer { countBuffer, resultBuffer ->
- *     vkGetPhysicalDeviceSurfacePresentModesKHR(
+ * val formats = queryVulkanBuffer { countBuffer, resultBuffer ->
+ *     vkGetPhysicalDeviceSurfaceFormatsKHR(
  *         physicalDevice.handle,
  *         surface.address.handle,
  *         countBuffer,
@@ -166,44 +123,122 @@ inline fun getVulkanPointerBuffer(bufferQuery: MemoryStack.(IntBuffer, PointerBu
  * ```
  *
  * @param bufferQuery A lambda that is called **twice**:
- *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to `countBuffer`).
+ *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to
+ *   `countBuffer`).
  *   2. Second, with an appropriately sized `resultBuffer` to retrieve the actual data.
  * The lambda takes two parameters:
  *   - `countBuffer`: an `IntBuffer` to store the count of elements queried.
- *   - `resultBuffer`: an optional `IntBuffer` to hold the actual results, or `null` on the first call.
+ *   - `resultBuffer`: an optional buffer to hold the actual results, or `null` on the first call.
  * The lambda should return a Vulkan operation result code.
  *
- * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length arrays.
+ * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length
+ * arrays.
  *
- * @return An `IntBuffer` containing the requested data if successful, or `null` if no data was available.
+ * @return An IntBuffer containing the requested data if successful, or `null` if no data was available.
  * @throws IllegalStateException if any Vulkan operation does not succeed.
  */
-inline fun getVulkanBuffer(bufferQuery: MemoryStack.(IntBuffer, IntBuffer?) -> Int): IntBuffer? {
-    return MemoryStack.stackPush().use { stack ->
-        val countBuffer = stack.mallocInt(1)
-        stack.bufferQuery(countBuffer, null).validateVulkanSuccess()
-
-        if (countBuffer[0] == 0) {
-            return null
-        }
-
-        val buffer = stack.mallocInt(countBuffer[0])
-        stack.bufferQuery(countBuffer, buffer).validateVulkanSuccess()
-
-        buffer
-    }
-}
+inline fun MemoryStack.queryVulkanIntBuffer(bufferQuery: MemoryStack.(IntBuffer, IntBuffer?) -> Int): IntBuffer? =
+    queryVulkanBuffer(
+        bufferInitializer = { mallocInt(it) },
+        bufferQuery = bufferQuery,
+    )
 
 /**
- * Fetches a Vulkan struct buffer using the provided buffer initializer and query function.
- * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the result.
+ * Fetches a Vulkan pointer buffer using the provided query function.
+ * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the
+ * result.
  *
  * Example:
  * ```kotlin
- * val formats = getVulkanBuffer(
- *     bufferInitializer = { VkSurfaceFormatKHR.malloc(it) },
+ * val extensions = getVulkanPointerBuffer { countBuffer, resultBuffer ->
+ *         vkEnumerateInstanceExtensionProperties(
+ *             null as String?,
+ *             countBuffer,
+ *             resultBuffer
+ *         )
+ *     }
+ * ```
+ *
+ * @param bufferQuery A lambda that is called **twice**:
+ *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to
+ *   `countBuffer`).
+ *   2. Second, with an appropriately sized `resultBuffer` to retrieve the actual data.
+ * The lambda takes two parameters:
+ *   - `countBuffer`: an `IntBuffer` to store the count of elements queried.
+ *   - `resultBuffer`: an optional `PointerBuffer` to hold the actual results, or `null` on the first call.
+ * The lambda should return a Vulkan operation result code.
+ *
+ * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length
+ * arrays.
+ *
+ * @return A `PointerBuffer` containing the requested data if successful, or `null` if no data was available.
+ * @throws IllegalStateException if any Vulkan operation does not succeed.
+ */
+inline fun MemoryStack.queryVulkanPointerBuffer(
+    bufferQuery: MemoryStack.(IntBuffer, PointerBuffer?) -> Int,
+): PointerBuffer? = queryVulkanBuffer(
+    bufferInitializer = { mallocPointer(it) },
+    bufferQuery = bufferQuery,
+)
+
+/**
+ * Fetches and transforms a Vulkan struct buffer using the provided initializer, query function, and mapper.
+ * This function enables transformation from native managed memory structures to JVM managed objects while
+ * combining querying Vulkan data with transforming the results into a more convenient form.
+ *
+ * Example:
+ * ```kotlin
+ * val deviceProperties = queryAndTransformVulkanBuffer(
+ *     bufferInitializer = { VkPhysicalDeviceProperties.malloc(it) },
  *     bufferQuery = { countBuffer, resultBuffer ->
- *         vkGetPhysicalDeviceSurfaceFormatsKHR(
+ *         vkEnumeratePhysicalDevices(instance, countBuffer, resultBuffer)
+ *     },
+ *     bufferMapper = { DeviceProperties(it) }
+ * )
+ * ```
+ *
+ * @param T The target type after transformation
+ * @param S The type of Vulkan struct being allocated
+ * @param B The type of struct buffer being created
+ * @param bufferInitializer A function that creates a new struct buffer of the specified size
+ *
+ * **Note**: The buffer should be allocated using the supplied stack, otherwise it is up to the caller to free the
+ * buffer.
+ * @param bufferQuery A lambda that is called **twice**:
+ *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to
+ *   `countBuffer`).
+ *   2. Second, with a newly allocated result buffer to retrieve the actual data.
+ * The lambda takes two parameters:
+ *   - `countBuffer`: an `IntBuffer` to store the count of elements queried.
+ *   - `resultBuffer`: an optional struct buffer to hold the actual results, or `null` on the first call.
+ * The lambda should return a Vulkan operation result code.
+ *
+ * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length
+ * arrays.
+ * @param bufferMapper A function to transform each struct into the target type
+ * @return A list of transformed elements
+ * @throws IllegalStateException if any Vulkan operation does not succeed
+ */
+fun <T, S : Struct<S>, B : StructBuffer<S, B>> queryAndTransformVulkanStructBuffer(
+    bufferInitializer: MemoryStack.(Int) -> B,
+    bufferQuery: MemoryStack.(IntBuffer, B?) -> Int,
+    bufferMapper: (S) -> T,
+): List<T> = MemoryStack.stackPush().use { stack ->
+    val buffer = stack.queryVulkanBuffer(bufferInitializer, bufferQuery)
+    buffer.toList().map { value -> bufferMapper(value) }
+}
+
+/**
+ * Fetches a Vulkan buffer using the provided buffer initializer and query function.
+ * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the
+ * result.
+ *
+ * Example:
+ * ```kotlin
+ * val presentModes = getVulkanBuffer(
+ *     bufferInitializer = { mallocInt(it) },
+ *     bufferQuery = { countBuffer, resultBuffer ->
+ *         vkGetPhysicalDeviceSurfacePresentModesKHR(
  *             physicalDevice.handle,
  *             surface.address.handle,
  *             countBuffer,
@@ -213,37 +248,78 @@ inline fun getVulkanBuffer(bufferQuery: MemoryStack.(IntBuffer, IntBuffer?) -> I
  * )
  * ```
  *
- * @param T The type of Vulkan struct being allocated.
- * @param B The type of struct buffer being created.
- * @param bufferInitializer A function that creates a new struct buffer of the specified size.
+ * @param B The type of buffer being created
+ *
+ * @param bufferInitializer A function that creates a new buffer of the specified size.
+ *
+ *   **Note**: The buffer should be allocated using the supplied stack, otherwise it is up to the caller to free the
+ *   buffer.
  * @param bufferQuery A lambda that is called **twice**:
- *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to `countBuffer`).
- *   2. Second, with a newly allocated result buffer to retrieve the actual data.
+ *   1. First, with `resultBuffer = null`, to query Vulkan for the number of available elements (writing the count to
+ *   `countBuffer`).
+ *   2. Second, with an appropriately sized `resultBuffer` to retrieve the actual data.
  * The lambda takes two parameters:
  *   - `countBuffer`: an `IntBuffer` to store the count of elements queried.
- *   - `resultBuffer`: an optional struct buffer to hold the actual results, or `null` on the first call.
+ *   - `resultBuffer`: an optional buffer to hold the actual results, or `null` on the first call.
  * The lambda should return a Vulkan operation result code.
  *
- * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length arrays.
+ * This two-call pattern matches the standard Vulkan approach for querying the size and contents of variable-length
+ * arrays.
  *
- * @return A struct buffer containing the requested data if successful, or an empty buffer if no data was available.
+ * @return A buffer containing the requested data if successful
  * @throws IllegalStateException if any Vulkan operation does not succeed.
  */
-inline fun <T : Struct<T>, B : StructBuffer<T, B>> getVulkanBuffer(
-    bufferInitializer: (Int) -> B,
+inline fun <B> MemoryStack.queryVulkanBuffer(
+    bufferInitializer: MemoryStack.(Int) -> B,
     bufferQuery: MemoryStack.(IntBuffer, B?) -> Int,
 ): B {
-    return MemoryStack.stackPush().use { stack ->
-        val countBuffer = stack.mallocInt(1)
-        stack.bufferQuery(countBuffer, null).validateVulkanSuccess()
+    val countBuffer = mallocInt(1)
+    bufferQuery(countBuffer, null).validateVulkanSuccess()
 
-        val count = countBuffer[0]
-        if (count == 0) {
-            return bufferInitializer(0)
-        }
-
-        val buffer = bufferInitializer(count)
-        stack.bufferQuery(countBuffer, buffer).validateVulkanSuccess()
-        buffer
+    if (countBuffer[0] == 0) {
+        return bufferInitializer(0)
     }
+
+    val buffer = bufferInitializer(countBuffer[0])
+    bufferQuery(countBuffer, buffer).validateVulkanSuccess()
+    return buffer
+}
+
+inline fun <T> IntBuffer?.transform(transform: (Int) -> T): List<T> {
+    if (this == null) {
+        return emptyList()
+    }
+
+    val list = mutableListOf<T>()
+    this.position(0)
+    while (this.hasRemaining()) {
+        list.add(transform(get()))
+    }
+    return list
+}
+
+inline fun <T> PointerBuffer?.transform(transform: (Long) -> T): List<T> {
+    if (this == null) {
+        return emptyList()
+    }
+
+    val list = mutableListOf<T>()
+    this.position(0)
+    while (this.hasRemaining()) {
+        list.add(transform(get()))
+    }
+    return list
+}
+
+inline fun <T, S : Struct<S>, B : StructBuffer<S, B>> StructBuffer<S, B>?.transform(transform: (S) -> T): List<T> {
+    if (this == null) {
+        return emptyList()
+    }
+
+    val list = mutableListOf<T>()
+    this.position(0)
+    while (this.hasRemaining()) {
+        list.add(transform(get()))
+    }
+    return list
 }

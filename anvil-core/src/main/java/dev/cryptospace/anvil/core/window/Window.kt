@@ -15,8 +15,4 @@ data class Window(val address: Address) : NativeResource() {
     override fun destroy() {
         glfwDestroyWindow(address.handle)
     }
-
-    override fun toString(): String {
-        return address.toString()
-    }
 }
