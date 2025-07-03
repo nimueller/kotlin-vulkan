@@ -46,25 +46,49 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
     val instance =
         VkInstanceFactory.createInstance(glfw, validationLayers)
 
-    private val validationLayerLogger = VulkanValidationLayerLogger(instance).apply { if (useValidationLayers) set() }
+    private val validationLayerLogger =
+        VulkanValidationLayerLogger(instance).apply { if (useValidationLayers) set() }
 
-    private val surface = glfw.window.createSurface(this).also { surface ->
-        logger.info("Created surface: $surface")
-    }
-
-    private val physicalDevices = PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
-        physicalDevices.forEach { physicalDevice ->
-            physicalDevice.initSurface(surface)
+    /**
+     * The Vulkan surface used for rendering to the window.
+     * Created from the GLFW window and provides the interface between Vulkan and the window system.
+     */
+    val surface =
+        glfw.window.createSurface(this).also { surface ->
+            logger.info("Created surface: $surface")
         }
 
-        logger.info("Found physical devices: $physicalDevices")
-    }
+    /**
+     * List of available physical devices (GPUs) that support Vulkan.
+     * Each device is initialized with the surface for compatibility checking.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val physicalDevices =
+        PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
+            physicalDevices.forEach { physicalDevice ->
+                physicalDevice.initSurface(surface)
+            }
 
-    private val physicalDevice = physicalDevices.pickBestDevice(surface).also { physicalDevice ->
-        logger.info("Selected best physical device: $physicalDevice")
-    }
+            logger.info("Found physical devices: $physicalDevices")
+        }
 
-    private val logicalDevice = LogicalDeviceFactory.create(this, physicalDevice, surface)
+    /**
+     * The selected physical device that best meets the application's requirements.
+     * Chosen from available devices based on capabilities and performance characteristics.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val physicalDevice =
+        physicalDevices.pickBestDevice(surface).also { physicalDevice ->
+            logger.info("Selected best physical device: $physicalDevice")
+        }
+
+    /**
+     * The logical device providing the main interface for interacting with the physical device.
+     * Created with specific queue families and features enabled for the application's needs.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val logicalDevice =
+        LogicalDeviceFactory.create(this, physicalDevice, surface)
 
     override fun destroy() {
         physicalDevices.forEach { it.close() }

@@ -17,11 +17,24 @@ import org.lwjgl.vulkan.VkApplicationInfo
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkInstanceCreateInfo
 
+/**
+ * Factory for creating and configuring Vulkan instances.
+ *
+ * Handles the creation and setup of VkInstance objects with appropriate application info,
+ * validation layers, and extensions.
+ */
 object VkInstanceFactory {
 
     @JvmStatic
     private val logger = logger<VkInstanceFactory>()
 
+    /**
+     * Creates a new Vulkan instance with the specified GLFW and validation layer configuration.
+     *
+     * @param glfw GLFW window system integration for getting required Vulkan extensions
+     * @param validationLayers Validation layer configuration for debugging support
+     * @return Configured VkInstance ready for use
+     */
     fun createInstance(glfw: Glfw, validationLayers: VulkanValidationLayers): VkInstance =
         MemoryStack.stackPush().use { stack ->
             val appInfo = createApplicationInfo(stack)
