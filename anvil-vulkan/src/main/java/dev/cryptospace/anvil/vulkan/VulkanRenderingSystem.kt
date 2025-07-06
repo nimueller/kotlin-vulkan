@@ -7,7 +7,8 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
-import dev.cryptospace.anvil.vulkan.device.PhysicalDevice.Companion.pickBestDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
@@ -52,6 +53,18 @@ class VulkanRenderingSystem(
         VulkanValidationLayerLogger(instance).apply { if (useValidationLayers) set() }
 
     /**
+     * List of available physical devices (GPUs) that support Vulkan.
+     * Note: At this stage, physical devices don't have any surface-related information.
+     * Surface capabilities, formats, and presentation modes for each device are stored
+     * in the [physicalDeviceSurfaceInfos] property once the surface was created.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val physicalDevices =
+        PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
+            logger.info("Found physical devices: $physicalDevices")
+        }
+
+    /**
      * The Vulkan surface used for rendering to the window.
      * Created from the GLFW window and provides the interface between Vulkan and the window system.
      */
@@ -62,17 +75,14 @@ class VulkanRenderingSystem(
         }
 
     /**
-     * List of available physical devices (GPUs) that support Vulkan.
-     * Each device is initialized with the surface for compatibility checking.
+     * List of surface information details for each available physical device.
+     * Contains capabilities, formats, and presentation modes supported by each device
+     * when working with the current surface.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val physicalDevices =
-        PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
-            physicalDevices.forEach { physicalDevice ->
-                physicalDevice.initSurface(surface)
-            }
-
-            logger.info("Found physical devices: $physicalDevices")
+    val physicalDeviceSurfaceInfos =
+        physicalDevices.map { physicalDevice ->
+            PhysicalDeviceSurfaceInfo(physicalDevice, surface)
         }
 
     /**
@@ -81,8 +91,8 @@ class VulkanRenderingSystem(
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
     val physicalDevice =
-        physicalDevices.pickBestDevice(surface).also { physicalDevice ->
-            logger.info("Selected best physical device: $physicalDevice")
+        physicalDeviceSurfaceInfos.pickBestDeviceSurfaceInfo().also { deviceSurfaceInfos ->
+            logger.info("Selected best physical device: $deviceSurfaceInfos")
         }
 
     /**

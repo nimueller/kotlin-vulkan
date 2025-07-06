@@ -1,7 +1,7 @@
 package dev.cryptospace.anvil.vulkan.device.suitable
 
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import org.lwjgl.vulkan.KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME
 
 object SupportsRequiredExtensionsCriteria : PhysicalDeviceSuitableCriteria {
@@ -13,16 +13,24 @@ object SupportsRequiredExtensionsCriteria : PhysicalDeviceSuitableCriteria {
     @JvmStatic
     private val logger = logger<SupportsRequiredExtensionsCriteria>()
 
-    override fun isSuitable(device: PhysicalDevice): Boolean {
+    override fun isSuitable(deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): Boolean {
         val supportsRequiredExtensions = requiredExtensionNames.all { requiredExtensionName ->
-            device.extensions.any { availableExtension ->
+            deviceSurfaceInfo.physicalDevice.extensions.any { availableExtension ->
                 availableExtension.name == requiredExtensionName
             }
         }
 
-        logger.info("${device.name} supports extensions: ${device.extensions.map { it.name }}")
+        logger.info(
+            "${deviceSurfaceInfo.physicalDevice.name} supports extensions: ${
+                deviceSurfaceInfo.physicalDevice.extensions.map {
+                    it.name
+                }
+            }",
+        )
         logger.info("Required extensions: $requiredExtensionNames")
-        logger.info("${device.name} supports required extensions: $supportsRequiredExtensions")
+        logger.info(
+            "${deviceSurfaceInfo.physicalDevice.name} supports required extensions: $supportsRequiredExtensions",
+        )
 
         return supportsRequiredExtensions
     }

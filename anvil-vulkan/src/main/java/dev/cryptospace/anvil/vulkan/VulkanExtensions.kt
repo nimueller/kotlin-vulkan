@@ -285,6 +285,22 @@ inline fun <B> MemoryStack.queryVulkanBuffer(
     return buffer
 }
 
+inline fun <B> MemoryStack.queryVulkanBufferWithoutSuccessValidation(
+    bufferInitializer: MemoryStack.(Int) -> B,
+    bufferQuery: MemoryStack.(IntBuffer, B?) -> Unit,
+): B {
+    val countBuffer = mallocInt(1)
+    bufferQuery(countBuffer, null)
+
+    if (countBuffer[0] == 0) {
+        return bufferInitializer(0)
+    }
+
+    val buffer = bufferInitializer(countBuffer[0])
+    bufferQuery(countBuffer, buffer)
+    return buffer
+}
+
 inline fun <T> IntBuffer?.transform(transform: (Int) -> T?): List<T> {
     if (this == null) {
         return emptyList()

@@ -1,11 +1,10 @@
 package dev.cryptospace.anvil.vulkan.device.suitable
 
-import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
-import dev.cryptospace.anvil.vulkan.surface.Surface
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 
 fun interface PhysicalDeviceSuitableCriteria {
 
-    fun isSuitable(device: PhysicalDevice): Boolean
+    fun isSuitable(deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): Boolean
 
     companion object {
 
@@ -15,8 +14,8 @@ fun interface PhysicalDeviceSuitableCriteria {
             SupportsAdequateSwapChain,
         )
 
-        fun allCriteriaSatisfied(device: PhysicalDevice, surface: Surface): Boolean {
-            return allCriteria.all { it.isSuitable(device) }
+        fun allCriteriaSatisfied(deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): Boolean = allCriteria.all {
+            it.isSuitable(deviceSurfaceInfo)
         }
     }
 }

@@ -2,16 +2,12 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
-import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
+import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
+import dev.cryptospace.anvil.vulkan.queryVulkanBufferWithoutSuccessValidation
 import dev.cryptospace.anvil.vulkan.queryVulkanPointerBuffer
-import dev.cryptospace.anvil.vulkan.surface.Surface
-import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
 import dev.cryptospace.anvil.vulkan.transform
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
-import org.lwjgl.vulkan.VK10.VK_FALSE
 import org.lwjgl.vulkan.VK10.VK_QUEUE_GRAPHICS_BIT
-import org.lwjgl.vulkan.VK10.VK_SUCCESS
 import org.lwjgl.vulkan.VK10.vkEnumerateDeviceExtensionProperties
 import org.lwjgl.vulkan.VK10.vkEnumeratePhysicalDevices
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceFeatures
@@ -24,86 +20,60 @@ import org.lwjgl.vulkan.VkPhysicalDeviceProperties
 import org.lwjgl.vulkan.VkQueueFamilyProperties
 import java.nio.ByteBuffer
 
+/**
+ * Represents a physical device (GPU) in the Vulkan graphics system.
+ * Manages device-specific properties, features, and capabilities.
+ * Acts as a wrapper around the native Vulkan physical device handle.
+ * @param vulkan The parent Vulkan rendering system that owns this physical device
+ * @param handle The native Vulkan physical device handle
+ */
 data class PhysicalDevice(
     val vulkan: VulkanRenderingSystem,
     val handle: VkPhysicalDevice,
 ) : NativeResource() {
 
+    /** Physical device properties including device limits and capabilities */
     val properties: VkPhysicalDeviceProperties =
         VkPhysicalDeviceProperties.malloc().apply {
             vkGetPhysicalDeviceProperties(handle, this)
         }
 
+    /** Optional features supported by the physical device */
     val features: VkPhysicalDeviceFeatures =
         VkPhysicalDeviceFeatures.malloc().apply {
             vkGetPhysicalDeviceFeatures(handle, this)
         }
 
+    /** Queue families supported by this physical device */
     val queueFamilies: VkQueueFamilyProperties.Buffer =
         MemoryStack.stackPush().use { stack ->
-            val countBuffer = stack.mallocInt(1)
-            vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, null)
-
-            val queueBuffer = VkQueueFamilyProperties.malloc(countBuffer[0])
-            vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, queueBuffer)
-
-            queueBuffer
+            stack.queryVulkanBufferWithoutSuccessValidation(
+                bufferInitializer = { VkQueueFamilyProperties.malloc(it) },
+                bufferQuery = { countBuffer, resultBuffer ->
+                    vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, resultBuffer)
+                },
+            )
         }
 
+    /** Index of the queue family that supports graphics operations */
     val graphicsQueueFamilyIndex =
         queueFamilies.indexOfFirst { it.queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0 }
 
+    /** List of supported device extensions */
     val extensions =
         MemoryStack.stackPush().use { stack ->
-            val extensionCount = stack.mallocInt(1)
-            val layerName: ByteBuffer? = null
-            vkEnumerateDeviceExtensionProperties(handle, layerName, extensionCount, null)
-
-            val availableExtensions = VkExtensionProperties.malloc(extensionCount[0], stack)
-            vkEnumerateDeviceExtensionProperties(handle, layerName, extensionCount, availableExtensions)
-
-            availableExtensions.map { DeviceExtension(it.extensionNameString()) }
-        }
-
-    val name: String = properties.deviceNameString()
-
-    var presentQueueFamilyIndex = -1
-        private set
-    lateinit var swapChainDetails: SurfaceSwapChainDetails
-        private set
-
-    fun initSurface(surface: Surface) {
-        this.validateNotDestroyed()
-        surface.validateNotDestroyed()
-
-        refreshPresentQueueFamily(surface)
-        swapChainDetails = SurfaceSwapChainDetails(this, surface)
-    }
-
-    private fun refreshPresentQueueFamily(surface: Surface) {
-        presentQueueFamilyIndex = -1
-
-        MemoryStack.stackPush().use { stack ->
-            val presentSupport = stack.mallocInt(1)
-
-            queueFamilies.forEachIndexed { index, _ ->
-                val result = vkGetPhysicalDeviceSurfaceSupportKHR(
-                    handle,
-                    index,
-                    surface.address.handle,
-                    presentSupport,
-                )
-                check(result == VK_SUCCESS) { "Failed to query for surface support capabilities" }
-
-                if (presentSupport[0] != VK_FALSE) {
-                    presentQueueFamilyIndex = index
-                    return
-                }
+            stack.queryVulkanBuffer(
+                bufferInitializer = { VkExtensionProperties.malloc(it) },
+                bufferQuery = { countBuffer, resultBuffer ->
+                    vkEnumerateDeviceExtensionProperties(handle, null as ByteBuffer?, countBuffer, resultBuffer)
+                },
+            ).transform { extensionProperties ->
+                DeviceExtension(extensionProperties.extensionNameString())
             }
         }
 
-        error("Failed to find a suitable queue family which supported presentation queue")
-    }
+    /** The name of the physical device */
+    val name: String = properties.deviceNameString()
 
     override fun toString(): String = "${this::class.simpleName}(name=$name)"
 
@@ -112,19 +82,15 @@ data class PhysicalDevice(
         properties.free()
         features.free()
         queueFamilies.free()
-        swapChainDetails.close()
     }
 
     companion object {
 
-        fun List<PhysicalDevice>.pickBestDevice(surface: Surface): PhysicalDevice {
-            val selectedDevice = firstOrNull { device ->
-                PhysicalDeviceSuitableCriteria.allCriteriaSatisfied(device, surface)
-            }
-            checkNotNull(selectedDevice) { "Failed to find a suitable GPU" }
-            return selectedDevice
-        }
-
+        /**
+         * Lists all available physical devices (GPUs) in the system.
+         * @param vulkan The Vulkan rendering system instance
+         * @return List of available physical devices
+         */
         fun listPhysicalDevices(vulkan: VulkanRenderingSystem): List<PhysicalDevice> {
             val instance = vulkan.instance
             return MemoryStack.stackPush().use { stack ->

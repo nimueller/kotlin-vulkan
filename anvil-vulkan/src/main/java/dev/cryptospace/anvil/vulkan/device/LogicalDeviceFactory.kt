@@ -20,12 +20,13 @@ object LogicalDeviceFactory {
     @JvmStatic
     private val logger = logger<LogicalDevice>()
 
-    fun create(vulkan: VulkanRenderingSystem, device: PhysicalDevice): LogicalDevice =
+    fun create(vulkan: VulkanRenderingSystem, deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): LogicalDevice =
         MemoryStack.stackPush().use { stack ->
+            val device = deviceSurfaceInfo.physicalDevice
             val graphicsQueueFamily = device.graphicsQueueFamilyIndex
             check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }
 
-            val presentQueueFamily = device.presentQueueFamilyIndex
+            val presentQueueFamily = deviceSurfaceInfo.presentQueueFamilyIndex
             check(presentQueueFamily >= 0) { "Got an invalid present_queue family index" }
 
             val queueCreateInfo = buildQueueCreateInfo(stack, graphicsQueueFamily, presentQueueFamily)
@@ -36,7 +37,7 @@ object LogicalDeviceFactory {
             return LogicalDevice(
                 vulkan = vulkan,
                 handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
-                physicalDevice = device,
+                deviceSurfaceInfo = deviceSurfaceInfo,
             )
         }
 

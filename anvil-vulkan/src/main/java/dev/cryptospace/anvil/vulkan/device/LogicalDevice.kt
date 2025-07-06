@@ -11,19 +11,19 @@ import org.lwjgl.vulkan.VkQueue
 data class LogicalDevice(
     val vulkan: VulkanRenderingSystem,
     val handle: VkDevice,
-    val physicalDevice: PhysicalDevice,
+    val deviceSurfaceInfo: PhysicalDeviceSurfaceInfo,
 ) : NativeResource() {
 
     val graphicsQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
-            vkGetDeviceQueue(handle, physicalDevice.graphicsQueueFamilyIndex, 0, buffer)
+            vkGetDeviceQueue(handle, deviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex, 0, buffer)
             VkQueue(buffer[0], handle)
         }
     val presentQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
-            vkGetDeviceQueue(handle, physicalDevice.presentQueueFamilyIndex, 0, buffer)
+            vkGetDeviceQueue(handle, deviceSurfaceInfo.presentQueueFamilyIndex, 0, buffer)
             VkQueue(buffer[0], handle)
         }
 

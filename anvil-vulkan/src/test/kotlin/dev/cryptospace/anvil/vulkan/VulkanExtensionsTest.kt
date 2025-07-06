@@ -11,13 +11,18 @@ import java.nio.ByteBuffer
 import kotlin.test.Test
 
 class VulkanExtensionsTest {
-    class DummyStruct(address: Long, container: ByteBuffer?) : Struct<DummyStruct>(address, container) {
+    class DummyStruct(
+        address: Long,
+        container: ByteBuffer?,
+    ) : Struct<DummyStruct>(address, container) {
 
         override fun create(address: Long, container: ByteBuffer?): DummyStruct = DummyStruct(address, container)
 
         override fun sizeof(): Int = 0
 
-        class Buffer(container: ByteBuffer) : StructBuffer<DummyStruct, Buffer>(container, container.remaining()) {
+        class Buffer(
+            container: ByteBuffer,
+        ) : StructBuffer<DummyStruct, Buffer>(container, container.remaining()) {
 
             override fun getElementFactory(): DummyStruct = DummyStruct(0, null)
 
