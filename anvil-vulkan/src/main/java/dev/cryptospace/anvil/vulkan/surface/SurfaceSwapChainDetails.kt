@@ -34,7 +34,7 @@ data class SurfaceSwapChainDetails(
         VkSurfaceCapabilitiesKHR.malloc().also { capabilities ->
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
                 physicalDeviceSurfaceInfo.physicalDevice.handle,
-                surface.address.handle,
+                surface.handle.value,
                 capabilities,
             ).validateVulkanSuccess()
         }
@@ -85,7 +85,7 @@ data class SurfaceSwapChainDetails(
                 bufferQuery = { countBuffer, resultBuffer ->
                     vkGetPhysicalDeviceSurfaceFormatsKHR(
                         physicalDeviceSurfaceInfo.physicalDevice.handle,
-                        surface.address.handle,
+                        surface.handle.value,
                         countBuffer,
                         resultBuffer,
                     )
@@ -117,7 +117,7 @@ data class SurfaceSwapChainDetails(
             stack.queryVulkanIntBuffer { countBuffer, resultBuffer ->
                 vkGetPhysicalDeviceSurfacePresentModesKHR(
                     physicalDeviceSurfaceInfo.physicalDevice.handle,
-                    surface.address.handle,
+                    surface.handle.value,
                     countBuffer,
                     resultBuffer,
                 )

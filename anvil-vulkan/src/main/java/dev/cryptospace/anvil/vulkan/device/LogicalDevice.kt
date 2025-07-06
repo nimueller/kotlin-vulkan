@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.vulkan.device
 
-import dev.cryptospace.anvil.core.native.Address
+import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
@@ -18,18 +18,29 @@ import org.lwjgl.vulkan.VkDevice
 import org.lwjgl.vulkan.VkQueue
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
 
+/**
+ * Represents a logical Vulkan device that provides the main interface for interacting with a physical GPU.
+ * Manages device-specific resources, queues and provides functionality for creating swap chains.
+ *
+ * @property vulkan The parent VulkanRenderingSystem instance that owns this device
+ * @property handle The native Vulkan device handle
+ * @property deviceSurfaceInfo Information about the physical device and its surface capabilities
+ */
 data class LogicalDevice(
     val vulkan: VulkanRenderingSystem,
     val handle: VkDevice,
     val deviceSurfaceInfo: PhysicalDeviceSurfaceInfo,
 ) : NativeResource() {
 
+    /** Queue used for submitting graphics commands to the GPU */
     val graphicsQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
             vkGetDeviceQueue(handle, deviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex, 0, buffer)
             VkQueue(buffer[0], handle)
         }
+
+    /** Queue used for presenting rendered images to the surface */
     val presentQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
@@ -37,6 +48,14 @@ data class LogicalDevice(
             VkQueue(buffer[0], handle)
         }
 
+    /**
+     * Creates a new swap chain for this device based on the surface capabilities.
+     * The swap chain manages the queue of images that can be presented to the surface.
+     *
+     * **Note**: The caller is responsible for freeing the swap chain resources when no longer needed.
+     *
+     * @return A new SwapChain instance
+     */
     fun createSwapChain(): SwapChain = MemoryStack.stackPush().use { stack ->
         val surface = deviceSurfaceInfo.surface
         val swapChainDetails = deviceSurfaceInfo.swapChainDetails
@@ -52,7 +71,7 @@ data class LogicalDevice(
 
         val createInfo = VkSwapchainCreateInfoKHR.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
-            surface(surface.address.handle)
+            surface(surface.handle.value)
             minImageCount(imageCount)
             imageFormat(swapChainDetails.bestSurfaceFormat.format())
             imageColorSpace(swapChainDetails.bestSurfaceFormat.colorSpace())
@@ -85,7 +104,7 @@ data class LogicalDevice(
             pointer,
         ).validateVulkanSuccess()
 
-        SwapChain(this, Address(pointer[0]))
+        SwapChain(this, Handle(pointer[0]))
     }
 
     override fun destroy() {

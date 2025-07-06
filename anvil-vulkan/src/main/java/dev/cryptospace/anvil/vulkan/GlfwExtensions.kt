@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.native.Address
+import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.toStringList
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.core.window.Window
@@ -34,9 +34,9 @@ fun Glfw.getRequiredVulkanExtensions(): List<String> {
 fun Window.createSurface(vulkan: VulkanRenderingSystem): Surface {
     MemoryStack.stackPush().use { stack ->
         val surfaceBuffer = stack.mallocLong(1)
-        val result = GLFWVulkan.glfwCreateWindowSurface(vulkan.instance, this.address.handle, null, surfaceBuffer)
+        val result = GLFWVulkan.glfwCreateWindowSurface(vulkan.instance, this.handle.value, null, surfaceBuffer)
         check(result == 0) { "Failed to create window surface" }
-        return Surface(vulkan = vulkan, window = this, address = Address(surfaceBuffer[0]))
+        return Surface(vulkan = vulkan, window = this, handle = Handle(surfaceBuffer[0]))
     }
 }
 
@@ -53,7 +53,7 @@ fun Window.getFramebufferSize(): FramebufferSize {
     MemoryStack.stackPush().use { stack ->
         val widthBuffer = stack.mallocInt(1)
         val heightBuffer = stack.mallocInt(1)
-        glfwGetFramebufferSize(address.handle, widthBuffer, heightBuffer)
+        glfwGetFramebufferSize(handle.value, widthBuffer, heightBuffer)
         return FramebufferSize(widthBuffer[0], heightBuffer[0])
     }
 }

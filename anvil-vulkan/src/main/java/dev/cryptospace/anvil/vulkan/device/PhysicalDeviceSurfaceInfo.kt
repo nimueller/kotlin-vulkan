@@ -40,7 +40,7 @@ data class PhysicalDeviceSurfaceInfo(
                 val result = vkGetPhysicalDeviceSurfaceSupportKHR(
                     physicalDevice.handle,
                     index,
-                    surface.address.handle,
+                    surface.handle.value,
                     presentSupport,
                 )
                 check(result == VK_SUCCESS) { "Failed to query for surface support capabilities" }

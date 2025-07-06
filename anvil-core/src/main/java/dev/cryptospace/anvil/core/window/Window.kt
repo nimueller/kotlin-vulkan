@@ -1,18 +1,20 @@
 package dev.cryptospace.anvil.core.window
 
-import dev.cryptospace.anvil.core.native.Address
+import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import org.lwjgl.glfw.GLFW.glfwDestroyWindow
 import org.lwjgl.glfw.GLFW.glfwWindowShouldClose
 
-data class Window(val address: Address) : NativeResource() {
+data class Window(
+    val handle: Handle,
+) : NativeResource() {
 
     fun shouldClose(): Boolean {
         check(!isDestroyed) { "Already destroyed" }
-        return glfwWindowShouldClose(address.handle)
+        return glfwWindowShouldClose(handle.value)
     }
 
     override fun destroy() {
-        glfwDestroyWindow(address.handle)
+        glfwDestroyWindow(handle.value)
     }
 }
