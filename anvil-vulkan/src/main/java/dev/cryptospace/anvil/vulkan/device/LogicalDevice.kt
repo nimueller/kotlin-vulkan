@@ -1,7 +1,7 @@
 package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.Vulkan
+import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.vkDestroyDevice
 import org.lwjgl.vulkan.VK10.vkGetDeviceQueue
@@ -9,7 +9,7 @@ import org.lwjgl.vulkan.VkDevice
 import org.lwjgl.vulkan.VkQueue
 
 data class LogicalDevice(
-    val vulkan: Vulkan,
+    val vulkan: VulkanRenderingSystem,
     val handle: VkDevice,
     val physicalDevice: PhysicalDevice,
 ) : NativeResource() {

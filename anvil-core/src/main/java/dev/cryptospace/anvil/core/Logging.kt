@@ -12,3 +12,17 @@ import org.slf4j.LoggerFactory
  * @return Logger instance configured for the specified type
  */
 inline fun <reified T> logger(): Logger = LoggerFactory.getLogger(T::class.java)
+
+/**
+ * Extension function for SLF4J Logger that provides lazy message evaluation for warning level logging.
+ *
+ * The message is only evaluated if the warning log level is enabled, which can improve performance
+ * when expensive message construction is involved.
+ *
+ * @param lazyMessage Lambda that produces the log message string
+ */
+fun Logger.warn(lazyMessage: () -> String) {
+    if (isWarnEnabled) {
+        warn(lazyMessage())
+    }
+}

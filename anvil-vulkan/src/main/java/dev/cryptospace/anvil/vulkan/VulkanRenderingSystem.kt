@@ -20,7 +20,9 @@ import org.lwjgl.vulkan.VK10.vkDestroyInstance
  * @property glfw GLFW window system integration for surface creation
  * @constructor Creates a new Vulkan rendering system with the specified GLFW instance
  */
-class Vulkan(glfw: Glfw) : RenderingSystem() {
+class VulkanRenderingSystem(
+    glfw: Glfw,
+) : RenderingSystem() {
 
     /**
      * Manages Vulkan validation layers for debugging and error checking.
@@ -53,6 +55,7 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
      * The Vulkan surface used for rendering to the window.
      * Created from the GLFW window and provides the interface between Vulkan and the window system.
      */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
     val surface =
         glfw.window.createSurface(this).also { surface ->
             logger.info("Created surface: $surface")
@@ -88,7 +91,7 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
     val logicalDevice =
-        LogicalDeviceFactory.create(this, physicalDevice, surface)
+        LogicalDeviceFactory.create(this, physicalDevice)
 
     override fun destroy() {
         physicalDevices.forEach { it.close() }
@@ -108,6 +111,6 @@ class Vulkan(glfw: Glfw) : RenderingSystem() {
     companion object {
 
         @JvmStatic
-        private val logger = logger<Vulkan>()
+        private val logger = logger<VulkanRenderingSystem>()
     }
 }

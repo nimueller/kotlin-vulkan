@@ -82,7 +82,7 @@ fun Glfw.getRequiredVulkanExtensions(): List<String> {
  * @return A new Surface instance
  * @throws IllegalStateException if the surface creation fails
  */
-fun Window.createSurface(vulkan: Vulkan): Surface {
+fun Window.createSurface(vulkan: VulkanRenderingSystem): Surface {
     MemoryStack.stackPush().use { stack ->
         val surfaceBuffer = stack.mallocLong(1)
         val result = glfwCreateWindowSurface(vulkan.instance, this.address.handle, null, surfaceBuffer)
@@ -285,7 +285,7 @@ inline fun <B> MemoryStack.queryVulkanBuffer(
     return buffer
 }
 
-inline fun <T> IntBuffer?.transform(transform: (Int) -> T): List<T> {
+inline fun <T> IntBuffer?.transform(transform: (Int) -> T?): List<T> {
     if (this == null) {
         return emptyList()
     }
@@ -293,8 +293,12 @@ inline fun <T> IntBuffer?.transform(transform: (Int) -> T): List<T> {
     val list = mutableListOf<T>()
     this.position(0)
     while (this.hasRemaining()) {
-        list.add(transform(get()))
+        val transformedValue = transform(get())
+        if (transformedValue != null) {
+            list.add(transformedValue)
+        }
     }
+    this.position(0)
     return list
 }
 
@@ -308,6 +312,7 @@ inline fun <T> PointerBuffer?.transform(transform: (Long) -> T): List<T> {
     while (this.hasRemaining()) {
         list.add(transform(get()))
     }
+    this.position(0)
     return list
 }
 
@@ -321,5 +326,6 @@ inline fun <T, S : Struct<S>, B : StructBuffer<S, B>> StructBuffer<S, B>?.transf
     while (this.hasRemaining()) {
         list.add(transform(get()))
     }
+    this.position(0)
     return list
 }

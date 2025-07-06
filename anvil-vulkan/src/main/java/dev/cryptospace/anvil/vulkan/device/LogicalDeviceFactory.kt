@@ -2,9 +2,8 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.pushStringList
-import dev.cryptospace.anvil.vulkan.Vulkan
+import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.device.suitable.SupportsRequiredExtensionsCriteria
-import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
@@ -21,7 +20,7 @@ object LogicalDeviceFactory {
     @JvmStatic
     private val logger = logger<LogicalDevice>()
 
-    fun create(vulkan: Vulkan, device: PhysicalDevice, surface: Surface): LogicalDevice =
+    fun create(vulkan: VulkanRenderingSystem, device: PhysicalDevice): LogicalDevice =
         MemoryStack.stackPush().use { stack ->
             val graphicsQueueFamily = device.graphicsQueueFamilyIndex
             check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }

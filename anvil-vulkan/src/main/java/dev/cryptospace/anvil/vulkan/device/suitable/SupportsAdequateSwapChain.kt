@@ -9,12 +9,12 @@ object SupportsAdequateSwapChain : PhysicalDeviceSuitableCriteria {
     private val logger = logger<SupportsAdequateSwapChain>()
 
     override fun isSuitable(device: PhysicalDevice): Boolean {
-        val hasFormats = device.swapChainDetails.formats
-        val hasPresentModes = device.swapChainDetails.presentModes
+        val hasFormats = device.swapChainDetails.surfaceFormats.limit() > 0
+        val hasPresentModes = device.swapChainDetails.surfacePresentModes.isNotEmpty()
 
         logger.info("Device supports formats: $hasFormats")
         logger.info("Device supports present modes: $hasPresentModes")
 
-        return hasFormats.isNotEmpty() && hasPresentModes.isNotEmpty()
+        return hasFormats && hasPresentModes
     }
 }

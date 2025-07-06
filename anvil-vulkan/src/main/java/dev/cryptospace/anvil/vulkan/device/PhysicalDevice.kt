@@ -1,12 +1,11 @@
 package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.Vulkan
+import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
 import dev.cryptospace.anvil.vulkan.queryVulkanPointerBuffer
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
-import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetailsFactory
 import dev.cryptospace.anvil.vulkan.transform
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
@@ -25,19 +24,22 @@ import org.lwjgl.vulkan.VkPhysicalDeviceProperties
 import org.lwjgl.vulkan.VkQueueFamilyProperties
 import java.nio.ByteBuffer
 
-data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : NativeResource() {
+data class PhysicalDevice(
+    val vulkan: VulkanRenderingSystem,
+    val handle: VkPhysicalDevice,
+) : NativeResource() {
 
-    val properties =
+    val properties: VkPhysicalDeviceProperties =
         VkPhysicalDeviceProperties.malloc().apply {
             vkGetPhysicalDeviceProperties(handle, this)
         }
 
-    val features =
+    val features: VkPhysicalDeviceFeatures =
         VkPhysicalDeviceFeatures.malloc().apply {
             vkGetPhysicalDeviceFeatures(handle, this)
         }
 
-    val queueFamilies =
+    val queueFamilies: VkQueueFamilyProperties.Buffer =
         MemoryStack.stackPush().use { stack ->
             val countBuffer = stack.mallocInt(1)
             vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, null)
@@ -75,7 +77,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
         surface.validateNotDestroyed()
 
         refreshPresentQueueFamily(surface)
-        swapChainDetails = SurfaceSwapChainDetailsFactory.create(this, surface)
+        swapChainDetails = SurfaceSwapChainDetails(this, surface)
     }
 
     private fun refreshPresentQueueFamily(surface: Surface) {
@@ -110,6 +112,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
         properties.free()
         features.free()
         queueFamilies.free()
+        swapChainDetails.close()
     }
 
     companion object {
@@ -122,7 +125,7 @@ data class PhysicalDevice(val vulkan: Vulkan, val handle: VkPhysicalDevice) : Na
             return selectedDevice
         }
 
-        fun listPhysicalDevices(vulkan: Vulkan): List<PhysicalDevice> {
+        fun listPhysicalDevices(vulkan: VulkanRenderingSystem): List<PhysicalDevice> {
             val instance = vulkan.instance
             return MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanPointerBuffer { countBuffer, pointerBuffer ->
