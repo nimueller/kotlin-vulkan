@@ -1,13 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.native.Address
-import dev.cryptospace.anvil.core.toStringList
-import dev.cryptospace.anvil.core.window.Glfw
-import dev.cryptospace.anvil.core.window.Window
-import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.PointerBuffer
-import org.lwjgl.glfw.GLFWVulkan.glfwCreateWindowSurface
-import org.lwjgl.glfw.GLFWVulkan.glfwGetRequiredInstanceExtensions
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.Struct
 import org.lwjgl.system.StructBuffer
@@ -59,37 +52,6 @@ val vulkanResultDisplayNameMap =
         VK_ERROR_FRAGMENTED_POOL to "VK_ERROR_FRAGMENTED_POOL",
         VK_ERROR_UNKNOWN to "VK_ERROR_UNKNOWN",
     )
-
-/**
- * Gets the list of Vulkan extensions required by GLFW.
- * These extensions are necessary for Vulkan to work with GLFW windows.
- *
- * @return List of required Vulkan extension names as strings
- * @throws IllegalStateException if the required extensions cannot be retrieved
- */
-fun Glfw.getRequiredVulkanExtensions(): List<String> {
-    val glfwExtensions = glfwGetRequiredInstanceExtensions()
-    checkNotNull(glfwExtensions) { "Failed to find list of required Vulkan extensions" }
-    val extensionNames = glfwExtensions.toStringList()
-    return extensionNames
-}
-
-/**
- * Creates a Vulkan surface for this window.
- * The surface is used for rendering Vulkan graphics to the window.
- *
- * @param vulkan The Vulkan instance to create the surface for
- * @return A new Surface instance
- * @throws IllegalStateException if the surface creation fails
- */
-fun Window.createSurface(vulkan: VulkanRenderingSystem): Surface {
-    MemoryStack.stackPush().use { stack ->
-        val surfaceBuffer = stack.mallocLong(1)
-        val result = glfwCreateWindowSurface(vulkan.instance, this.address.handle, null, surfaceBuffer)
-        check(result == 0) { "Failed to create window surface" }
-        return Surface(vulkan = vulkan, window = this, address = Address(surfaceBuffer[0]))
-    }
-}
 
 /**
  * Validates that a Vulkan operation was successful.

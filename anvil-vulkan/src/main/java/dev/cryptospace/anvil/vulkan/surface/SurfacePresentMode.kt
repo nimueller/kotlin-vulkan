@@ -12,16 +12,36 @@ enum class SurfacePresentMode(
     val vulkanValue: Int,
 ) {
 
-    /** Images submitted are transferred to screen right away, which may result in tearing */
+    /**
+     * Images submitted by your application are transferred to the screen right away,
+     * which may result in tearing. No queuing mechanism is used.
+     */
     IMMEDIATE(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR),
 
-    /** Triple buffering mode - replaces images in the queue with newer ones */
+    /**
+     * Similar to triple buffering - when the queue is full, newer images replace
+     * the already queued ones instead of blocking. This allows rendering frames as fast as
+     * possible while avoiding tearing, resulting in lower latency than standard vertical sync.
+     */
     MAILBOX(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR),
 
-    /** FIFO queue for display - similar to VSync */
+    /**
+     * Uses a FIFO queue where the display takes an image from the front when refreshed
+     * and the program inserts rendered images at the back. If the queue is full, the program must wait.
+     * Most similar to traditional vertical sync found in modern games. Display refresh occurs
+     * at "vertical blank".
+     *
+     * **Notes:**
+     * - This mode is guaranteed to always be available.
+     * - Least energy consumption, consider for mobile devices.
+     */
     FIFO(KHRSurface.VK_PRESENT_MODE_FIFO_KHR),
 
-    /** Like FIFO but allows tearing if the application is late */
+    /**
+     * Variation of FIFO mode that allows tearing if the application is late and the queue was empty
+     * at the last vertical blank. Instead of waiting for the next vertical blank, the image
+     * is transferred immediately when it arrives.
+     */
     FIFO_RELAXED(KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR),
     ;
 
