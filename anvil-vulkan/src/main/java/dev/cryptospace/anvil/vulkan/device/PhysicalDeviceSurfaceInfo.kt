@@ -57,7 +57,7 @@ data class PhysicalDeviceSurfaceInfo(
      * Detailed information about swap chain capabilities for this device-surface combination.
      * Includes surface formats, presentation modes, and other swap-chain-related properties.
      */
-    val swapChainDetails: SurfaceSwapChainDetails = SurfaceSwapChainDetails(physicalDevice, surface)
+    val swapChainDetails: SurfaceSwapChainDetails = SurfaceSwapChainDetails(this, surface)
 
     override fun destroy() {
         swapChainDetails.close()

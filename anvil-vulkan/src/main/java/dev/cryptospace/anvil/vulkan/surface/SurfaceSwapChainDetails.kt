@@ -3,7 +3,7 @@ package dev.cryptospace.anvil.vulkan.surface
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.warn
-import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.getFramebufferSize
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.queryVulkanIntBuffer
@@ -20,7 +20,7 @@ import org.lwjgl.vulkan.VkSurfaceCapabilitiesKHR
 import org.lwjgl.vulkan.VkSurfaceFormatKHR
 
 data class SurfaceSwapChainDetails(
-    private val physicalDevice: PhysicalDevice,
+    private val physicalDeviceSurfaceInfo: PhysicalDeviceSurfaceInfo,
     private val surface: Surface,
 ) : NativeResource() {
 
@@ -33,7 +33,7 @@ data class SurfaceSwapChainDetails(
     val surfaceCapabilities: VkSurfaceCapabilitiesKHR =
         VkSurfaceCapabilitiesKHR.malloc().also { capabilities ->
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-                physicalDevice.handle,
+                physicalDeviceSurfaceInfo.physicalDevice.handle,
                 surface.address.handle,
                 capabilities,
             ).validateVulkanSuccess()
@@ -84,7 +84,7 @@ data class SurfaceSwapChainDetails(
                 bufferInitializer = { VkSurfaceFormatKHR.malloc(it) },
                 bufferQuery = { countBuffer, resultBuffer ->
                     vkGetPhysicalDeviceSurfaceFormatsKHR(
-                        physicalDevice.handle,
+                        physicalDeviceSurfaceInfo.physicalDevice.handle,
                         surface.address.handle,
                         countBuffer,
                         resultBuffer,
@@ -116,7 +116,7 @@ data class SurfaceSwapChainDetails(
         MemoryStack.stackPush().use { stack ->
             stack.queryVulkanIntBuffer { countBuffer, resultBuffer ->
                 vkGetPhysicalDeviceSurfacePresentModesKHR(
-                    physicalDevice.handle,
+                    physicalDeviceSurfaceInfo.physicalDevice.handle,
                     surface.address.handle,
                     countBuffer,
                     resultBuffer,

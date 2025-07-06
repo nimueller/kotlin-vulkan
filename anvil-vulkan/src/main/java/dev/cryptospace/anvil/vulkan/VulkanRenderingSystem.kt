@@ -9,6 +9,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.device.SwapChain
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
@@ -90,7 +91,7 @@ class VulkanRenderingSystem(
      * Chosen from available devices based on capabilities and performance characteristics.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val physicalDevice =
+    val physicalDeviceSurfaceInfo =
         physicalDeviceSurfaceInfos.pickBestDeviceSurfaceInfo().also { deviceSurfaceInfos ->
             logger.info("Selected best physical device: $deviceSurfaceInfos")
         }
@@ -101,13 +102,26 @@ class VulkanRenderingSystem(
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
     val logicalDevice =
-        LogicalDeviceFactory.create(this, physicalDevice)
+        LogicalDeviceFactory.create(this, physicalDeviceSurfaceInfo)
+
+    /**
+     * The swap chain managing presentation of rendered images to the surface.
+     * Created from the logical device and handles image acquisition, rendering synchronization,
+     * and presentation to the display using the selected surface format and present mode.
+     * The swap chain dimensions and properties are determined based on the physical device's
+     * surface capabilities and the window size.
+     */
+    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
+    val swapChain: SwapChain =
+        logicalDevice.createSwapChain().also { swapChain ->
+            logger.info("Created swap chain: $swapChain")
+        }
 
     override fun destroy() {
-        physicalDevices.forEach { it.close() }
+        swapChain.close()
         logicalDevice.close()
-
         surface.close()
+        physicalDevices.forEach { it.close() }
 
         if (useValidationLayers) {
             validationLayerLogger.destroy()
