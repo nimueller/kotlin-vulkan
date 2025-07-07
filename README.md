@@ -28,8 +28,8 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Setup validation layers
     - [x] Create surface and select device
     - [x] Create logical device and queues
-- [ ] Resource management
-    - [ ] Create swapchain and image views
+- [x] Resource management
+    - [x] Create swapchain and image views
     - [ ] Create render pass
     - [ ] Create framebuffers
 - [ ] Pipeline setup
