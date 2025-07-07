@@ -19,10 +19,7 @@ val compileShaders by tasks.registering {
     doLast {
         outputDir.mkdirs()
 
-        inputDir.listFiles { file ->
-            file.extension == "vert" || file.extension == "frag"
-        }?.forEach { shaderFile ->
-            val outputFile = File(outputDir, shaderFile.nameWithoutExtension + ".spv")
+        fun compileShader(shaderFile: File, outputFile: File) {
             val process = ProcessBuilder(
                 "glslc",
                 shaderFile.absolutePath,
@@ -36,6 +33,9 @@ val compileShaders by tasks.registering {
                 throw GradleException("Shader compilation failed for: ${shaderFile.name}")
             }
         }
+
+        compileShader(inputDir.resolve("shader.vert"), outputDir.resolve("vert.spv"))
+        compileShader(inputDir.resolve("shader.frag"), outputDir.resolve("frag.spv"))
     }
 }
 
