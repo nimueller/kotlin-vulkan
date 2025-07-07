@@ -7,3 +7,46 @@ dependencies {
 
     implementation(libs.lwjgl.vulkan)
 }
+
+val compileShaders by tasks.registering {
+    val sourceSet = sourceSets["main"]
+    val inputDir = file("${sourceSet.resources.srcDirs.first()}/shaders")
+    val outputDir = file("${sourceSet.output.resourcesDir}/shaders")
+
+    inputs.dir(inputDir)
+    outputs.dir(outputDir)
+
+    doLast {
+        outputDir.mkdirs()
+
+        inputDir.listFiles { file ->
+            file.extension == "vert" || file.extension == "frag"
+        }?.forEach { shaderFile ->
+            val outputFile = File(outputDir, shaderFile.nameWithoutExtension + ".spv")
+            val process = ProcessBuilder(
+                "glslc",
+                shaderFile.absolutePath,
+                "-o",
+                outputFile.absolutePath,
+            ).inheritIO().start()
+
+            val exitCode = process.waitFor()
+
+            if (exitCode != 0) {
+                throw GradleException("Shader compilation failed for: ${shaderFile.name}")
+            }
+        }
+    }
+}
+
+tasks.build {
+    dependsOn(compileShaders)
+}
+
+tasks.jar {
+    dependsOn(compileShaders)
+}
+
+tasks.named("sonarlintMain") {
+    dependsOn(tasks.named("compileShaders"))
+}

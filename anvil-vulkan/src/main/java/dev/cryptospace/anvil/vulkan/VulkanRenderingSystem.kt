@@ -10,6 +10,7 @@ import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
@@ -116,6 +117,9 @@ class VulkanRenderingSystem(
         logicalDevice.createSwapChain().also { swapChain ->
             logger.info("Created swap chain: $swapChain")
         }
+
+    val graphicsPipeline: GraphicsPipeline =
+        GraphicsPipeline()
 
     override fun destroy() {
         swapChain.close()
