@@ -25,12 +25,13 @@ val compileShaders by tasks.registering {
                 shaderFile.absolutePath,
                 "-o",
                 outputFile.absolutePath,
-            ).inheritIO().start()
+            ).start()
 
             val exitCode = process.waitFor()
 
             if (exitCode != 0) {
-                throw GradleException("Shader compilation failed for: ${shaderFile.name}")
+                val error = process.errorStream.bufferedReader().readText()
+                throw GradleException("Shader compilation failed for ${shaderFile.name}:\n$error")
             }
         }
 

@@ -119,9 +119,10 @@ class VulkanRenderingSystem(
         }
 
     val graphicsPipeline: GraphicsPipeline =
-        GraphicsPipeline()
+        GraphicsPipeline(logicalDevice)
 
     override fun destroy() {
+        graphicsPipeline.close()
         swapChain.close()
         logicalDevice.close()
         surface.close()
