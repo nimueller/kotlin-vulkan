@@ -32,9 +32,9 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Create swapchain and image views
     - [ ] Create render pass
     - [ ] Create framebuffers
-- [ ] Pipeline setup
-    - [ ] Create shaders and pipeline
-    - [ ] Configure graphics pipeline
+- [x] Pipeline setup
+    - [x] Create shaders and pipeline
+    - [x] Configure graphics pipeline
 - [ ] Drawing
     - [ ] Setup command buffers
     - [ ] Draw first triangle

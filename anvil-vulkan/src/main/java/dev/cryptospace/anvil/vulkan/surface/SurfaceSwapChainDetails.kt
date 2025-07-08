@@ -52,7 +52,7 @@ data class SurfaceSwapChainDetails(
      * allows for flexible window resizing while maintaining proper rendering dimensions within
      * the supported bounds of the surface capabilities.
      */
-    val swapExtent: VkExtent2D = VkExtent2D.malloc().also { extent ->
+    val swapChainExtent: VkExtent2D = VkExtent2D.malloc().also { extent ->
         if (surfaceCapabilities.currentExtent().width() != -1) {
             extent.set(surfaceCapabilities.currentExtent())
         } else {

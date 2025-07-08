@@ -75,7 +75,7 @@ data class LogicalDevice(
             minImageCount(imageCount)
             imageFormat(swapChainDetails.bestSurfaceFormat.format())
             imageColorSpace(swapChainDetails.bestSurfaceFormat.colorSpace())
-            imageExtent(swapChainDetails.swapExtent)
+            imageExtent(swapChainDetails.swapChainExtent)
             imageArrayLayers(1)
             imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
 
