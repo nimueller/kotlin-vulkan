@@ -36,6 +36,7 @@ import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
 import org.lwjgl.vulkan.VK10.vkCreateShaderModule
 import org.lwjgl.vulkan.VK10.vkDestroyPipeline
+import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import org.lwjgl.vulkan.VK10.vkDestroyShaderModule
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo
@@ -202,6 +203,7 @@ class GraphicsPipeline(
     }
 
     override fun destroy() {
+        vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayout[0], null)
         vkDestroyPipeline(logicalDevice.handle, pipelineLayout[0], null)
     }
 }
