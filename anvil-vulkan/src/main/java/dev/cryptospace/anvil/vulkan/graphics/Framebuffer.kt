@@ -1,25 +1,40 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateFramebuffer
+import org.lwjgl.vulkan.VK10.vkDestroyFramebuffer
 import org.lwjgl.vulkan.VkFramebufferCreateInfo
 
 data class Framebuffer(
-    val swapChain: SwapChain,
-    val renderPass: RenderPass,
+    val device: LogicalDevice,
+    val handle: Handle,
 ) : NativeResource() {
 
-    val framebuffers =
-        MemoryStack.stackPush().use { stack ->
-            val swapChainFramebuffers = stack.mallocLong(swapChain.imageViews.size)
+    override fun destroy() {
+        vkDestroyFramebuffer(device.handle, handle.value, null)
+    }
 
-            swapChain.imageViews.map { imageViewHandle ->
-                val attachments = stack.longs(imageViewHandle.value)
+    companion object {
 
-                val framebufferInfo = VkFramebufferCreateInfo.calloc(stack).apply {
+        fun createFramebuffersForSwapChain(
+            device: LogicalDevice,
+            swapChain: SwapChain,
+            renderPass: RenderPass,
+        ): List<Framebuffer> = MemoryStack.stackPush().use { stack ->
+            val result = ArrayList<Framebuffer>(swapChain.imageViews.size)
+            val attachments = stack.mallocLong(1)
+
+            for (imageView in swapChain.imageViews) {
+                attachments.clear()
+                    .put(imageView.value)
+                    .flip()
+
+                val framebufferCreateInfo = VkFramebufferCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO)
                     renderPass(renderPass.handle.value)
                     pAttachments(attachments)
@@ -28,16 +43,19 @@ data class Framebuffer(
                     layers(1)
                 }
 
+                val pFramebuffer = stack.mallocLong(1)
+
                 vkCreateFramebuffer(
                     swapChain.logicalDevice.handle,
-                    framebufferInfo,
+                    framebufferCreateInfo,
                     null,
-                    swapChainFramebuffers,
+                    pFramebuffer,
                 ).validateVulkanSuccess()
-            }
-        }
 
-    override fun destroy() {
-        // Nothing to do
+                result.add(Framebuffer(device, Handle(pFramebuffer[0])))
+            }
+
+            result
+        }
     }
 }

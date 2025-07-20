@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -116,7 +117,27 @@ data class SwapChain(
             resultList
         }
 
+    val renderPass: RenderPass =
+        RenderPass(logicalDevice).also { renderPass ->
+            logger.info("Created render pass: $renderPass")
+        }
+
+    val graphicsPipeline: GraphicsPipeline =
+        GraphicsPipeline(logicalDevice, renderPass).also { graphicsPipeline ->
+            logger.info("Created graphics pipeline: $graphicsPipeline")
+        }
+
+    val framebuffers: List<Framebuffer> =
+        Framebuffer.createFramebuffersForSwapChain(logicalDevice, this, renderPass).also { framebuffers ->
+            logger.info("Created ${framebuffers.size} framebuffers: $framebuffers")
+        }
+
     override fun destroy() {
+        framebuffers.forEach { framebuffer ->
+            framebuffer.close()
+        }
+        graphicsPipeline.close()
+        renderPass.close()
         imageViews.forEach { imageView ->
             vkDestroyImageView(logicalDevice.handle, imageView.value, null)
         }
@@ -124,5 +145,11 @@ data class SwapChain(
         MemoryUtil.memFree(images)
 
         vkDestroySwapchainKHR(logicalDevice.handle, handle.value, null)
+    }
+
+    companion object {
+
+        @JvmStatic
+        private val logger = logger<SwapChain>()
     }
 }
