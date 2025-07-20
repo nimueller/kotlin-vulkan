@@ -9,6 +9,7 @@ import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.NULL
+import org.lwjgl.vulkan.EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 import org.lwjgl.vulkan.VK10.VK_MAKE_VERSION
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
@@ -61,7 +62,7 @@ object VkInstanceFactory {
         validationLayers: VulkanValidationLayers,
     ): VkInstanceCreateInfo {
         val windowSystemExtensions = glfw.getRequiredVulkanExtensions()
-        val additionalExtensions = getAdditionalVulkanExtensions(validationLayers)
+        val additionalExtensions = getAdditionalVulkanExtensions()
 
         val extensions = stack.callocPointer(windowSystemExtensions.size + additionalExtensions.size)
         extensions.putAllStrings(stack, windowSystemExtensions)
@@ -82,12 +83,12 @@ object VkInstanceFactory {
         return createInfo
     }
 
-    private fun getAdditionalVulkanExtensions(validationLayers: VulkanValidationLayers): List<String> {
+    private fun getAdditionalVulkanExtensions(): List<String> {
         if (!AppConfig.useValidationLayers) {
             return emptyList()
         }
 
-        return validationLayers.requestedLayerNames
+        return listOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
     }
 
     private fun createVulkanInstance(stack: MemoryStack, createInfo: VkInstanceCreateInfo): PointerBuffer {

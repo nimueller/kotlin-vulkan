@@ -6,11 +6,11 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_CLEAR
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_STORE
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
@@ -27,7 +27,7 @@ import org.lwjgl.vulkan.VkSubpassDescription
  *
  * @property logicalDevice The logical device that this render pass is associated with.
  */
-class RenderPass(
+data class RenderPass(
     private val logicalDevice: LogicalDevice,
 ) : NativeResource() {
 
@@ -47,11 +47,15 @@ class RenderPass(
         VkSubpassDescription.calloc(stack).apply {
             val colorAttachmentReference = VkAttachmentReference.calloc(stack).apply {
                 attachment(0)
-                layout(VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             }
+            val colorAttachmentReferences = VkAttachmentReference.calloc(1, stack)
+                .put(colorAttachmentReference)
+                .flip()
 
             pipelineBindPoint(VK_PIPELINE_BIND_POINT_GRAPHICS)
-            pColorAttachments(VkAttachmentReference.calloc(1, stack).put(0, colorAttachmentReference))
+            colorAttachmentCount(colorAttachmentReferences.remaining())
+            pColorAttachments(colorAttachmentReferences)
         }
 
     /**
@@ -62,17 +66,26 @@ class RenderPass(
         MemoryStack.stackPush().use { stack ->
             val colorAttachment = setupColorAttachment(stack)
             val subpassDescription = setupSubpassDescription(stack)
+            val colorAttachmentDescriptions = VkAttachmentDescription.calloc(1, stack)
+                .put(colorAttachment)
+                .flip()
+            val subpassDescriptions = VkSubpassDescription.calloc(1, stack)
+                .put(subpassDescription)
+                .flip()
 
             val createInfo = VkRenderPassCreateInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
-                pAttachments(VkAttachmentDescription.calloc(1, stack).put(0, colorAttachment))
-                pSubpasses(VkSubpassDescription.calloc(1, stack).put(0, subpassDescription))
+                pAttachments(colorAttachmentDescriptions)
+                pSubpasses(subpassDescriptions)
             }
 
             val renderPassBuffer = stack.mallocLong(1)
-            vkCreateRenderPass(logicalDevice.handle, createInfo, null, renderPassBuffer).validateVulkanSuccess()
+            vkCreateRenderPass(logicalDevice.handle, createInfo, null, renderPassBuffer)
+                .validateVulkanSuccess()
             Handle(renderPassBuffer[0])
         }
+
+    override fun toString(): String = "RenderPass(handle=$handle)"
 
     override fun destroy() {
         vkDestroyRenderPass(logicalDevice.handle, handle.value, null)

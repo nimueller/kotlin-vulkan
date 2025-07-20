@@ -9,9 +9,9 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
-import dev.cryptospace.anvil.vulkan.device.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
@@ -119,11 +119,15 @@ class VulkanRenderingSystem(
             logger.info("Created swap chain: $swapChain")
         }
 
-    val graphicsPipeline: GraphicsPipeline =
-        GraphicsPipeline(logicalDevice)
-
     val renderPass: RenderPass =
-        RenderPass(logicalDevice)
+        RenderPass(logicalDevice).also { renderPass ->
+            logger.info("Created render pass: $renderPass")
+        }
+
+    val graphicsPipeline: GraphicsPipeline =
+        GraphicsPipeline(logicalDevice, renderPass).also { graphicsPipeline ->
+            logger.info("Created graphics pipeline: $graphicsPipeline")
+        }
 
     override fun destroy() {
         graphicsPipeline.close()

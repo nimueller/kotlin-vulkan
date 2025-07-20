@@ -18,11 +18,13 @@ import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_SCISSOR
 import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_VIEWPORT
 import org.lwjgl.vulkan.VK10.VK_FRONT_FACE_CLOCKWISE
 import org.lwjgl.vulkan.VK10.VK_LOGIC_OP_COPY
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_POLYGON_MODE_FILL
 import org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
 import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_FRAGMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
@@ -33,11 +35,13 @@ import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCreateGraphicsPipelines
 import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
 import org.lwjgl.vulkan.VK10.vkCreateShaderModule
 import org.lwjgl.vulkan.VK10.vkDestroyPipeline
 import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import org.lwjgl.vulkan.VK10.vkDestroyShaderModule
+import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo
@@ -50,13 +54,14 @@ import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo
 
-class GraphicsPipeline(
+data class GraphicsPipeline(
     val logicalDevice: LogicalDevice,
+    val renderPass: RenderPass,
 ) : NativeResource() {
 
     private val pipelineLayout = MemoryUtil.memAllocLong(1)
 
-    init {
+    val handle: Handle = MemoryStack.stackPush().use { stack ->
         val vertexShader = GraphicsPipeline::class.java.getResourceAsStream("/shaders/vert.spv")?.readAllBytes()
             ?: throw IllegalStateException("Vertex shader not found")
         val fragmentShader = GraphicsPipeline::class.java.getResourceAsStream("/shaders/frag.spv")?.readAllBytes()
@@ -65,49 +70,75 @@ class GraphicsPipeline(
         val vertexShaderModuleHandle = createShaderModule(vertexShader)
         val fragmentShaderModuleHandle = createShaderModule(fragmentShader)
 
-        MemoryStack.stackPush().use { stack ->
-            val vertexShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                stage(VK_SHADER_STAGE_VERTEX_BIT)
-                module(vertexShaderModuleHandle.value)
-                pName(stack.UTF8("main"))
-            }
-            val fragmentShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-                module(fragmentShaderModuleHandle.value)
-                pName(stack.UTF8("main"))
-            }
-
-            val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2)
-                .put(0, vertexShaderCreateInfo)
-                .put(1, fragmentShaderCreateInfo)
-                .flip()
-
-            val vertexInputInfo = setupVertexShaderInputInfo(stack)
-            val dynamicState = setupDynamicState(stack)
-            val inputAssembly = setupVertexInputAssembly(stack)
-            val viewportState = setupViewport(stack)
-            val rasterizer = setupRasterizer(stack)
-            val multisampling = setupMultisampling(stack)
-            val colorBlending = setupColorBlending(stack)
-
-            val pipelineLayoutInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                pSetLayouts(null)
-                pPushConstantRanges(null)
-            }
-
-            vkCreatePipelineLayout(
-                logicalDevice.handle,
-                pipelineLayoutInfo,
-                null,
-                pipelineLayout,
-            ).validateVulkanSuccess()
+        val vertexShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+            stage(VK_SHADER_STAGE_VERTEX_BIT)
+            module(vertexShaderModuleHandle.value)
+            pName(stack.UTF8("main"))
         }
+        val fragmentShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+            stage(VK_SHADER_STAGE_FRAGMENT_BIT)
+            module(fragmentShaderModuleHandle.value)
+            pName(stack.UTF8("main"))
+        }
+
+        val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack)
+            .put(vertexShaderCreateInfo)
+            .put(fragmentShaderCreateInfo)
+            .flip()
+
+        val vertexInputInfo = setupVertexShaderInputInfo(stack)
+        val dynamicState = setupDynamicState(stack)
+        val inputAssembly = setupVertexInputAssembly(stack)
+        val viewportState = setupViewport(stack)
+        val rasterizer = setupRasterizer(stack)
+        val multisampling = setupMultisampling(stack)
+        val colorBlending = setupColorBlending(stack)
+
+        val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+            pSetLayouts(null)
+            pPushConstantRanges(null)
+        }
+
+        vkCreatePipelineLayout(
+            logicalDevice.handle,
+            pipelineLayoutCreateInfo,
+            null,
+            pipelineLayout,
+        ).validateVulkanSuccess()
+
+        val pipelineCreateInfo = VkGraphicsPipelineCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
+            stageCount(shaderStages.remaining())
+            pStages(shaderStages)
+            pVertexInputState(vertexInputInfo)
+            pInputAssemblyState(inputAssembly)
+            pViewportState(viewportState)
+            pRasterizationState(rasterizer)
+            pMultisampleState(multisampling)
+            pDepthStencilState(null)
+            pColorBlendState(colorBlending)
+            pDynamicState(dynamicState)
+            layout(pipelineLayout[0])
+            renderPass(renderPass.handle.value)
+            subpass(0)
+            basePipelineHandle(VK_NULL_HANDLE)
+            basePipelineIndex(-1)
+        }
+        val pipelineCreateInfos = VkGraphicsPipelineCreateInfo.calloc(1, stack)
+            .put(pipelineCreateInfo)
+            .flip()
+
+        val handle = stack.mallocLong(1)
+        vkCreateGraphicsPipelines(logicalDevice.handle, VK_NULL_HANDLE, pipelineCreateInfos, null, handle)
+            .validateVulkanSuccess()
 
         vkDestroyShaderModule(logicalDevice.handle, vertexShaderModuleHandle.value, null)
         vkDestroyShaderModule(logicalDevice.handle, fragmentShaderModuleHandle.value, null)
+
+        Handle(handle[0])
     }
 
     private fun setupColorBlending(stack: MemoryStack): VkPipelineColorBlendStateCreateInfo {
@@ -126,12 +157,16 @@ class GraphicsPipeline(
             dstAlphaBlendFactor(VK_BLEND_FACTOR_ZERO)
             alphaBlendOp(VK_BLEND_OP_ADD)
         }
+        val colorBlendAttachments = VkPipelineColorBlendAttachmentState.calloc(1, stack)
+            .put(colorBlendAttachment)
+            .flip()
 
         return VkPipelineColorBlendStateCreateInfo.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO)
             logicOpEnable(false)
             logicOp(VK_LOGIC_OP_COPY)
-            pAttachments(VkPipelineColorBlendAttachmentState.calloc(1).put(0, colorBlendAttachment).flip())
+            attachmentCount(colorBlendAttachments.remaining())
+            pAttachments(colorBlendAttachments)
             blendConstants(stack.floats(0.0f, 0.0f, 0.0f, 0.0f))
         }
     }
@@ -203,7 +238,7 @@ class GraphicsPipeline(
     }
 
     override fun destroy() {
+        vkDestroyPipeline(logicalDevice.handle, handle.value, null)
         vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayout[0], null)
-        vkDestroyPipeline(logicalDevice.handle, pipelineLayout[0], null)
     }
 }

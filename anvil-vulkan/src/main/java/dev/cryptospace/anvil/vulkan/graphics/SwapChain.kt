@@ -1,7 +1,8 @@
-package dev.cryptospace.anvil.vulkan.device
+package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -14,6 +15,7 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateImageView
 import org.lwjgl.vulkan.VK10.vkDestroyImageView
+import org.lwjgl.vulkan.VkExtent2D
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 import java.nio.LongBuffer
 
@@ -36,6 +38,14 @@ data class SwapChain(
     val logicalDevice: LogicalDevice,
     val handle: Handle,
 ) : NativeResource() {
+
+    /**
+     * The dimensions (width and height) of the swap chain images.
+     * These dimensions are determined during swap chain creation based on the surface capabilities
+     * and window size. All images in the swap chain will have these exact dimensions.
+     * This extent is used for various rendering operations and viewport configurations.
+     */
+    val extent: VkExtent2D = logicalDevice.deviceSurfaceInfo.swapChainDetails.swapChainExtent
 
     /**
      * Contains the handles to the VkImage objects managed by the swap chain.

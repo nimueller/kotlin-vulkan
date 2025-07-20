@@ -28,7 +28,9 @@ const val TYPE = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
     .or(VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
     .or(VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
 
-class VulkanValidationLayerLogger(private val vulkanInstance: VkInstance) : VkDebugUtilsMessengerCallbackEXTI {
+class VulkanValidationLayerLogger(
+    private val vulkanInstance: VkInstance,
+) : VkDebugUtilsMessengerCallbackEXTI {
 
     private var currentMessengerHandle: Long? = 0
 
@@ -69,8 +71,8 @@ class VulkanValidationLayerLogger(private val vulkanInstance: VkInstance) : VkDe
         when (messageSeverity) {
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT -> logger.debug(message)
             VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT -> logger.info(message)
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT -> logger.warn(message)
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT -> logger.error(message)
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT -> logger.warn(message, IllegalStateException(message))
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT -> logger.error(message, IllegalStateException(message))
             else -> logger.info(message)
         }
 
