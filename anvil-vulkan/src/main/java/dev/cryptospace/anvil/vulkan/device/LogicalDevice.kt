@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.vulkan.device
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -60,7 +61,7 @@ data class LogicalDevice(
      *
      * @return A new SwapChain instance
      */
-    fun createSwapChain(): SwapChain = MemoryStack.stackPush().use { stack ->
+    fun createSwapChain(renderPass: RenderPass): SwapChain = MemoryStack.stackPush().use { stack ->
         val surface = deviceSurfaceInfo.surface
         val swapChainDetails = deviceSurfaceInfo.swapChainDetails
         val surfaceCapabilities = swapChainDetails.surfaceCapabilities
@@ -108,7 +109,7 @@ data class LogicalDevice(
             pointer,
         ).validateVulkanSuccess()
 
-        SwapChain(this, Handle(pointer[0]))
+        SwapChain(this, Handle(pointer[0]), renderPass)
     }
 
     override fun destroy() {

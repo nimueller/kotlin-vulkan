@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
-import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
@@ -28,14 +27,10 @@ import java.nio.LongBuffer
  */
 class Frame(
     private val logicalDevice: LogicalDevice,
+    private val renderPass: RenderPass,
+    private val graphicsPipeline: GraphicsPipeline,
     private val swapChain: SwapChain,
 ) : NativeResource() {
-
-    companion object {
-
-        @JvmStatic
-        private val logger = logger<Frame>()
-    }
 
     /** Command buffer used for recording and executing rendering commands for this frame */
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, swapChain.commandPool)
@@ -64,7 +59,13 @@ class Frame(
         val swapChainImageIndex = acquireSwapChainImage(stack)
 
         vkResetCommandBuffer(commandBuffer.handle, 0)
-        swapChain.recordCommands(commandBuffer, swapChainImageIndex)
+
+        commandBuffer.startRecording()
+        val framebuffer = swapChain.framebuffers[swapChainImageIndex]
+        renderPass.start(commandBuffer, framebuffer)
+        swapChain.recordCommands(commandBuffer, graphicsPipeline)
+        renderPass.end(commandBuffer)
+        commandBuffer.endRecording(commandBuffer)
 
         presentFrame(stack, swapChain, swapChainImageIndex)
     }

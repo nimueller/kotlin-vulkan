@@ -10,6 +10,8 @@ import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.graphics.Frame
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
@@ -106,6 +108,13 @@ class VulkanRenderingSystem(
     val logicalDevice =
         LogicalDeviceFactory.create(this, physicalDeviceSurfaceInfo)
 
+    val renderPass: RenderPass = RenderPass.create(logicalDevice)
+
+    val graphicsPipeline: GraphicsPipeline =
+        GraphicsPipeline(logicalDevice, renderPass).also { graphicsPipeline ->
+            logger.info("Created graphics pipeline: $graphicsPipeline")
+        }
+
     /**
      * The swap chain managing presentation of rendered images to the surface.
      * Created from the logical device and handles image acquisition, rendering synchronization,
@@ -115,12 +124,12 @@ class VulkanRenderingSystem(
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
     val swapChain: SwapChain =
-        logicalDevice.createSwapChain().also { swapChain ->
+        logicalDevice.createSwapChain(renderPass).also { swapChain ->
             logger.info("Created swap chain: $swapChain")
         }
 
     private val frames = List(2) {
-        Frame(logicalDevice, swapChain)
+        Frame(logicalDevice, renderPass, graphicsPipeline, swapChain)
     }
 
     private var currentFrameIndex = 0
@@ -140,6 +149,8 @@ class VulkanRenderingSystem(
         }
 
         swapChain.close()
+        graphicsPipeline.close()
+        renderPass.close()
         logicalDevice.close()
         surface.close()
         physicalDevices.forEach { it.close() }

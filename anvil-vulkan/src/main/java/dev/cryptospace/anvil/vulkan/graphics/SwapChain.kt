@@ -45,6 +45,7 @@ import java.nio.LongBuffer
 data class SwapChain(
     val logicalDevice: LogicalDevice,
     val handle: Handle,
+    val renderPass: RenderPass,
 ) : NativeResource() {
 
     /**
@@ -124,13 +125,6 @@ data class SwapChain(
             resultList
         }
 
-    val renderPass: RenderPass = RenderPass.create(logicalDevice)
-
-    val graphicsPipeline: GraphicsPipeline =
-        GraphicsPipeline(logicalDevice, renderPass).also { graphicsPipeline ->
-            logger.info("Created graphics pipeline: $graphicsPipeline")
-        }
-
     val framebuffers: List<Framebuffer> =
         Framebuffer.createFramebuffersForSwapChain(logicalDevice, this, renderPass).also { framebuffers ->
             logger.info("Created ${framebuffers.size} framebuffers: $framebuffers")
@@ -146,47 +140,38 @@ data class SwapChain(
             logger.info("Created command pool: $commandPool")
         }
 
-    fun recordCommands(commandBuffer: CommandBuffer, imageIndex: Int) = MemoryStack.stackPush().use { stack ->
-        commandBuffer.startRecording()
+    fun recordCommands(commandBuffer: CommandBuffer, graphicsPipeline: GraphicsPipeline) =
+        MemoryStack.stackPush().use { stack ->
+            vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
 
-        val framebuffer = framebuffers[imageIndex]
-        renderPass.start(commandBuffer, framebuffer)
+            val viewport = VkViewport.calloc(stack).apply {
+                x(0.0f)
+                y(0.0f)
+                width(extent.width().toFloat())
+                height(extent.height().toFloat())
+                minDepth(0.0f)
+                maxDepth(1.0f)
+            }
+            val pViewports = VkViewport.calloc(1, stack)
+                .put(viewport)
+                .flip()
+            vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
 
-        vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
+            val scissor = VkRect2D.calloc(stack).apply {
+                offset { it.x(0).y(0) }
+                extent { it.width(extent.width()).height(extent.height()) }
+            }
+            val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
+            vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
 
-        val viewport = VkViewport.calloc(stack).apply {
-            x(0.0f)
-            y(0.0f)
-            width(extent.width().toFloat())
-            height(extent.height().toFloat())
-            minDepth(0.0f)
-            maxDepth(1.0f)
+            vkCmdDraw(commandBuffer.handle, 3, 1, 0, 0)
         }
-        val pViewports = VkViewport.calloc(1, stack)
-            .put(viewport)
-            .flip()
-        vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
-
-        val scissor = VkRect2D.calloc(stack).apply {
-            offset { it.x(0).y(0) }
-            extent { it.width(extent.width()).height(extent.height()) }
-        }
-        val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
-        vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
-
-        vkCmdDraw(commandBuffer.handle, 3, 1, 0, 0)
-
-        renderPass.end(commandBuffer)
-        commandBuffer.endRecording(commandBuffer)
-    }
 
     override fun destroy() {
         commandPool.close()
         framebuffers.forEach { framebuffer ->
             framebuffer.close()
         }
-        graphicsPipeline.close()
-        renderPass.close()
         imageViews.forEach { imageView ->
             vkDestroyImageView(logicalDevice.handle, imageView.value, null)
         }
