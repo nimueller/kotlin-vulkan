@@ -146,9 +146,7 @@ data class SwapChain(
             logger.info("Created command pool: $commandPool")
         }
 
-    val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
-
-    fun recordCommands(imageIndex: Int) = MemoryStack.stackPush().use { stack ->
+    fun recordCommands(commandBuffer: CommandBuffer, imageIndex: Int) = MemoryStack.stackPush().use { stack ->
         commandBuffer.startRecording()
 
         val framebuffer = framebuffers[imageIndex]

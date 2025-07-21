@@ -22,8 +22,6 @@ class MainLoop(
 //            print("Time since last frame: $timeSinceLastFrame ns ")
 //            print("FPS: $fps")
 
-            Thread.sleep(10)
-
             engine.update()
             lastFrameTime = System.nanoTime()
         }

@@ -9,23 +9,12 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.graphics.Frame
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
-import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
-import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
-import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
-import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
-import org.lwjgl.vulkan.VK10.vkQueueSubmit
-import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
-import org.lwjgl.vulkan.VkPresentInfoKHR
-import org.lwjgl.vulkan.VkSubmitInfo
 
 /**
  * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
@@ -130,59 +119,26 @@ class VulkanRenderingSystem(
             logger.info("Created swap chain: $swapChain")
         }
 
-    val syncObjects: SyncObjects = SyncObjects(logicalDevice)
+    private val frames = List(2) {
+        Frame(logicalDevice, swapChain)
+    }
 
-    override fun drawFrame(): Unit = MemoryStack.stackPush().use { stack ->
-        syncObjects.waitForInFlightFence()
-        val pImageIndex = stack.mallocInt(1)
+    private var currentFrameIndex = 0
 
-        vkAcquireNextImageKHR(
-            logicalDevice.handle,
-            swapChain.handle.value,
-            Long.MAX_VALUE,
-            syncObjects.imageAvailableSemaphore.value,
-            VK_NULL_HANDLE,
-            pImageIndex,
-        ).validateVulkanSuccess()
-
-        vkResetCommandBuffer(swapChain.commandBuffer.handle, 0)
-        swapChain.recordCommands(pImageIndex[0])
-
-        val waitSemaphores = stack.longs(syncObjects.imageAvailableSemaphore.value)
-        val waitStages = stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-        val signalSemaphores = stack.longs(syncObjects.renderFinishedSemaphore.value)
-        val commandBuffers = stack.pointers(swapChain.commandBuffer.handle)
-
-        val submitInfo = VkSubmitInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-            waitSemaphoreCount(1)
-            pWaitSemaphores(waitSemaphores)
-            pWaitDstStageMask(waitStages)
-            pCommandBuffers(commandBuffers)
-            pSignalSemaphores(signalSemaphores)
-        }
-
-        vkQueueSubmit(logicalDevice.graphicsQueue, submitInfo, syncObjects.inFlightFence.value)
-            .validateVulkanSuccess()
-
-        val swapChains = stack.longs(swapChain.handle.value)
-        val presentInto = VkPresentInfoKHR.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
-            pWaitSemaphores(signalSemaphores)
-            swapchainCount(1)
-            pSwapchains(swapChains)
-            pImageIndices(pImageIndex)
-            pResults(null)
-        }
-
-        vkQueuePresentKHR(logicalDevice.presentQueue, presentInto)
+    override fun drawFrame() {
+        val frame = frames[currentFrameIndex]
+        frame.draw()
+        currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
     }
 
     override fun destroy() {
         vkDeviceWaitIdle(logicalDevice.handle)
             .validateVulkanSuccess()
 
-        syncObjects.close()
+        frames.forEach { frame ->
+            frame.close()
+        }
+
         swapChain.close()
         logicalDevice.close()
         surface.close()
