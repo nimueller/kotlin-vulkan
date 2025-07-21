@@ -15,7 +15,17 @@ import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
+import java.nio.LongBuffer
 
+/**
+ * Represents a single frame in the rendering pipeline, managing command buffers and synchronization objects.
+ *
+ * Frame works in conjunction with SwapChain to coordinate rendering operations and presentation timing.
+ * It handles command buffer recording, synchronization between CPU and GPU operations, and frame presentation.
+ *
+ * @property logicalDevice The logical device used for executing commands
+ * @property swapChain The swap chain used for image presentation
+ */
 class Frame(
     private val logicalDevice: LogicalDevice,
     private val swapChain: SwapChain,
@@ -27,12 +37,33 @@ class Frame(
         private val logger = logger<Frame>()
     }
 
-    val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, swapChain.commandPool)
+    /** Command buffer used for recording and executing rendering commands for this frame */
+    private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, swapChain.commandPool)
 
-    val syncObjects: SyncObjects = SyncObjects(logicalDevice)
+    /** Synchronization primitives managing the timing of rendering and presentation operations */
+    private val syncObjects: SyncObjects = SyncObjects(logicalDevice)
 
+    /**
+     * Executes the frame's drawing operations and presents the result to the screen.
+     *
+     * This method handles:
+     * 1. Acquiring the next swap chain image
+     * 2. Recording and submitting command buffers
+     * 3. Presenting the rendered image to the display
+     *
+     * The method uses synchronization primitives to ensure proper timing between operations.
+     */
     fun draw(): Unit = MemoryStack.stackPush().use { stack ->
         syncObjects.waitForInFlightFence()
+        val swapChainImageIndex = acquireSwapChainImage(stack)
+
+        vkResetCommandBuffer(commandBuffer.handle, 0)
+        swapChain.recordCommands(commandBuffer, swapChainImageIndex)
+
+        presentFrame(stack, swapChain, swapChainImageIndex)
+    }
+
+    private fun acquireSwapChainImage(stack: MemoryStack): Int {
         val pImageIndex = stack.mallocInt(1)
 
         vkAcquireNextImageKHR(
@@ -44,9 +75,10 @@ class Frame(
             pImageIndex,
         ).validateVulkanSuccess()
 
-        vkResetCommandBuffer(commandBuffer.handle, 0)
-        swapChain.recordCommands(commandBuffer, pImageIndex[0])
+        return pImageIndex[0]
+    }
 
+    private fun submitCommandBuffer(stack: MemoryStack): LongBuffer {
         val waitSemaphores = stack.longs(syncObjects.imageAvailableSemaphore.value)
         val waitStages = stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
         val signalSemaphores = stack.longs(syncObjects.renderFinishedSemaphore.value)
@@ -63,14 +95,19 @@ class Frame(
 
         vkQueueSubmit(logicalDevice.graphicsQueue, submitInfo, syncObjects.inFlightFence.value)
             .validateVulkanSuccess()
+        return signalSemaphores
+    }
 
+    private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {
+        val signalSemaphores = submitCommandBuffer(stack)
         val swapChains = stack.longs(swapChain.handle.value)
+
         val presentInto = VkPresentInfoKHR.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
             pWaitSemaphores(signalSemaphores)
             swapchainCount(1)
             pSwapchains(swapChains)
-            pImageIndices(pImageIndex)
+            pImageIndices(stack.ints(imageIndex))
             pResults(null)
         }
 

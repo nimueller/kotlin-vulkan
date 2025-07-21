@@ -1,16 +1,17 @@
 package dev.cryptospace.anvil.core
 
+import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.core.window.Window
 
 class MainLoop(
     private val engine: Engine,
 ) {
 
-    fun loop() {
-        loop(engine.window)
+    fun loop(logic: (Glfw, RenderingSystem) -> Unit) {
+        loop(engine.window, logic)
     }
 
-    private fun loop(window: Window) {
+    private fun loop(window: Window, logic: (Glfw, RenderingSystem) -> Unit = { _, _ -> }) {
         var lastFrameTime = System.nanoTime()
 
         while (!window.shouldClose()) {
@@ -22,7 +23,7 @@ class MainLoop(
 //            print("Time since last frame: $timeSinceLastFrame ns ")
 //            print("FPS: $fps")
 
-            engine.update()
+            engine.update(logic)
             lastFrameTime = System.nanoTime()
         }
     }

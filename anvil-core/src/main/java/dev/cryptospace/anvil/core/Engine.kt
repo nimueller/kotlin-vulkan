@@ -14,8 +14,9 @@ class Engine(
 
     private val renderingSystem: RenderingSystem = renderingSystemCreator(glfw)
 
-    fun update() {
+    fun update(logic: (Glfw, RenderingSystem) -> Unit) {
         glfw.update()
+        logic(glfw, renderingSystem)
         renderingSystem.drawFrame()
     }
 
