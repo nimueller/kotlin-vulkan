@@ -6,6 +6,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+import org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_CLEAR
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE
 import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE
@@ -13,10 +14,12 @@ import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_STORE
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_SUBPASS_CONTENTS_INLINE
+import org.lwjgl.vulkan.VK10.VK_SUBPASS_EXTERNAL
 import org.lwjgl.vulkan.VK10.vkCmdBeginRenderPass
 import org.lwjgl.vulkan.VK10.vkCmdEndRenderPass
 import org.lwjgl.vulkan.VK10.vkCreateRenderPass
@@ -27,6 +30,7 @@ import org.lwjgl.vulkan.VkClearColorValue
 import org.lwjgl.vulkan.VkClearValue
 import org.lwjgl.vulkan.VkRenderPassBeginInfo
 import org.lwjgl.vulkan.VkRenderPassCreateInfo
+import org.lwjgl.vulkan.VkSubpassDependency
 import org.lwjgl.vulkan.VkSubpassDescription
 
 /**
@@ -54,10 +58,23 @@ data class RenderPass(
                 .put(subpassDescription)
                 .flip()
 
+            val dependency = VkSubpassDependency.calloc(stack).apply {
+                srcSubpass(VK_SUBPASS_EXTERNAL)
+                dstSubpass(0)
+                srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+                srcAccessMask(0)
+                dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+                dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+            }
+            val dependencies = VkSubpassDependency.calloc(1, stack)
+                .put(dependency)
+                .flip()
+
             val createInfo = VkRenderPassCreateInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
                 pAttachments(colorAttachmentDescriptions)
                 pSubpasses(subpassDescriptions)
+                pDependencies(dependencies)
             }
 
             val renderPassBuffer = stack.mallocLong(1)

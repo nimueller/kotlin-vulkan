@@ -16,6 +16,7 @@ class Engine(
 
     fun update() {
         glfw.update()
+        renderingSystem.drawFrame()
     }
 
     override fun destroy() {
@@ -23,7 +24,5 @@ class Engine(
         glfw.close()
     }
 
-    override fun toString(): String {
-        return "Engine"
-    }
+    override fun toString(): String = "Engine"
 }

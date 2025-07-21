@@ -12,12 +12,12 @@ import org.lwjgl.glfw.GLFW.GLFW_PLATFORM
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_WAYLAND
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_X11
 import org.lwjgl.glfw.GLFW.GLFW_RESIZABLE
-import org.lwjgl.glfw.GLFW.GLFW_VISIBLE
 import org.lwjgl.glfw.GLFW.glfwCreateWindow
 import org.lwjgl.glfw.GLFW.glfwDefaultWindowHints
 import org.lwjgl.glfw.GLFW.glfwInit
 import org.lwjgl.glfw.GLFW.glfwInitHint
 import org.lwjgl.glfw.GLFW.glfwPlatformSupported
+import org.lwjgl.glfw.GLFW.glfwShowWindow
 import org.lwjgl.glfw.GLFW.glfwWindowHint
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.system.MemoryUtil
@@ -81,10 +81,10 @@ object GlfwFactory {
 
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_CLIENT_API, clientApi)
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE)
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE)
 
         val windowHandle = glfwCreateWindow(800, 600, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
+        glfwShowWindow(windowHandle)
         check(windowHandle != MemoryUtil.NULL) { "Unable to create window" }
         return Window(Handle(windowHandle))
     }

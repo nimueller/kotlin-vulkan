@@ -6,12 +6,15 @@ plugins {
 dependencies {
     api(projects.anvilCore)
 
+    implementation(projects.anvilOpengl)
     implementation(projects.anvilVulkan)
+    implementation(libs.lwjgl.opengl)
 
     runtimeOnly(libs.logback.classic)
     runtimeOnly(libs.lwjgl.core) { natives() }
     runtimeOnly(libs.lwjgl.glfw) { natives() }
     runtimeOnly(libs.lwjgl.openal) { natives() }
+    runtimeOnly(libs.lwjgl.opengl) { natives() }
     runtimeOnly(libs.lwjgl.vulkan) {
         // Vulkan driver must be manually included for macOS and is pre-installed on Windows and Linux
         if (System.getProperty("os.name").lowercase().contains("mac")) {
@@ -49,5 +52,5 @@ fun ExternalModuleDependency.natives() {
 
 application {
     mainClass.set("dev.cryptospace.anvil.app.MainKt")
-    applicationDefaultJvmArgs = listOf("-Duse-validation-layers")
+    applicationDefaultJvmArgs = listOf("-Duse-validation-layers", "-Duse-x11")
 }
