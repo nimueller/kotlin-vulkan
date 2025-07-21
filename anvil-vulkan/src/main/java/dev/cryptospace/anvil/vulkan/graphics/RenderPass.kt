@@ -115,10 +115,7 @@ data class RenderPass(
 
     fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
         val clearColor = VkClearColorValue.calloc(stack)
-            .float32(stack.floats(0.0f))
-            .float32(stack.floats(0.0f))
-            .float32(stack.floats(0.0f))
-            .float32(stack.floats(1.0f))
+            .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
         val clearValue = VkClearValue.calloc(1, stack)
             .put(VkClearValue.calloc(stack).color(clearColor))
             .flip()

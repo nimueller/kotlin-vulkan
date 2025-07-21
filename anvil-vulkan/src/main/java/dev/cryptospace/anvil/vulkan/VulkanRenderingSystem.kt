@@ -21,6 +21,7 @@ import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
+import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VkPresentInfoKHR
@@ -178,6 +179,9 @@ class VulkanRenderingSystem(
     }
 
     override fun destroy() {
+        vkDeviceWaitIdle(logicalDevice.handle)
+            .validateVulkanSuccess()
+
         syncObjects.close()
         swapChain.close()
         logicalDevice.close()

@@ -37,7 +37,7 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Configure graphics pipeline
 - [x] Drawing
     - [x] Setup command buffers
-    - [ ] Draw first triangle
+    - [x] Draw first triangle
 - [ ] Advanced features
     - [ ] Vertex buffers and attributes
     - [ ] Textures and materials
