@@ -18,12 +18,26 @@ import org.lwjgl.vulkan.VK10.vkWaitForFences
 import org.lwjgl.vulkan.VkFenceCreateInfo
 import org.lwjgl.vulkan.VkSemaphoreCreateInfo
 
+/**
+ * Manages synchronization primitives for coordinating operations between CPU and GPU.
+ *
+ * This class creates and manages semaphores and fences used for synchronizing operations:
+ * - Image available semaphores: Signal when a swapchain image is available for rendering
+ * - Render finished semaphores: Signal when rendering to an image is complete
+ * - In-flight fences: Synchronize CPU and GPU operations
+ *
+ * To avoid synchronization issues, a separate set of semaphores is maintained for each swapchain image.
+ *
+ * @property logicalDevice The logical device used for creating synchronization objects
+ * @property imageCount The number of swapchain images to create semaphores for
+ */
 class SyncObjects(
     private val logicalDevice: LogicalDevice,
+    private val imageCount: Int,
 ) : NativeResource() {
 
-    val imageAvailableSemaphore: VkSemaphore = createSemaphore(logicalDevice)
-    val renderFinishedSemaphore: VkSemaphore = createSemaphore(logicalDevice)
+    val imageAvailableSemaphores: VkSemaphore = createSemaphore(logicalDevice)
+    val renderFinishedSemaphores: List<VkSemaphore> = List(imageCount) { createSemaphore(logicalDevice) }
     val inFlightFence: VkFence = createFence(logicalDevice)
 
     private fun createSemaphore(logicalDevice: LogicalDevice): VkSemaphore = MemoryStack.stackPush().use { stack ->
@@ -53,8 +67,12 @@ class SyncObjects(
     }
 
     override fun destroy() {
-        vkDestroySemaphore(logicalDevice.handle, imageAvailableSemaphore.value, null)
-        vkDestroySemaphore(logicalDevice.handle, renderFinishedSemaphore.value, null)
+        vkDestroySemaphore(logicalDevice.handle, imageAvailableSemaphores.value, null)
+
+        renderFinishedSemaphores.forEach { semaphore ->
+            vkDestroySemaphore(logicalDevice.handle, semaphore.value, null)
+        }
+
         vkDestroyFence(logicalDevice.handle, inFlightFence.value, null)
     }
 }

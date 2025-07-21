@@ -40,8 +40,14 @@ class Frame(
     /** Command buffer used for recording and executing rendering commands for this frame */
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, swapChain.commandPool)
 
-    /** Synchronization primitives managing the timing of rendering and presentation operations */
-    private val syncObjects: SyncObjects = SyncObjects(logicalDevice)
+    /**
+     * Synchronization primitives managing the timing of rendering and presentation operations.
+     * Uses a separate set of semaphores for each swapchain image to avoid synchronization issues.
+     */
+    private val syncObjects: SyncObjects = SyncObjects(
+        logicalDevice = logicalDevice,
+        imageCount = swapChain.images.capacity(),
+    )
 
     /**
      * Executes the frame's drawing operations and presents the result to the screen.
@@ -70,7 +76,7 @@ class Frame(
             logicalDevice.handle,
             swapChain.handle.value,
             Long.MAX_VALUE,
-            syncObjects.imageAvailableSemaphore.value,
+            syncObjects.imageAvailableSemaphores.value,
             VK_NULL_HANDLE,
             pImageIndex,
         ).validateVulkanSuccess()
@@ -78,10 +84,26 @@ class Frame(
         return pImageIndex[0]
     }
 
-    private fun submitCommandBuffer(stack: MemoryStack): LongBuffer {
-        val waitSemaphores = stack.longs(syncObjects.imageAvailableSemaphore.value)
+    private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {
+        val signalSemaphores = submitCommandBuffer(stack, imageIndex)
+        val swapChains = stack.longs(swapChain.handle.value)
+
+        val presentInto = VkPresentInfoKHR.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
+            pWaitSemaphores(signalSemaphores)
+            swapchainCount(1)
+            pSwapchains(swapChains)
+            pImageIndices(stack.ints(imageIndex))
+            pResults(null)
+        }
+
+        vkQueuePresentKHR(logicalDevice.presentQueue, presentInto)
+    }
+
+    private fun submitCommandBuffer(stack: MemoryStack, imageIndex: Int): LongBuffer {
+        val waitSemaphores = stack.longs(syncObjects.imageAvailableSemaphores.value)
         val waitStages = stack.ints(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-        val signalSemaphores = stack.longs(syncObjects.renderFinishedSemaphore.value)
+        val signalSemaphores = stack.longs(syncObjects.renderFinishedSemaphores[imageIndex].value)
         val commandBuffers = stack.pointers(commandBuffer.handle)
 
         val submitInfo = VkSubmitInfo.calloc(stack).apply {
@@ -96,22 +118,6 @@ class Frame(
         vkQueueSubmit(logicalDevice.graphicsQueue, submitInfo, syncObjects.inFlightFence.value)
             .validateVulkanSuccess()
         return signalSemaphores
-    }
-
-    private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {
-        val signalSemaphores = submitCommandBuffer(stack)
-        val swapChains = stack.longs(swapChain.handle.value)
-
-        val presentInto = VkPresentInfoKHR.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
-            pWaitSemaphores(signalSemaphores)
-            swapchainCount(1)
-            pSwapchains(swapChains)
-            pImageIndices(stack.ints(imageIndex))
-            pResults(null)
-        }
-
-        vkQueuePresentKHR(logicalDevice.presentQueue, presentInto)
     }
 
     override fun destroy() {
