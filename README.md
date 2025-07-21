@@ -30,13 +30,13 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Create logical device and queues
 - [x] Resource management
     - [x] Create swapchain and image views
-    - [ ] Create render pass
-    - [ ] Create framebuffers
+    - [x] Create render pass
+    - [x] Create framebuffers
 - [x] Pipeline setup
     - [x] Create shaders and pipeline
     - [x] Configure graphics pipeline
-- [ ] Drawing
-    - [ ] Setup command buffers
+- [x] Drawing
+    - [x] Setup command buffers
     - [ ] Draw first triangle
 - [ ] Advanced features
     - [ ] Vertex buffers and attributes

@@ -1,8 +1,8 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
-import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.handle.VkCommandPool
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
@@ -13,7 +13,7 @@ import org.lwjgl.vulkan.VkCommandPoolCreateInfo
 
 data class CommandPool(
     val logicalDevice: LogicalDevice,
-    val handle: Handle,
+    val handle: VkCommandPool,
 ) : NativeResource() {
 
     companion object {
@@ -28,7 +28,7 @@ data class CommandPool(
             val pCommandPool = stack.mallocLong(1)
             vkCreateCommandPool(logicalDevice.handle, poolCreateInfo, null, pCommandPool)
                 .validateVulkanSuccess()
-            CommandPool(logicalDevice, Handle(pCommandPool[0]))
+            CommandPool(logicalDevice, VkCommandPool(pCommandPool[0]))
         }
     }
 

@@ -13,11 +13,18 @@ import org.lwjgl.vulkan.KHRSwapchain.vkGetSwapchainImagesKHR
 import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
+import org.lwjgl.vulkan.VK10.vkCmdDraw
+import org.lwjgl.vulkan.VK10.vkCmdSetScissor
+import org.lwjgl.vulkan.VK10.vkCmdSetViewport
 import org.lwjgl.vulkan.VK10.vkCreateImageView
 import org.lwjgl.vulkan.VK10.vkDestroyImageView
 import org.lwjgl.vulkan.VkExtent2D
 import org.lwjgl.vulkan.VkImageViewCreateInfo
+import org.lwjgl.vulkan.VkRect2D
+import org.lwjgl.vulkan.VkViewport
 import java.nio.LongBuffer
 
 /**
@@ -117,10 +124,7 @@ data class SwapChain(
             resultList
         }
 
-    val renderPass: RenderPass =
-        RenderPass(logicalDevice).also { renderPass ->
-            logger.info("Created render pass: $renderPass")
-        }
+    val renderPass: RenderPass = RenderPass.create(logicalDevice)
 
     val graphicsPipeline: GraphicsPipeline =
         GraphicsPipeline(logicalDevice, renderPass).also { graphicsPipeline ->
@@ -132,7 +136,54 @@ data class SwapChain(
             logger.info("Created ${framebuffers.size} framebuffers: $framebuffers")
         }
 
+    /**
+     * Command pool for allocating command buffers used to record and submit Vulkan commands.
+     * Created from the logical device and manages memory for command buffer allocation and deallocation.
+     * Command buffers from this pool are used for recording rendering and compute commands.
+     */
+    val commandPool =
+        CommandPool.create(logicalDevice).also { commandPool ->
+            logger.info("Created command pool: $commandPool")
+        }
+
+    val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
+
+    fun recordCommands(imageIndex: Int) = MemoryStack.stackPush().use { stack ->
+        commandBuffer.startRecording()
+
+        val framebuffer = framebuffers[imageIndex]
+        renderPass.start(commandBuffer, framebuffer)
+
+        vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
+
+        val viewport = VkViewport.calloc(stack).apply {
+            x(0.0f)
+            y(0.0f)
+            width(extent.width().toFloat())
+            height(extent.height().toFloat())
+            minDepth(0.0f)
+            maxDepth(1.0f)
+        }
+        val pViewports = VkViewport.calloc(1, stack)
+            .put(viewport)
+            .flip()
+        vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
+
+        val scissor = VkRect2D.calloc(stack).apply {
+            offset { it.x(0).y(0) }
+            extent { it.width(extent.width()).height(extent.height()) }
+        }
+        val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
+        vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
+
+        vkCmdDraw(commandBuffer.handle, 3, 1, 0, 0)
+
+        renderPass.end(commandBuffer)
+        commandBuffer.endRecording(commandBuffer)
+    }
+
     override fun destroy() {
+        commandPool.close()
         framebuffers.forEach { framebuffer ->
             framebuffer.close()
         }
