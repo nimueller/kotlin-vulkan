@@ -9,6 +9,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
@@ -117,7 +118,16 @@ class VulkanRenderingSystem(
             logger.info("Created swap chain: $swapChain")
         }
 
+    /**
+     * Command pool for allocating command buffers used to record and submit Vulkan commands.
+     * Created from the logical device and manages memory for command buffer allocation and deallocation.
+     * Command buffers from this pool are used for recording rendering and compute commands.
+     */
+    val commandPool =
+        CommandPool.create(logicalDevice)
+
     override fun destroy() {
+        commandPool.close()
         swapChain.close()
         logicalDevice.close()
         surface.close()

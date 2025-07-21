@@ -33,6 +33,9 @@ data class LogicalDevice(
     val deviceSurfaceInfo: PhysicalDeviceSurfaceInfo,
 ) : NativeResource() {
 
+    /** The physical device (GPU) associated with this logical device */
+    val physicalDevice: PhysicalDevice = deviceSurfaceInfo.physicalDevice
+
     /** Queue used for submitting graphics commands to the GPU */
     val graphicsQueue =
         MemoryStack.stackPush().use { stack ->
