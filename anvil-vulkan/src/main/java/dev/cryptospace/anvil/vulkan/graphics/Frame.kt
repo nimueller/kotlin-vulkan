@@ -22,7 +22,17 @@ import java.nio.LongBuffer
  * Frame works in conjunction with SwapChain to coordinate rendering operations and presentation timing.
  * It handles command buffer recording, synchronization between CPU and GPU operations, and frame presentation.
  *
+ * The frame manages its own command buffer for recording rendering commands, which is reset and re-recorded
+ * for each frame. This ensures efficient resource usage and proper command sequencing.
+ *
+ * Frame synchronization is handled through multiple semaphores and fences:
+ * - Image available semaphores signal when a swapchain image is ready for rendering
+ * - Render finished semaphores indicate completion of rendering operations
+ * - In-flight fences prevent CPU-GPU race conditions by controlling frame pacing
+ *
  * @property logicalDevice The logical device used for executing commands
+ * @property renderPass The render pass defining the frame rendering sequence
+ * @property graphicsPipeline The pipeline specifying the graphics state for rendering
  * @property swapChain The swap chain used for image presentation
  */
 class Frame(
@@ -30,10 +40,11 @@ class Frame(
     private val renderPass: RenderPass,
     private val graphicsPipeline: GraphicsPipeline,
     private val swapChain: SwapChain,
+    commandPool: CommandPool,
 ) : NativeResource() {
 
     /** Command buffer used for recording and executing rendering commands for this frame */
-    private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, swapChain.commandPool)
+    private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
 
     /**
      * Synchronization primitives managing the timing of rendering and presentation operations.
@@ -65,7 +76,7 @@ class Frame(
         renderPass.start(commandBuffer, framebuffer)
         swapChain.recordCommands(commandBuffer, graphicsPipeline)
         renderPass.end(commandBuffer)
-        commandBuffer.endRecording(commandBuffer)
+        commandBuffer.endRecording()
 
         presentFrame(stack, swapChain, swapChainImageIndex)
     }

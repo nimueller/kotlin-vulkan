@@ -48,6 +48,12 @@ data class SwapChain(
     val renderPass: RenderPass,
 ) : NativeResource() {
 
+    companion object {
+
+        @JvmStatic
+        private val logger = logger<SwapChain>()
+    }
+
     /**
      * The dimensions (width and height) of the swap chain images.
      * These dimensions are determined during swap chain creation based on the surface capabilities
@@ -130,16 +136,6 @@ data class SwapChain(
             logger.info("Created ${framebuffers.size} framebuffers: $framebuffers")
         }
 
-    /**
-     * Command pool for allocating command buffers used to record and submit Vulkan commands.
-     * Created from the logical device and manages memory for command buffer allocation and deallocation.
-     * Command buffers from this pool are used for recording rendering and compute commands.
-     */
-    val commandPool =
-        CommandPool.create(logicalDevice).also { commandPool ->
-            logger.info("Created command pool: $commandPool")
-        }
-
     fun recordCommands(commandBuffer: CommandBuffer, graphicsPipeline: GraphicsPipeline) =
         MemoryStack.stackPush().use { stack ->
             vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
@@ -168,7 +164,6 @@ data class SwapChain(
         }
 
     override fun destroy() {
-        commandPool.close()
         framebuffers.forEach { framebuffer ->
             framebuffer.close()
         }
@@ -179,11 +174,5 @@ data class SwapChain(
         MemoryUtil.memFree(images)
 
         vkDestroySwapchainKHR(logicalDevice.handle, handle.value, null)
-    }
-
-    companion object {
-
-        @JvmStatic
-        private val logger = logger<SwapChain>()
     }
 }

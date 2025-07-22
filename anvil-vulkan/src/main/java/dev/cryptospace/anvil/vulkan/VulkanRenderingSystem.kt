@@ -9,6 +9,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.Frame
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
@@ -128,8 +129,24 @@ class VulkanRenderingSystem(
             logger.info("Created swap chain: $swapChain")
         }
 
+    /**
+     * Command pool for allocating command buffers used to record and submit Vulkan commands.
+     * Created from the logical device and manages memory for command buffer allocation and deallocation.
+     * Command buffers from this pool are used for recording rendering and compute commands.
+     */
+    private val commandPool: CommandPool =
+        CommandPool.create(logicalDevice).also { commandPool ->
+            logger.info("Created command pool: $commandPool")
+        }
+
+    /**
+     * List of frames used for double buffering rendering operations.
+     * Contains 2 frames that are used alternatively to allow concurrent CPU and GPU operations,
+     * where one frame can be rendered while another is being prepared.
+     * Each frame manages its own command buffers and synchronization objects.
+     */
     private val frames = List(2) {
-        Frame(logicalDevice, renderPass, graphicsPipeline, swapChain)
+        Frame(logicalDevice, renderPass, graphicsPipeline, swapChain, commandPool)
     }
 
     private var currentFrameIndex = 0
@@ -148,6 +165,7 @@ class VulkanRenderingSystem(
             frame.close()
         }
 
+        commandPool.close()
         swapChain.close()
         graphicsPipeline.close()
         renderPass.close()

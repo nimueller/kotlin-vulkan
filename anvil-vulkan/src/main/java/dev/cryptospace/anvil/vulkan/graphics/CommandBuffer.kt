@@ -51,8 +51,7 @@ data class CommandBuffer(
             .validateVulkanSuccess()
     }
 
-    fun endRecording(commandBuffer: CommandBuffer) {
-        vkEndCommandBuffer(commandBuffer.handle)
-            .validateVulkanSuccess()
+    fun endRecording() {
+        vkEndCommandBuffer(handle).validateVulkanSuccess()
     }
 }
