@@ -14,8 +14,14 @@ import dev.cryptospace.anvil.vulkan.graphics.Frame
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
+import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 
@@ -65,20 +71,16 @@ class VulkanRenderingSystem(
      * in the [physicalDeviceSurfaceInfos] property once the surface was created.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val physicalDevices =
-        PhysicalDevice.listPhysicalDevices(this).also { physicalDevices ->
-            logger.info("Found physical devices: $physicalDevices")
-        }
+    val physicalDevices = PhysicalDevice.listPhysicalDevices(this)
 
     /**
      * The Vulkan surface used for rendering to the window.
      * Created from the GLFW window and provides the interface between Vulkan and the window system.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val surface =
-        glfw.window.createSurface(this).also { surface ->
-            logger.info("Created surface: $surface")
-        }
+    val surface = glfw.window.createSurface(this).also { surface ->
+        logger.info("Created surface: $surface")
+    }
 
     /**
      * List of surface information details for each available physical device.
@@ -86,10 +88,9 @@ class VulkanRenderingSystem(
      * when working with the current surface.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val physicalDeviceSurfaceInfos =
-        physicalDevices.map { physicalDevice ->
-            PhysicalDeviceSurfaceInfo(physicalDevice, surface)
-        }
+    val physicalDeviceSurfaceInfos = physicalDevices.map { physicalDevice ->
+        PhysicalDeviceSurfaceInfo(physicalDevice, surface)
+    }
 
     /**
      * The selected physical device that best meets the application's requirements.
@@ -106,8 +107,7 @@ class VulkanRenderingSystem(
      * Created with specific queue families and features enabled for the application's needs.
      */
     @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val logicalDevice =
-        LogicalDeviceFactory.create(this, physicalDeviceSurfaceInfo)
+    val logicalDevice = LogicalDeviceFactory.create(this, physicalDeviceSurfaceInfo)
 
     val renderPass: RenderPass = RenderPass.create(logicalDevice)
 
@@ -123,8 +123,7 @@ class VulkanRenderingSystem(
      * The swap chain dimensions and properties are determined based on the physical device's
      * surface capabilities and the window size.
      */
-    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val swapChain: SwapChain =
+    private var swapChain: SwapChain =
         logicalDevice.createSwapChain(renderPass).also { swapChain ->
             logger.info("Created swap chain: $swapChain")
         }
@@ -146,15 +145,40 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames = List(2) {
-        Frame(logicalDevice, renderPass, graphicsPipeline, swapChain, commandPool)
+        Frame(logicalDevice, renderPass, graphicsPipeline, swapChain.images.capacity(), commandPool)
     }
 
     private var currentFrameIndex = 0
 
-    override fun drawFrame() {
+    override fun drawFrame() = MemoryStack.stackPush().use { stack ->
         val frame = frames[currentFrameIndex]
-        frame.draw()
+        frame.syncObjects.waitForInFlightFence()
+        val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
+        frame.syncObjects.resetInFlightFence()
+        frame.draw(swapChain, imageIndex)
         currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
+    }
+
+    private fun acquireSwapChainImage(stack: MemoryStack, syncObjects: SyncObjects): Int? {
+        val pImageIndex = stack.mallocInt(1)
+
+        val result = vkAcquireNextImageKHR(
+            logicalDevice.handle,
+            swapChain.handle.value,
+            Long.MAX_VALUE,
+            syncObjects.imageAvailableSemaphores.value,
+            VK_NULL_HANDLE,
+            pImageIndex,
+        )
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+            swapChain = swapChain.recreate(renderPass)
+            return null
+        } else {
+            result.validateVulkanSuccess()
+        }
+
+        return pImageIndex[0]
     }
 
     override fun destroy() {
@@ -171,6 +195,7 @@ class VulkanRenderingSystem(
         renderPass.close()
         logicalDevice.close()
         surface.close()
+        physicalDeviceSurfaceInfos.forEach { it.close() }
         physicalDevices.forEach { it.close() }
 
         if (useValidationLayers) {

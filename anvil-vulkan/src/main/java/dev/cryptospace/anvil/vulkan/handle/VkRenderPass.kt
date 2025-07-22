@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.graphics
+package dev.cryptospace.anvil.vulkan.handle
 
 @JvmInline
 value class VkRenderPass(

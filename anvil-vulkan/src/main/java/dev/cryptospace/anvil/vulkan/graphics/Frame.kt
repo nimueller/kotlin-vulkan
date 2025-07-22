@@ -5,9 +5,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
-import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
 import org.lwjgl.vulkan.VK10.vkQueueSubmit
@@ -39,7 +37,7 @@ class Frame(
     private val logicalDevice: LogicalDevice,
     private val renderPass: RenderPass,
     private val graphicsPipeline: GraphicsPipeline,
-    private val swapChain: SwapChain,
+    private val imageCount: Int,
     commandPool: CommandPool,
 ) : NativeResource() {
 
@@ -50,9 +48,9 @@ class Frame(
      * Synchronization primitives managing the timing of rendering and presentation operations.
      * Uses a separate set of semaphores for each swapchain image to avoid synchronization issues.
      */
-    private val syncObjects: SyncObjects = SyncObjects(
+    val syncObjects: SyncObjects = SyncObjects(
         logicalDevice = logicalDevice,
-        imageCount = swapChain.images.capacity(),
+        imageCount = imageCount,
     )
 
     /**
@@ -65,10 +63,7 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(): Unit = MemoryStack.stackPush().use { stack ->
-        syncObjects.waitForInFlightFence()
-        val swapChainImageIndex = acquireSwapChainImage(stack)
-
+    fun draw(swapChain: SwapChain, swapChainImageIndex: Int): Unit = MemoryStack.stackPush().use { stack ->
         vkResetCommandBuffer(commandBuffer.handle, 0)
 
         commandBuffer.startRecording()
@@ -79,21 +74,6 @@ class Frame(
         commandBuffer.endRecording()
 
         presentFrame(stack, swapChain, swapChainImageIndex)
-    }
-
-    private fun acquireSwapChainImage(stack: MemoryStack): Int {
-        val pImageIndex = stack.mallocInt(1)
-
-        vkAcquireNextImageKHR(
-            logicalDevice.handle,
-            swapChain.handle.value,
-            Long.MAX_VALUE,
-            syncObjects.imageAvailableSemaphores.value,
-            VK_NULL_HANDLE,
-            pImageIndex,
-        ).validateVulkanSuccess()
-
-        return pImageIndex[0]
     }
 
     private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {

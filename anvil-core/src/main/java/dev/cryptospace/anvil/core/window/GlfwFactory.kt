@@ -5,13 +5,11 @@ import dev.cryptospace.anvil.core.RenderingApi
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.Handle
 import org.lwjgl.glfw.GLFW.GLFW_CLIENT_API
-import org.lwjgl.glfw.GLFW.GLFW_FALSE
 import org.lwjgl.glfw.GLFW.GLFW_NO_API
 import org.lwjgl.glfw.GLFW.GLFW_OPENGL_API
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_WAYLAND
 import org.lwjgl.glfw.GLFW.GLFW_PLATFORM_X11
-import org.lwjgl.glfw.GLFW.GLFW_RESIZABLE
 import org.lwjgl.glfw.GLFW.glfwCreateWindow
 import org.lwjgl.glfw.GLFW.glfwDefaultWindowHints
 import org.lwjgl.glfw.GLFW.glfwInit
@@ -81,7 +79,6 @@ object GlfwFactory {
 
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_CLIENT_API, clientApi)
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE)
 
         val windowHandle = glfwCreateWindow(800, 600, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
         glfwShowWindow(windowHandle)

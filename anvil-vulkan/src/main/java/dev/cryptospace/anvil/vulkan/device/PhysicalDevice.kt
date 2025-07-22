@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.device
 
+import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
@@ -24,11 +25,9 @@ import java.nio.ByteBuffer
  * Represents a physical device (GPU) in the Vulkan graphics system.
  * Manages device-specific properties, features, and capabilities.
  * Acts as a wrapper around the native Vulkan physical device handle.
- * @param vulkan The parent Vulkan rendering system that owns this physical device
  * @param handle The native Vulkan physical device handle
  */
 data class PhysicalDevice(
-    val vulkan: VulkanRenderingSystem,
     val handle: VkPhysicalDevice,
 ) : NativeResource() {
 
@@ -78,13 +77,15 @@ data class PhysicalDevice(
     override fun toString(): String = "${this::class.simpleName}(name=$name)"
 
     override fun destroy() {
-        check(vulkan.isAlive) { "Vulkan is already destroyed" }
         properties.free()
         features.free()
         queueFamilies.free()
     }
 
     companion object {
+
+        @JvmStatic
+        private val logger = logger<PhysicalDevice>()
 
         /**
          * Lists all available physical devices (GPUs) in the system.
@@ -98,7 +99,9 @@ data class PhysicalDevice(
                     vkEnumeratePhysicalDevices(instance, countBuffer, pointerBuffer)
                 }.transform { address ->
                     val handle = VkPhysicalDevice(address, instance)
-                    PhysicalDevice(vulkan, handle)
+                    PhysicalDevice(handle)
+                }.also { physicalDevices ->
+                    logger.info("Found physical devices: $physicalDevices")
                 }
             }
         }

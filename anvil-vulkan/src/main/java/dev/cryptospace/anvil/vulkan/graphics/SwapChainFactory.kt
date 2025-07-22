@@ -21,7 +21,7 @@ object SwapChainFactory {
     fun create(logicalDevice: LogicalDevice, renderPass: RenderPass): SwapChain = MemoryStack.stackPush().use { stack ->
         val deviceSurfaceInfo = logicalDevice.deviceSurfaceInfo
         val surface = deviceSurfaceInfo.surface
-        val swapChainDetails = deviceSurfaceInfo.swapChainDetails
+        val swapChainDetails = deviceSurfaceInfo.refreshSwapChainDetails()
 
         val createInfo = createSwapChainCreateInfo(
             stack,

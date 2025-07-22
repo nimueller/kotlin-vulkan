@@ -21,6 +21,7 @@ import org.lwjgl.vulkan.VK10.vkCmdSetScissor
 import org.lwjgl.vulkan.VK10.vkCmdSetViewport
 import org.lwjgl.vulkan.VK10.vkCreateImageView
 import org.lwjgl.vulkan.VK10.vkDestroyImageView
+import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VkExtent2D
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 import org.lwjgl.vulkan.VkRect2D
@@ -162,6 +163,12 @@ data class SwapChain(
 
             vkCmdDraw(commandBuffer.handle, 3, 1, 0, 0)
         }
+
+    fun recreate(renderPass: RenderPass): SwapChain {
+        vkDeviceWaitIdle(logicalDevice.handle)
+        close()
+        return SwapChainFactory.create(logicalDevice, renderPass)
+    }
 
     override fun destroy() {
         framebuffers.forEach { framebuffer ->

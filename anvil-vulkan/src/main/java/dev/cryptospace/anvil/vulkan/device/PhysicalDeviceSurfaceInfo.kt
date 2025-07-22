@@ -53,11 +53,14 @@ data class PhysicalDeviceSurfaceInfo(
             error("Failed to find a suitable queue family which supported presentation queue")
         }
 
-    /**
-     * Detailed information about swap chain capabilities for this device-surface combination.
-     * Includes surface formats, presentation modes, and other swap-chain-related properties.
-     */
-    val swapChainDetails: SurfaceSwapChainDetails = SurfaceSwapChainDetails(this, surface)
+    var swapChainDetails: SurfaceSwapChainDetails = SurfaceSwapChainDetails.query(this)
+        private set
+
+    fun refreshSwapChainDetails(): SurfaceSwapChainDetails {
+        swapChainDetails.close()
+        swapChainDetails = SurfaceSwapChainDetails.query(this)
+        return swapChainDetails
+    }
 
     override fun destroy() {
         swapChainDetails.close()

@@ -63,6 +63,9 @@ class SyncObjects(
 
     fun waitForInFlightFence() {
         vkWaitForFences(logicalDevice.handle, inFlightFence.value, true, Long.MAX_VALUE)
+    }
+
+    fun resetInFlightFence() {
         vkResetFences(logicalDevice.handle, inFlightFence.value)
     }
 
