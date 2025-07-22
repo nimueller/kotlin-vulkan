@@ -1,7 +1,9 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
@@ -63,18 +65,19 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChain: SwapChain, swapChainImageIndex: Int): Unit = MemoryStack.stackPush().use { stack ->
-        vkResetCommandBuffer(commandBuffer.handle, 0)
+    fun draw(swapChain: SwapChain, swapChainImageIndex: Int, vertexBuffer: VkBuffer, vertices: List<Vertex2>): Unit =
+        MemoryStack.stackPush().use { stack ->
+            vkResetCommandBuffer(commandBuffer.handle, 0)
 
-        commandBuffer.startRecording()
-        val framebuffer = swapChain.framebuffers[swapChainImageIndex]
-        renderPass.start(commandBuffer, framebuffer)
-        swapChain.recordCommands(commandBuffer, graphicsPipeline)
-        renderPass.end(commandBuffer)
-        commandBuffer.endRecording()
+            commandBuffer.startRecording()
+            val framebuffer = swapChain.framebuffers[swapChainImageIndex]
+            renderPass.start(commandBuffer, framebuffer)
+            swapChain.recordCommands(commandBuffer, graphicsPipeline, vertexBuffer, vertices)
+            renderPass.end(commandBuffer)
+            commandBuffer.endRecording()
 
-        presentFrame(stack, swapChain, swapChainImageIndex)
-    }
+            presentFrame(stack, swapChain, swapChainImageIndex)
+        }
 
     private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {
         val signalSemaphores = submitCommandBuffer(stack, imageIndex)

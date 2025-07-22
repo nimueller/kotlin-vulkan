@@ -39,7 +39,7 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Setup command buffers
     - [x] Draw first triangle
 - [ ] Advanced features
-    - [ ] Vertex buffers and attributes
+    - [x] Vertex buffers and attributes
     - [ ] Textures and materials
     - [ ] Basic lighting system
     - [ ] 3D model loading and animation

@@ -4,6 +4,9 @@ import dev.cryptospace.anvil.core.AppConfig
 import dev.cryptospace.anvil.core.AppConfig.useValidationLayers
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.math.Vec2
+import dev.cryptospace.anvil.core.math.Vec3
+import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.device.LogicalDeviceFactory
 import dev.cryptospace.anvil.vulkan.device.PhysicalDevice
@@ -15,16 +18,38 @@ import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
+import dev.cryptospace.anvil.vulkan.handle.VkBuffer
+import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
+import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
+import org.lwjgl.vulkan.VK10.vkAllocateMemory
+import org.lwjgl.vulkan.VK10.vkBindBufferMemory
+import org.lwjgl.vulkan.VK10.vkCreateBuffer
+import org.lwjgl.vulkan.VK10.vkDestroyBuffer
 import org.lwjgl.vulkan.VK10.vkDestroyInstance
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
+import org.lwjgl.vulkan.VK10.vkFreeMemory
+import org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements
+import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
+import org.lwjgl.vulkan.VK10.vkMapMemory
+import org.lwjgl.vulkan.VK10.vkUnmapMemory
+import org.lwjgl.vulkan.VkBufferCreateInfo
+import org.lwjgl.vulkan.VkMemoryAllocateInfo
+import org.lwjgl.vulkan.VkMemoryRequirements
+import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
 
 /**
  * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
@@ -139,6 +164,16 @@ class VulkanRenderingSystem(
             logger.info("Created command pool: $commandPool")
         }
 
+    private val vertices = listOf(
+        Vertex2(Vec2(0.0f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
+        Vertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 1.0f, 0.0f)),
+        Vertex2(Vec2(-0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
+    )
+    private val verticesBufferSize = vertices.size * Vertex2.SIZE.toLong()
+    private val vertexBuffer = createVertexBuffer()
+
+    private val vertexBufferMemory = createVertexBufferMemory()
+
     /**
      * List of frames used for double buffering rendering operations.
      * Contains 2 frames that are used alternatively to allow concurrent CPU and GPU operations,
@@ -159,12 +194,80 @@ class VulkanRenderingSystem(
         }
     }
 
+    private fun createVertexBuffer() = MemoryStack.stackPush().use { stack ->
+        val bufferInfo = VkBufferCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+            size(verticesBufferSize)
+            usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+            sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        }
+
+        val pBuffer = stack.mallocLong(1)
+        vkCreateBuffer(logicalDevice.handle, bufferInfo, null, pBuffer)
+            .validateVulkanSuccess()
+        VkBuffer(pBuffer[0])
+    }
+
+    private fun createVertexBufferMemory() = MemoryStack.stackPush().use { stack ->
+        val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
+        vkGetBufferMemoryRequirements(logicalDevice.handle, vertexBuffer.value, bufferMemoryRequirements)
+
+        val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+            allocationSize(bufferMemoryRequirements.size())
+            memoryTypeIndex(
+                findMemoryType(
+                    bufferMemoryRequirements.memoryTypeBits(),
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                ),
+            )
+        }
+
+        val pDeviceMemory = stack.mallocLong(1)
+        vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pDeviceMemory)
+        vkBindBufferMemory(logicalDevice.handle, vertexBuffer.value, pDeviceMemory[0], 0)
+
+        val verticesBuffer = stack.malloc(verticesBufferSize.toInt())
+        vertices.forEach { vertex ->
+            verticesBuffer
+                .putFloat(vertex.position.x)
+                .putFloat(vertex.position.y)
+                .putFloat(vertex.color.x)
+                .putFloat(vertex.color.y)
+                .putFloat(vertex.color.z)
+        }
+        verticesBuffer.flip()
+        val verticesBufferAddress = MemoryUtil.memAddress(verticesBuffer)
+
+        val pMemory = stack.mallocPointer(1)
+        vkMapMemory(logicalDevice.handle, pDeviceMemory[0], 0, verticesBufferSize, 0, pMemory)
+        MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], verticesBufferSize)
+        vkUnmapMemory(logicalDevice.handle, pDeviceMemory[0])
+
+        VkDeviceMemory(pDeviceMemory[0])
+    }
+
+    private fun findMemoryType(typeFilter: Int, properties: Int): Int = MemoryStack.stackPush().use { stack ->
+        val memProperties = VkPhysicalDeviceMemoryProperties.calloc(stack)
+        vkGetPhysicalDeviceMemoryProperties(logicalDevice.physicalDevice.handle, memProperties)
+
+        for (i in 0 until memProperties.memoryTypeCount()) {
+            if ((typeFilter and (1 shl i)) != 0 &&
+                (memProperties.memoryTypes(i).propertyFlags() and properties) == properties
+            ) {
+                return i
+            }
+        }
+
+        error("Could not find a suitable memory type")
+    }
+
     override fun drawFrame() = MemoryStack.stackPush().use { stack ->
         val frame = frames[currentFrameIndex]
         frame.syncObjects.waitForInFlightFence()
         val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
         frame.syncObjects.resetInFlightFence()
-        frame.draw(swapChain, imageIndex)
+        frame.draw(swapChain, imageIndex, vertexBuffer, vertices)
         currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
     }
 
@@ -201,6 +304,10 @@ class VulkanRenderingSystem(
 
         commandPool.close()
         swapChain.close()
+
+        vkDestroyBuffer(logicalDevice.handle, vertexBuffer.value, null)
+        vkFreeMemory(logicalDevice.handle, vertexBufferMemory.value, null)
+
         graphicsPipeline.close()
         renderPass.close()
         logicalDevice.close()

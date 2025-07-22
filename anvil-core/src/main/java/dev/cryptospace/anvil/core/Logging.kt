@@ -14,6 +14,20 @@ import org.slf4j.LoggerFactory
 inline fun <reified T> logger(): Logger = LoggerFactory.getLogger(T::class.java)
 
 /**
+ * Extension function for SLF4J Logger that provides lazy message evaluation for debug level logging.
+ *
+ * The message is only evaluated if the debug log level is enabled, which can improve performance
+ * when expensive message construction is involved.
+ *
+ * @param lazyMessage Lambda that produces the log message string
+ */
+fun Logger.debug(lazyMessage: () -> String) {
+    if (isDebugEnabled) {
+        debug(lazyMessage())
+    }
+}
+
+/**
  * Extension function for SLF4J Logger that provides lazy message evaluation for warning level logging.
  *
  * The message is only evaluated if the warning log level is enabled, which can improve performance

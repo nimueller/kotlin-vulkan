@@ -3,6 +3,8 @@ package dev.cryptospace.anvil.vulkan.graphics
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.getAttributeDescriptions
+import dev.cryptospace.anvil.vulkan.getBindingDescription
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
@@ -53,6 +55,7 @@ import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo
 import org.lwjgl.vulkan.VkShaderModuleCreateInfo
+import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 data class GraphicsPipeline(
     val logicalDevice: LogicalDevice,
@@ -173,9 +176,13 @@ data class GraphicsPipeline(
 
     private fun setupVertexShaderInputInfo(stack: MemoryStack): VkPipelineVertexInputStateCreateInfo =
         VkPipelineVertexInputStateCreateInfo.calloc(stack).apply {
+            val bindingDescriptions = VkVertexInputBindingDescription.calloc(1, stack)
+                .put(getBindingDescription(stack))
+                .flip()
+            val attributeDescriptions = getAttributeDescriptions(stack)
             sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
-            pVertexBindingDescriptions(null)
-            pVertexAttributeDescriptions(null)
+            pVertexBindingDescriptions(bindingDescriptions)
+            pVertexAttributeDescriptions(attributeDescriptions)
         }
 
     private fun setupDynamicState(stack: MemoryStack): VkPipelineDynamicStateCreateInfo =
