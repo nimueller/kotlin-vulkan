@@ -16,8 +16,20 @@ import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
 
+/**
+ * Factory object responsible for creating Vulkan swap chains.
+ * This factory handles the complex initialization and configuration of swap chains,
+ * ensuring proper setup of image format, presentation mode, and other swap chain properties.
+ */
 object SwapChainFactory {
 
+    /**
+     * Creates a new SwapChain instance with the specified logical device and render pass.
+     *
+     * @param logicalDevice The logical device that will own the swap chain
+     * @param renderPass The render pass that will be used with the swap chain
+     * @return A newly created SwapChain instance
+     */
     fun create(logicalDevice: LogicalDevice, renderPass: RenderPass): SwapChain = MemoryStack.stackPush().use { stack ->
         val deviceSurfaceInfo = logicalDevice.deviceSurfaceInfo
         val surface = deviceSurfaceInfo.surface
@@ -41,6 +53,16 @@ object SwapChainFactory {
         SwapChain(logicalDevice, Handle(pointer[0]), renderPass)
     }
 
+    /**
+     * Creates and configures a VkSwapchainCreateInfoKHR structure with the necessary parameters for
+     * swap chain creation.
+     *
+     * @param stack Memory stack for allocating native resources
+     * @param surface The surface to create the swap chain for
+     * @param deviceSurfaceInfo Information about the physical device and surface capabilities
+     * @param swapChainDetails Details about supported swap chain properties
+     * @return Configured VkSwapchainCreateInfoKHR structure
+     */
     private fun createSwapChainCreateInfo(
         stack: MemoryStack,
         surface: Surface,

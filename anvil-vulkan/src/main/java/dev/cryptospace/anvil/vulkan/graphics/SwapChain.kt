@@ -6,6 +6,8 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
+import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR
@@ -164,7 +166,16 @@ data class SwapChain(
             vkCmdDraw(commandBuffer.handle, 3, 1, 0, 0)
         }
 
-    fun recreate(renderPass: RenderPass): SwapChain {
+    fun recreate(renderPass: RenderPass): SwapChain = MemoryStack.stackPush().use { stack ->
+        val window = logicalDevice.deviceSurfaceInfo.surface.window
+        val width = stack.mallocInt(1)
+        val height = stack.mallocInt(1)
+        glfwGetFramebufferSize(window.handle.value, width, height)
+
+        while (width[0] == 0 || height[0] == 0) {
+            glfwGetFramebufferSize(window.handle.value, width, height)
+            glfwWaitEvents()
+        }
         vkDeviceWaitIdle(logicalDevice.handle)
         close()
         return SwapChainFactory.create(logicalDevice, renderPass)

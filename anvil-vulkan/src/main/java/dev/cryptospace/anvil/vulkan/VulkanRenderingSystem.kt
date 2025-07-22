@@ -17,6 +17,7 @@ import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
+import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
@@ -149,6 +150,14 @@ class VulkanRenderingSystem(
     }
 
     private var currentFrameIndex = 0
+    private var framebufferResized = false
+
+    init {
+        glfwSetFramebufferSizeCallback(glfw.window.handle.value) { _, width, height ->
+            framebufferResized = true
+            logger.info("Framebuffer resized to $width x $height")
+        }
+    }
 
     override fun drawFrame() = MemoryStack.stackPush().use { stack ->
         val frame = frames[currentFrameIndex]
@@ -171,7 +180,8 @@ class VulkanRenderingSystem(
             pImageIndex,
         )
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+            framebufferResized = false
             swapChain = swapChain.recreate(renderPass)
             return null
         } else {
