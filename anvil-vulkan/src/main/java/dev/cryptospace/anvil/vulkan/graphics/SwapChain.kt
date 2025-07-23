@@ -6,19 +6,30 @@ import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
+import dev.cryptospace.anvil.vulkan.handle.VkSwapChain
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
+import dev.cryptospace.anvil.vulkan.surface.Surface
+import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
+import org.lwjgl.vulkan.KHRSwapchain.vkCreateSwapchainKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkGetSwapchainImagesKHR
 import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
 import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
@@ -31,6 +42,7 @@ import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VkExtent2D
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 import org.lwjgl.vulkan.VkRect2D
+import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
 import org.lwjgl.vulkan.VkViewport
 import java.nio.LongBuffer
 
@@ -51,15 +63,15 @@ import java.nio.LongBuffer
  */
 data class SwapChain(
     val logicalDevice: LogicalDevice,
-    val handle: Handle,
     val renderPass: RenderPass,
+    val handle: VkSwapChain,
 ) : NativeResource() {
 
-    companion object {
-
-        @JvmStatic
-        private val logger = logger<SwapChain>()
-    }
+    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass) : this(
+        logicalDevice,
+        renderPass,
+        createSwapChain(logicalDevice),
+    )
 
     /**
      * The dimensions (width and height) of the swap chain images.
@@ -67,7 +79,7 @@ data class SwapChain(
      * and window size. All images in the swap chain will have these exact dimensions.
      * This extent is used for various rendering operations and viewport configurations.
      */
-    val extent: VkExtent2D = logicalDevice.deviceSurfaceInfo.swapChainDetails.swapChainExtent
+    val extent: VkExtent2D = logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.swapChainExtent
 
     /**
      * Contains the handles to the VkImage objects managed by the swap chain.
@@ -114,7 +126,7 @@ data class SwapChain(
                     sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
                     image(image)
                     viewType(VK_IMAGE_VIEW_TYPE_2D)
-                    format(logicalDevice.deviceSurfaceInfo.swapChainDetails.bestSurfaceFormat.format())
+                    format(logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.bestSurfaceFormat.format())
                     components { mapping ->
                         mapping.r(VK_COMPONENT_SWIZZLE_IDENTITY)
                         mapping.g(VK_COMPONENT_SWIZZLE_IDENTITY)
@@ -178,8 +190,19 @@ data class SwapChain(
         vkCmdDraw(commandBuffer.handle, vertices.size, 1, 0, 0)
     }
 
+    /**
+     * Recreates the swap chain with new dimensions when the window is resized.
+     * This method will:
+     * 1. Wait for the window to have non-zero dimensions
+     * 2. Wait for the device to complete all operations
+     * 3. Clean up the existing swap chain resources
+     * 4. Create a new swap chain with updated dimensions
+     *
+     * @param renderPass The render pass to be used with the new swap chain
+     * @return A new SwapChain instance with updated dimensions
+     */
     fun recreate(renderPass: RenderPass): SwapChain = MemoryStack.stackPush().use { stack ->
-        val window = logicalDevice.deviceSurfaceInfo.surface.window
+        val window = logicalDevice.physicalDeviceSurfaceInfo.surface.window
         val width = stack.mallocInt(1)
         val height = stack.mallocInt(1)
         glfwGetFramebufferSize(window.handle.value, width, height)
@@ -190,7 +213,7 @@ data class SwapChain(
         }
         vkDeviceWaitIdle(logicalDevice.handle)
         close()
-        return SwapChainFactory.create(logicalDevice, renderPass)
+        return SwapChain(logicalDevice, renderPass)
     }
 
     override fun destroy() {
@@ -204,5 +227,95 @@ data class SwapChain(
         MemoryUtil.memFree(images)
 
         vkDestroySwapchainKHR(logicalDevice.handle, handle.value, null)
+    }
+
+    companion object {
+
+        @JvmStatic
+        private val logger = logger<SwapChain>()
+
+        /**
+         * Creates a new SwapChain instance with the specified logical device and render pass.
+         *
+         * @param logicalDevice The logical device that will own the swap chain
+         * @param renderPass The render pass that will be used with the swap chain
+         * @return A newly created SwapChain instance
+         */
+        private fun createSwapChain(logicalDevice: LogicalDevice): VkSwapChain = MemoryStack.stackPush().use { stack ->
+            val deviceSurfaceInfo = logicalDevice.physicalDeviceSurfaceInfo
+            val surface = deviceSurfaceInfo.surface
+            val swapChainDetails = deviceSurfaceInfo.refreshSwapChainDetails()
+
+            val createInfo = createSwapChainCreateInfo(
+                stack,
+                surface,
+                deviceSurfaceInfo,
+                swapChainDetails,
+            )
+
+            val pSwapChain = stack.mallocLong(1)
+
+            vkCreateSwapchainKHR(
+                logicalDevice.handle,
+                createInfo,
+                null,
+                pSwapChain,
+            ).validateVulkanSuccess()
+
+            VkSwapChain(pSwapChain[0])
+        }.also { swapChain ->
+            logger.debug { "Created swap chain $swapChain" }
+        }
+
+        /**
+         * Creates and configures a VkSwapchainCreateInfoKHR structure with the necessary parameters for
+         * swap chain creation.
+         *
+         * @param stack Memory stack for allocating native resources
+         * @param surface The surface to create the swap chain for
+         * @param deviceSurfaceInfo Information about the physical device and surface capabilities
+         * @param swapChainDetails Details about supported swap chain properties
+         * @return Configured VkSwapchainCreateInfoKHR structure
+         */
+        private fun createSwapChainCreateInfo(
+            stack: MemoryStack,
+            surface: Surface,
+            deviceSurfaceInfo: PhysicalDeviceSurfaceInfo,
+            swapChainDetails: SurfaceSwapChainDetails,
+        ): VkSwapchainCreateInfoKHR = VkSwapchainCreateInfoKHR.calloc(stack).apply {
+            val surfaceCapabilities = swapChainDetails.surfaceCapabilities
+            var imageCount = surfaceCapabilities.minImageCount() + 1
+
+            if (surfaceCapabilities.maxImageCount() > 0 && imageCount > surfaceCapabilities.maxImageCount()) {
+                imageCount = surfaceCapabilities.maxImageCount()
+            }
+            val graphicsQueueFamilyIndex = deviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex
+            val presentQueueFamilyIndex = deviceSurfaceInfo.presentQueueFamilyIndex
+
+            sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
+            surface(surface.handle.value)
+            minImageCount(imageCount)
+            imageFormat(swapChainDetails.bestSurfaceFormat.format())
+            imageColorSpace(swapChainDetails.bestSurfaceFormat.colorSpace())
+            imageExtent(swapChainDetails.swapChainExtent)
+            imageArrayLayers(1)
+            imageUsage(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+
+            if (graphicsQueueFamilyIndex != presentQueueFamilyIndex) {
+                imageSharingMode(VK_SHARING_MODE_CONCURRENT)
+                queueFamilyIndexCount(2)
+                pQueueFamilyIndices(stack.ints(graphicsQueueFamilyIndex, presentQueueFamilyIndex))
+            } else {
+                imageSharingMode(VK_SHARING_MODE_EXCLUSIVE)
+                queueFamilyIndexCount(0)
+                pQueueFamilyIndices(null)
+            }
+
+            preTransform(surfaceCapabilities.currentTransform())
+            compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+            presentMode(swapChainDetails.bestPresentMode.vulkanValue)
+            clipped(true)
+            oldSwapchain(VK_NULL_HANDLE)
+        }
     }
 }

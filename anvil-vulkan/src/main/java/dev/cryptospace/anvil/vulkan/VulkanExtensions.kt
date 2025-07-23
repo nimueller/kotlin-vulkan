@@ -75,15 +75,15 @@ val vulkanResultDisplayNameMap =
 
 /**
  * Validates that a Vulkan operation was successful.
- * Throws an exception if the result code is not [VK_SUCCESS].
+ * Throws an appropriate VulkanException if the result code is not [VK_SUCCESS].
  *
- * @throws IllegalStateException if the result code is not VK_SUCCESS, with a message containing
- * the string representation of the error code
+ * @param operation Optional description of the operation being performed
+ * @param message Optional additional error message
+ * @throws VulkanException if the result code is not VK_SUCCESS
  */
-fun Int.validateVulkanSuccess() {
-    check(this == VK_SUCCESS) {
-        val resultDisplayName = vulkanResultDisplayNameMap[this] ?: this.toString()
-        "Vulkan call was not successful: $resultDisplayName"
+fun Int.validateVulkanSuccess(operation: String? = null, message: String? = null) {
+    if (this != VK_SUCCESS) {
+        throw dev.cryptospace.anvil.vulkan.exception.createVulkanException(this, operation, message)
     }
 }
 

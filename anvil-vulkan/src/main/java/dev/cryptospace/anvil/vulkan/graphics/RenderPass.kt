@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -44,51 +45,91 @@ data class RenderPass(
     val handle: VkRenderPass,
 ) : NativeResource() {
 
+    constructor(logicalDevice: LogicalDevice) : this(logicalDevice, createRenderPass(logicalDevice))
+
+    fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
+        val clearColor = VkClearColorValue.calloc(stack)
+            .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
+        val clearValue = VkClearValue.calloc(1, stack)
+            .put(VkClearValue.calloc(stack).color(clearColor))
+            .flip()
+
+        val beginInfo = VkRenderPassBeginInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
+            renderPass(handle.value)
+            framebuffer(framebuffer.handle.value)
+            renderArea { area ->
+                area.offset { offset ->
+                    offset.x(0)
+                    offset.y(0)
+                }
+                area.extent { extent ->
+                    extent.set(logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.swapChainExtent)
+                }
+            }
+            clearValueCount(clearValue.remaining())
+            pClearValues(clearValue)
+        }
+
+        vkCmdBeginRenderPass(commandBuffer.handle, beginInfo, VK_SUBPASS_CONTENTS_INLINE)
+    }
+
+    fun end(commandBuffer: CommandBuffer) {
+        vkCmdEndRenderPass(commandBuffer.handle)
+    }
+
+    override fun toString(): String = "RenderPass(handle=$handle)"
+
+    override fun destroy() {
+        vkDestroyRenderPass(logicalDevice.handle, handle.value, null)
+    }
+
     companion object {
 
         @JvmStatic
         private val logger = logger<RenderPass>()
 
-        fun create(logicalDevice: LogicalDevice): RenderPass = MemoryStack.stackPush().use { stack ->
-            val colorAttachment = setupColorAttachment(stack, logicalDevice)
-            val subpassDescription = setupSubpassDescription(stack)
-            val colorAttachmentDescriptions = VkAttachmentDescription.calloc(1, stack)
-                .put(colorAttachment)
-                .flip()
-            val subpassDescriptions = VkSubpassDescription.calloc(1, stack)
-                .put(subpassDescription)
-                .flip()
+        private fun createRenderPass(logicalDevice: LogicalDevice): VkRenderPass =
+            MemoryStack.stackPush().use { stack ->
+                val colorAttachment = setupColorAttachment(stack, logicalDevice)
+                val subpassDescription = setupSubpassDescription(stack)
+                val colorAttachmentDescriptions = VkAttachmentDescription.calloc(1, stack)
+                    .put(colorAttachment)
+                    .flip()
+                val subpassDescriptions = VkSubpassDescription.calloc(1, stack)
+                    .put(subpassDescription)
+                    .flip()
 
-            val dependency = VkSubpassDependency.calloc(stack).apply {
-                srcSubpass(VK_SUBPASS_EXTERNAL)
-                dstSubpass(0)
-                srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-                srcAccessMask(0)
-                dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
-                dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                val dependency = VkSubpassDependency.calloc(stack).apply {
+                    srcSubpass(VK_SUBPASS_EXTERNAL)
+                    dstSubpass(0)
+                    srcStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+                    srcAccessMask(0)
+                    dstStageMask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+                    dstAccessMask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+                }
+                val dependencies = VkSubpassDependency.calloc(1, stack)
+                    .put(dependency)
+                    .flip()
+
+                val createInfo = VkRenderPassCreateInfo.calloc(stack).apply {
+                    sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
+                    pAttachments(colorAttachmentDescriptions)
+                    pSubpasses(subpassDescriptions)
+                    pDependencies(dependencies)
+                }
+
+                val renderPassBuffer = stack.mallocLong(1)
+                vkCreateRenderPass(logicalDevice.handle, createInfo, null, renderPassBuffer)
+                    .validateVulkanSuccess()
+                VkRenderPass(renderPassBuffer[0])
+            }.also { renderPass ->
+                logger.debug { "Created render pass: $renderPass" }
             }
-            val dependencies = VkSubpassDependency.calloc(1, stack)
-                .put(dependency)
-                .flip()
-
-            val createInfo = VkRenderPassCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO)
-                pAttachments(colorAttachmentDescriptions)
-                pSubpasses(subpassDescriptions)
-                pDependencies(dependencies)
-            }
-
-            val renderPassBuffer = stack.mallocLong(1)
-            vkCreateRenderPass(logicalDevice.handle, createInfo, null, renderPassBuffer)
-                .validateVulkanSuccess()
-            RenderPass(logicalDevice, VkRenderPass(renderPassBuffer[0]))
-        }.also { renderPass ->
-            logger.info("Created render pass: $renderPass")
-        }
 
         private fun setupColorAttachment(stack: MemoryStack, logicalDevice: LogicalDevice): VkAttachmentDescription =
             VkAttachmentDescription.calloc(stack).apply {
-                format(logicalDevice.deviceSurfaceInfo.swapChainDetails.bestSurfaceFormat.format())
+                format(logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.bestSurfaceFormat.format())
                 samples(VK_SAMPLE_COUNT_1_BIT)
                 loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                 storeOp(VK_ATTACHMENT_STORE_OP_STORE)
@@ -112,42 +153,5 @@ data class RenderPass(
                 colorAttachmentCount(colorAttachmentReferences.remaining())
                 pColorAttachments(colorAttachmentReferences)
             }
-    }
-
-    fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
-        val clearColor = VkClearColorValue.calloc(stack)
-            .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
-        val clearValue = VkClearValue.calloc(1, stack)
-            .put(VkClearValue.calloc(stack).color(clearColor))
-            .flip()
-
-        val beginInfo = VkRenderPassBeginInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
-            renderPass(handle.value)
-            framebuffer(framebuffer.handle.value)
-            renderArea { area ->
-                area.offset { offset ->
-                    offset.x(0)
-                    offset.y(0)
-                }
-                area.extent { extent ->
-                    extent.set(logicalDevice.deviceSurfaceInfo.swapChainDetails.swapChainExtent)
-                }
-            }
-            clearValueCount(clearValue.remaining())
-            pClearValues(clearValue)
-        }
-
-        vkCmdBeginRenderPass(commandBuffer.handle, beginInfo, VK_SUBPASS_CONTENTS_INLINE)
-    }
-
-    fun end(commandBuffer: CommandBuffer) {
-        vkCmdEndRenderPass(commandBuffer.handle)
-    }
-
-    override fun toString(): String = "RenderPass(handle=$handle)"
-
-    override fun destroy() {
-        vkDestroyRenderPass(logicalDevice.handle, handle.value, null)
     }
 }

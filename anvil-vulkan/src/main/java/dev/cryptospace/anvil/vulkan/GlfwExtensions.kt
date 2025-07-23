@@ -1,10 +1,8 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.toStringList
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.core.window.Window
-import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
@@ -21,23 +19,6 @@ fun Glfw.getRequiredVulkanExtensions(): List<String> {
     checkNotNull(glfwExtensions) { "Failed to find list of required Vulkan extensions" }
     val extensionNames = glfwExtensions.toStringList()
     return extensionNames
-}
-
-/**
- * Creates a Vulkan surface for this window.
- * The surface is used for rendering Vulkan graphics to the window.
- *
- * @param vulkan The Vulkan instance to create the surface for
- * @return A new Surface instance
- * @throws IllegalStateException if the surface creation fails
- */
-fun Window.createSurface(vulkan: VulkanRenderingSystem): Surface {
-    MemoryStack.stackPush().use { stack ->
-        val surfaceBuffer = stack.mallocLong(1)
-        val result = GLFWVulkan.glfwCreateWindowSurface(vulkan.instance, this.handle.value, null, surfaceBuffer)
-        check(result == 0) { "Failed to create window surface" }
-        return Surface(vulkan = vulkan, window = this, handle = Handle(surfaceBuffer[0]))
-    }
 }
 
 /**

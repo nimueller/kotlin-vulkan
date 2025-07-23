@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkCommandPool
@@ -24,7 +25,20 @@ data class CommandPool(
     val handle: VkCommandPool,
 ) : NativeResource() {
 
+    constructor(logicalDevice: LogicalDevice) : this(logicalDevice, createCommandPool(logicalDevice))
+
+    /**
+     * Destroys this command pool and frees associated Vulkan resources.
+     * All command buffers allocated from this pool become invalid.
+     */
+    override fun destroy() {
+        vkDestroyCommandPool(logicalDevice.handle, handle.value, null)
+    }
+
     companion object {
+
+        @JvmStatic
+        private val logger = logger<CommandPool>()
 
         /**
          * Creates a new command pool for the specified logical device.
@@ -34,25 +48,20 @@ data class CommandPool(
          * @param logicalDevice The logical device to create the command pool for
          * @return A new CommandPool instance
          */
-        fun create(logicalDevice: LogicalDevice): CommandPool = MemoryStack.stackPush().use { stack ->
-            val poolCreateInfo = VkCommandPoolCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)
-                flags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
-                queueFamilyIndex(logicalDevice.physicalDevice.graphicsQueueFamilyIndex)
+        private fun createCommandPool(logicalDevice: LogicalDevice): VkCommandPool =
+            MemoryStack.stackPush().use { stack ->
+                val poolCreateInfo = VkCommandPoolCreateInfo.calloc(stack).apply {
+                    sType(VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO)
+                    flags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+                    queueFamilyIndex(logicalDevice.physicalDevice.graphicsQueueFamilyIndex)
+                }
+
+                val pCommandPool = stack.mallocLong(1)
+                vkCreateCommandPool(logicalDevice.handle, poolCreateInfo, null, pCommandPool)
+                    .validateVulkanSuccess()
+                VkCommandPool(pCommandPool[0])
+            }.also { commandPool ->
+                logger.info("Created command pool: $commandPool")
             }
-
-            val pCommandPool = stack.mallocLong(1)
-            vkCreateCommandPool(logicalDevice.handle, poolCreateInfo, null, pCommandPool)
-                .validateVulkanSuccess()
-            CommandPool(logicalDevice, VkCommandPool(pCommandPool[0]))
-        }
-    }
-
-    /**
-     * Destroys this command pool and frees associated Vulkan resources.
-     * All command buffers allocated from this pool become invalid.
-     */
-    override fun destroy() {
-        vkDestroyCommandPool(logicalDevice.handle, handle.value, null)
     }
 }

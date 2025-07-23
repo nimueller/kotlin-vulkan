@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.pushStringList
-import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.device.suitable.SupportsRequiredExtensionsCriteria
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -20,26 +19,24 @@ object LogicalDeviceFactory {
     @JvmStatic
     private val logger = logger<LogicalDevice>()
 
-    fun create(vulkan: VulkanRenderingSystem, deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): LogicalDevice =
-        MemoryStack.stackPush().use { stack ->
-            val device = deviceSurfaceInfo.physicalDevice
-            val graphicsQueueFamily = device.graphicsQueueFamilyIndex
-            check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }
+    fun create(deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): LogicalDevice = MemoryStack.stackPush().use { stack ->
+        val device = deviceSurfaceInfo.physicalDevice
+        val graphicsQueueFamily = device.graphicsQueueFamilyIndex
+        check(graphicsQueueFamily >= 0) { "Got an invalid graphics queue family index" }
 
-            val presentQueueFamily = deviceSurfaceInfo.presentQueueFamilyIndex
-            check(presentQueueFamily >= 0) { "Got an invalid present_queue family index" }
+        val presentQueueFamily = deviceSurfaceInfo.presentQueueFamilyIndex
+        check(presentQueueFamily >= 0) { "Got an invalid present_queue family index" }
 
-            val queueCreateInfo = buildQueueCreateInfo(stack, graphicsQueueFamily, presentQueueFamily)
-            val features = VkPhysicalDeviceFeatures.calloc(stack)
-            val deviceCreateInfo = buildDeviceCreateInfo(stack, queueCreateInfo, features)
-            val devicePointer = buildDevice(stack, device, deviceCreateInfo)
+        val queueCreateInfo = buildQueueCreateInfo(stack, graphicsQueueFamily, presentQueueFamily)
+        val features = VkPhysicalDeviceFeatures.calloc(stack)
+        val deviceCreateInfo = buildDeviceCreateInfo(stack, queueCreateInfo, features)
+        val devicePointer = buildDevice(stack, device, deviceCreateInfo)
 
-            return LogicalDevice(
-                vulkan = vulkan,
-                handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
-                deviceSurfaceInfo = deviceSurfaceInfo,
-            )
-        }
+        return LogicalDevice(
+            handle = VkDevice(devicePointer[0], device.handle, deviceCreateInfo),
+            physicalDeviceSurfaceInfo = deviceSurfaceInfo,
+        )
+    }
 
     private fun buildQueueCreateInfo(
         stack: MemoryStack,

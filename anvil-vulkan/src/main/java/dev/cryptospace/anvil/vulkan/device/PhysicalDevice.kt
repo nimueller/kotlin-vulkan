@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.queryVulkanBufferWithoutSuccessValidation
 import dev.cryptospace.anvil.vulkan.queryVulkanPointerBuffer
@@ -15,6 +14,7 @@ import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceFeatures
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceProperties
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceQueueFamilyProperties
 import org.lwjgl.vulkan.VkExtensionProperties
+import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkPhysicalDevice
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures
 import org.lwjgl.vulkan.VkPhysicalDeviceProperties
@@ -89,21 +89,19 @@ data class PhysicalDevice(
 
         /**
          * Lists all available physical devices (GPUs) in the system.
-         * @param vulkan The Vulkan rendering system instance
+         * @param vulkanInstance The vulkan instance
          * @return List of available physical devices
          */
-        fun listPhysicalDevices(vulkan: VulkanRenderingSystem): List<PhysicalDevice> {
-            val instance = vulkan.instance
-            return MemoryStack.stackPush().use { stack ->
+        fun listPhysicalDevices(vulkanInstance: VkInstance): List<PhysicalDevice> =
+            MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanPointerBuffer { countBuffer, pointerBuffer ->
-                    vkEnumeratePhysicalDevices(instance, countBuffer, pointerBuffer)
+                    vkEnumeratePhysicalDevices(vulkanInstance, countBuffer, pointerBuffer)
                 }.transform { address ->
-                    val handle = VkPhysicalDevice(address, instance)
+                    val handle = VkPhysicalDevice(address, vulkanInstance)
                     PhysicalDevice(handle)
                 }.also { physicalDevices ->
                     logger.info("Found physical devices: $physicalDevices")
                 }
             }
-        }
     }
 }
