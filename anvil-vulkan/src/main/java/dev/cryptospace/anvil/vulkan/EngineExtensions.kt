@@ -12,7 +12,7 @@ import org.lwjgl.vulkan.VkVertexInputBindingDescription
 fun getBindingDescription(stack: MemoryStack): VkVertexInputBindingDescription =
     VkVertexInputBindingDescription.calloc(stack)
         .binding(0)
-        .stride(Vertex2.SIZE)
+        .stride(Vertex2.BYTE_SIZE)
         .inputRate(VK_VERTEX_INPUT_RATE_VERTEX)
 
 fun getAttributeDescriptions(stack: MemoryStack): VkVertexInputAttributeDescription.Buffer =
@@ -31,7 +31,7 @@ fun getAttributeDescriptions(stack: MemoryStack): VkVertexInputAttributeDescript
                     binding(0)
                     location(1)
                     format(VK_FORMAT_R32G32B32_SFLOAT)
-                    offset(Vec2.SIZE)
+                    offset(Vec2.BYTE_SIZE)
                 },
             )
             .flip()

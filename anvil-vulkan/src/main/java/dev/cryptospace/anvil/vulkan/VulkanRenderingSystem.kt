@@ -5,8 +5,11 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.core.math.Vertex2
+import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
+import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
+import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
@@ -18,11 +21,13 @@ import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
+import java.util.EnumSet
 
 /**
  * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
@@ -68,6 +73,8 @@ class VulkanRenderingSystem(
         Vertex2(Vec2(-0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
     )
 
+    private val verticesBytes = vertices.toByteBuffer()
+
     /**
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
@@ -78,7 +85,14 @@ class VulkanRenderingSystem(
      * Vertex buffer resource containing the buffer and its associated memory.
      * Created by the buffer manager and used for rendering.
      */
-    private val vertexBufferResource = bufferManager.createVertexBuffer(vertices)
+    private val vertexBufferResource =
+        bufferManager.allocateBuffer(
+            verticesBytes.remaining().toLong(),
+            EnumSet.of(BufferUsage.VERTEX),
+            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+        ).also { allocation ->
+            bufferManager.uploadData(allocation, verticesBytes)
+        }
 
     /**
      * List of frames used for double buffering rendering operations.
@@ -135,6 +149,8 @@ class VulkanRenderingSystem(
     override fun destroy() {
         vkDeviceWaitIdle(deviceManager.logicalDevice.handle)
             .validateVulkanSuccess()
+
+        MemoryUtil.memFree(verticesBytes)
 
         frames.forEach { frame ->
             frame.close()

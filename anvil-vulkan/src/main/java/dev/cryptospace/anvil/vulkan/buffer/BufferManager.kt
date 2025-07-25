@@ -1,5 +1,7 @@
 package dev.cryptospace.anvil.vulkan.buffer
 
+import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
+import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.NativeResource
@@ -9,9 +11,6 @@ import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
@@ -26,6 +25,8 @@ import org.lwjgl.vulkan.VkBufferCreateInfo
 import org.lwjgl.vulkan.VkMemoryAllocateInfo
 import org.lwjgl.vulkan.VkMemoryRequirements
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
+import java.nio.ByteBuffer
+import java.util.EnumSet
 
 /**
  * Manages Vulkan buffer resources and memory allocation.
@@ -40,23 +41,27 @@ class BufferManager(
     private val logicalDevice: LogicalDevice,
 ) : NativeResource() {
 
-    private val buffers = mutableListOf<BufferResource>()
+    private val buffers = mutableListOf<BufferAllocation>()
 
     /**
-     * Creates a vertex buffer and uploads the provided vertices to GPU memory.
+     * Allocates a Vulkan buffer with the specified size, usage flags, and memory properties.
      *
-     * @param vertices List of vertices to upload to the buffer
-     * @return A BufferResource containing the buffer and its associated memory
+     * @param size The size of the buffer in bytes
+     * @param usage Set of buffer usage flags indicating how the buffer will be used
+     * @param properties Set of memory property flags specifying required memory characteristics
+     * @return A BufferAllocation containing the created buffer and its associated memory
      */
-    fun createVertexBuffer(vertices: List<Vertex2>): BufferResource {
-        val verticesBufferSize = vertices.size * Vertex2.SIZE.toLong()
-
+    fun allocateBuffer(
+        size: Long,
+        usage: EnumSet<BufferUsage>,
+        properties: EnumSet<BufferProperties>,
+    ): BufferAllocation {
         // Create the buffer
         val buffer = MemoryStack.stackPush().use { stack ->
             val bufferInfo = VkBufferCreateInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-                size(verticesBufferSize)
-                usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+                size(size)
+                usage(usage.toBitmask())
                 sharingMode(VK_SHARING_MODE_EXCLUSIVE)
             }
 
@@ -75,10 +80,7 @@ class BufferManager(
                 sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
                 allocationSize(bufferMemoryRequirements.size())
                 memoryTypeIndex(
-                    findMemoryType(
-                        bufferMemoryRequirements.memoryTypeBits(),
-                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                    ),
+                    findMemoryType(bufferMemoryRequirements.memoryTypeBits(), properties.toBitmask()),
                 )
             }
 
@@ -91,53 +93,14 @@ class BufferManager(
             VkDeviceMemory(pDeviceMemory[0])
         }
 
-        // Upload vertex data
-        uploadVertexData(memory, vertices, verticesBufferSize)
-
-        val bufferResource = BufferResource(logicalDevice, buffer, memory)
-        buffers.add(bufferResource)
-
-        logger.debug("Created vertex buffer: $bufferResource")
-        return bufferResource
-    }
-
-    /**
-     * Uploads vertex data to the specified device memory.
-     *
-     * @param memory The device memory to upload data to
-     * @param vertices The vertices to upload
-     * @param bufferSize The size of the buffer in bytes
-     */
-    private fun uploadVertexData(memory: VkDeviceMemory, vertices: List<Vertex2>, bufferSize: Long) {
-        MemoryStack.stackPush().use { stack ->
-            val verticesBuffer = stack.malloc(bufferSize.toInt())
-            vertices.forEach { vertex ->
-                verticesBuffer
-                    .putFloat(vertex.position.x)
-                    .putFloat(vertex.position.y)
-                    .putFloat(vertex.color.x)
-                    .putFloat(vertex.color.y)
-                    .putFloat(vertex.color.z)
-            }
-            verticesBuffer.flip()
-            val verticesBufferAddress = MemoryUtil.memAddress(verticesBuffer)
-
-            val pMemory = stack.mallocPointer(1)
-            vkMapMemory(logicalDevice.handle, memory.value, 0, bufferSize, 0, pMemory)
-                .validateVulkanSuccess("Map vertex buffer memory", "Failed to map memory for uploading vertex data")
-            MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], bufferSize)
-            vkUnmapMemory(logicalDevice.handle, memory.value)
+        val allocation = BufferAllocation(logicalDevice, buffer, memory)
+        buffers.add(allocation)
+        logger.debug {
+            "Allocated buffer: $buffer with memory: $memory (size: $size) for usage: $usage and properties: $properties"
         }
+        return allocation
     }
 
-    /**
-     * Finds a memory type that satisfies the given requirements.
-     *
-     * @param typeFilter Bit field of memory types that are suitable
-     * @param properties Required memory properties
-     * @return Index of a suitable memory type
-     * @throws IllegalStateException if no suitable memory type is found
-     */
     private fun findMemoryType(typeFilter: Int, properties: Int): Int = MemoryStack.stackPush().use { stack ->
         val memProperties = VkPhysicalDeviceMemoryProperties.calloc(stack)
         vkGetPhysicalDeviceMemoryProperties(logicalDevice.physicalDevice.handle, memProperties)
@@ -150,14 +113,57 @@ class BufferManager(
             }
         }
 
-        throw IllegalStateException("Failed to find suitable memory type")
+        error("Failed to find suitable memory type")
+    }
+
+    /**
+     * Creates a vertex buffer and uploads the provided vertices to GPU memory.
+     *
+     * @param vertices List of vertices to upload to the buffer
+     * @return A BufferResource containing the buffer and its associated memory
+     */
+    fun uploadVertexData(allocation: BufferAllocation, vertices: List<Vertex2>) {
+        MemoryStack.stackPush().use { stack ->
+            val verticesBuffer = stack.malloc(vertices.size * Vertex2.BYTE_SIZE)
+            vertices.forEach { vertex ->
+                verticesBuffer
+                    .putFloat(vertex.position.x)
+                    .putFloat(vertex.position.y)
+                    .putFloat(vertex.color.x)
+                    .putFloat(vertex.color.y)
+                    .putFloat(vertex.color.z)
+            }
+            verticesBuffer.flip()
+
+            uploadData(allocation, verticesBuffer)
+        }
+    }
+
+    /**
+     * Uploads arbitrary data to a Vulkan buffer allocation.
+     * The data is copied from the provided ByteBuffer to the allocated GPU memory.
+     *
+     * @param allocation The buffer allocation to upload data to, containing both buffer and memory handles
+     * @param data The ByteBuffer containing the data to upload
+     */
+    fun uploadData(allocation: BufferAllocation, data: ByteBuffer) {
+        MemoryStack.stackPush().use { stack ->
+            val verticesBufferAddress = MemoryUtil.memAddress(data)
+            val size = data.remaining().toLong()
+
+            val pMemory = stack.mallocPointer(1)
+            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, size, 0, pMemory)
+                .validateVulkanSuccess("Map vertex buffer memory", "Failed to map memory for uploading vertex data")
+            MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], size)
+            vkUnmapMemory(logicalDevice.handle, allocation.memory.value)
+        }
     }
 
     /**
      * Destroys all buffer resources managed by this BufferManager.
      */
     override fun destroy() {
-        buffers.forEach { buffer: BufferResource -> buffer.close() }
+        buffers.forEach { buffer -> buffer.close() }
         buffers.clear()
     }
 
