@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
-import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
@@ -64,14 +63,20 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChainImageIndex: Int, vertexBuffer: VkBuffer, vertices: List<Vertex2>): Unit =
+    fun draw(swapChainImageIndex: Int, vertexBuffer: VkBuffer, indexBuffer: VkBuffer, indexCount: Int): Unit =
         MemoryStack.stackPush().use { stack ->
             vkResetCommandBuffer(commandBuffer.handle, 0)
 
             commandBuffer.startRecording()
             val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
             renderPass.start(commandBuffer, framebuffer)
-            logicalDevice.swapChain.recordCommands(commandBuffer, graphicsPipeline, vertexBuffer, vertices)
+            logicalDevice.swapChain.recordCommands(
+                commandBuffer,
+                graphicsPipeline,
+                vertexBuffer,
+                indexBuffer,
+                indexCount,
+            )
             renderPass.end(commandBuffer)
             commandBuffer.endRecording()
 

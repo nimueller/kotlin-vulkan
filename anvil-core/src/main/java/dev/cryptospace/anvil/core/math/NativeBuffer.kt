@@ -25,6 +25,7 @@ interface NativeBuffer {
     }
 }
 
+@JvmName("toByteBufferCollection")
 fun Collection<NativeBuffer>.toByteBuffer(): ByteBuffer {
     val buffer = MemoryUtil.memAlloc(sumOf { it.byteSize })
     forEach { it.toByteBuffer(buffer) }
@@ -35,6 +36,14 @@ fun Collection<NativeBuffer>.toByteBuffer(): ByteBuffer {
 fun Collection<NativeBuffer>.toByteBuffer(stack: MemoryStack): ByteBuffer {
     val buffer = stack.malloc(sumOf { it.byteSize })
     forEach { it.toByteBuffer(buffer) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferShortCollection")
+fun Collection<Short>.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Short.SIZE_BYTES)
+    forEach { buffer.putShort(it) }
     buffer.flip()
     return buffer
 }

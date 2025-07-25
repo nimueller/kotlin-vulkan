@@ -44,12 +44,23 @@ class VulkanRenderingSystem(
     private val deviceManager: DeviceManager = DeviceManager(vulkanContext, windowSurface)
 
     private val vertices = listOf(
-        Vertex2(Vec2(0.0f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
-        Vertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 1.0f, 0.0f)),
-        Vertex2(Vec2(-0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
+        Vertex2(Vec2(-0.5f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
+        Vertex2(Vec2(0.5f, -0.5f), Vec3(0.0f, 1.0f, 0.0f)),
+        Vertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
+        Vertex2(Vec2(-0.5f, 0.5f), Vec3(1.0f, 1.0f, 1.0f)),
+    )
+
+    private val indices = listOf(
+        0.toShort(),
+        1.toShort(),
+        2.toShort(),
+        2.toShort(),
+        3.toShort(),
+        0.toShort(),
     )
 
     private val verticesBytes = vertices.toByteBuffer()
+    private val indicesBytes = indices.toByteBuffer()
 
     /**
      * Buffer manager for creating and managing Vulkan buffers.
@@ -57,7 +68,7 @@ class VulkanRenderingSystem(
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
 
-    private val stagingBufferResource =
+    private val stagingVertexBufferResource =
         bufferManager.allocateBuffer(
             verticesBytes.remaining().toLong(),
             EnumSet.of(BufferUsage.TRANSFER_SRC),
@@ -76,7 +87,25 @@ class VulkanRenderingSystem(
             EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
             EnumSet.of(BufferProperties.DEVICE_LOCAL),
         ).also { allocation ->
-            bufferManager.transferBuffer(stagingBufferResource, allocation)
+            bufferManager.transferBuffer(stagingVertexBufferResource, allocation)
+        }
+
+    private val stagingIndexBufferResource =
+        bufferManager.allocateBuffer(
+            indicesBytes.remaining().toLong(),
+            EnumSet.of(BufferUsage.TRANSFER_SRC),
+            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+        ).also { allocation ->
+            bufferManager.uploadData(allocation, indicesBytes)
+        }
+
+    private val indexBufferResource =
+        bufferManager.allocateBuffer(
+            indicesBytes.remaining().toLong(),
+            EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
+            EnumSet.of(BufferProperties.DEVICE_LOCAL),
+        ).also { allocation ->
+            bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
         }
 
     /**
@@ -104,7 +133,7 @@ class VulkanRenderingSystem(
         frame.syncObjects.waitForInFlightFence()
         val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
         frame.syncObjects.resetInFlightFence()
-        frame.draw(imageIndex, vertexBufferResource.buffer, vertices)
+        frame.draw(imageIndex, vertexBufferResource.buffer, indexBufferResource.buffer, indices.size)
         currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
     }
 

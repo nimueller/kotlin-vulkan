@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -26,14 +25,16 @@ import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT16
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer
 import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
 import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
-import org.lwjgl.vulkan.VK10.vkCmdDraw
+import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
 import org.lwjgl.vulkan.VK10.vkCmdSetScissor
 import org.lwjgl.vulkan.VK10.vkCmdSetViewport
 import org.lwjgl.vulkan.VK10.vkCreateImageView
@@ -159,7 +160,8 @@ data class SwapChain(
         commandBuffer: CommandBuffer,
         graphicsPipeline: GraphicsPipeline,
         vertexBuffer: VkBuffer,
-        vertices: List<Vertex2>,
+        indexBuffer: VkBuffer,
+        indexSize: Int,
     ) = MemoryStack.stackPush().use { stack ->
         vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
 
@@ -186,8 +188,9 @@ data class SwapChain(
         val vertexBuffers = stack.longs(vertexBuffer.value)
         val offsets = stack.longs(0L)
         vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
+        vkCmdBindIndexBuffer(commandBuffer.handle, indexBuffer.value, 0L, VK_INDEX_TYPE_UINT16)
 
-        vkCmdDraw(commandBuffer.handle, vertices.size, 1, 0, 0)
+        vkCmdDrawIndexed(commandBuffer.handle, indexSize, 1, 0, 0, 0)
     }
 
     /**

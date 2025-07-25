@@ -43,6 +43,9 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [ ] Textures and materials
     - [ ] Basic lighting system
     - [ ] 3D model loading and animation
+- [ ] Optimization
+    - [ ] Proper Transfer queue
+    - [ ] Better Vulkan Memory allocation using Vulkan Memory Allocator
 
 ## Building
 
