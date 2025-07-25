@@ -12,11 +12,7 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
-import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.Frame
-import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
-import dev.cryptospace.anvil.vulkan.graphics.RenderPass
-import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
@@ -46,26 +42,6 @@ class VulkanRenderingSystem(
     private val windowSurface: Surface = Surface(vulkanInstance = vulkanContext.handle, window = glfw.window)
 
     private val deviceManager: DeviceManager = DeviceManager(vulkanContext, windowSurface)
-
-    private val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
-
-    private val graphicsPipeline: GraphicsPipeline = GraphicsPipeline(deviceManager.logicalDevice, renderPass)
-
-    /**
-     * The swap chain managing presentation of rendered images to the surface.
-     * Created from the logical device and handles image acquisition, rendering synchronization,
-     * and presentation to the display using the selected surface format and present mode.
-     * The swap chain dimensions and properties are determined based on the physical device's
-     * surface capabilities and the window size.
-     */
-    private var swapChain: SwapChain = SwapChain(deviceManager.logicalDevice, renderPass)
-
-    /**
-     * Command pool for allocating command buffers used to record and submit Vulkan commands.
-     * Created from the logical device and manages memory for command buffer allocation and deallocation.
-     * Command buffers from this pool are used for recording rendering and compute commands.
-     */
-    private val commandPool: CommandPool = CommandPool(deviceManager.logicalDevice)
 
     private val vertices = listOf(
         Vertex2(Vec2(0.0f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
@@ -101,7 +77,7 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames = List(2) {
-        Frame(deviceManager.logicalDevice, renderPass, graphicsPipeline, swapChain.images.capacity(), commandPool)
+        Frame(deviceManager.logicalDevice)
     }
 
     private var currentFrameIndex = 0
@@ -119,7 +95,7 @@ class VulkanRenderingSystem(
         frame.syncObjects.waitForInFlightFence()
         val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
         frame.syncObjects.resetInFlightFence()
-        frame.draw(swapChain, imageIndex, vertexBufferResource.buffer, vertices)
+        frame.draw(imageIndex, vertexBufferResource.buffer, vertices)
         currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
     }
 
@@ -128,7 +104,7 @@ class VulkanRenderingSystem(
 
         val result = vkAcquireNextImageKHR(
             deviceManager.logicalDevice.handle,
-            swapChain.handle.value,
+            deviceManager.logicalDevice.swapChain.handle.value,
             Long.MAX_VALUE,
             syncObjects.imageAvailableSemaphores.value,
             VK_NULL_HANDLE,
@@ -137,7 +113,7 @@ class VulkanRenderingSystem(
 
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
             framebufferResized = false
-            swapChain = swapChain.recreate(renderPass)
+            deviceManager.logicalDevice.recreateSwapChain()
             return null
         } else {
             result.validateVulkanSuccess()
@@ -156,11 +132,7 @@ class VulkanRenderingSystem(
             frame.close()
         }
 
-        commandPool.close()
-        swapChain.close()
         bufferManager.close()
-        graphicsPipeline.close()
-        renderPass.close()
         windowSurface.close()
         deviceManager.close()
         vulkanContext.close()

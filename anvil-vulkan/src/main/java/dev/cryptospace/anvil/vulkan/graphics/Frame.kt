@@ -37,13 +37,12 @@ import java.nio.LongBuffer
  */
 class Frame(
     private val logicalDevice: LogicalDevice,
-    private val renderPass: RenderPass,
-    private val graphicsPipeline: GraphicsPipeline,
-    private val imageCount: Int,
-    commandPool: CommandPool,
 ) : NativeResource() {
 
-    /** Command buffer used for recording and executing rendering commands for this frame */
+    private val renderPass: RenderPass = logicalDevice.renderPass
+    private val graphicsPipeline: GraphicsPipeline = logicalDevice.graphicsPipeline
+    private val imageCount: Int = logicalDevice.swapChain.images.capacity()
+    private val commandPool: CommandPool = logicalDevice.commandPool
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
 
     /**
@@ -65,18 +64,18 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChain: SwapChain, swapChainImageIndex: Int, vertexBuffer: VkBuffer, vertices: List<Vertex2>): Unit =
+    fun draw(swapChainImageIndex: Int, vertexBuffer: VkBuffer, vertices: List<Vertex2>): Unit =
         MemoryStack.stackPush().use { stack ->
             vkResetCommandBuffer(commandBuffer.handle, 0)
 
             commandBuffer.startRecording()
-            val framebuffer = swapChain.framebuffers[swapChainImageIndex]
+            val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
             renderPass.start(commandBuffer, framebuffer)
-            swapChain.recordCommands(commandBuffer, graphicsPipeline, vertexBuffer, vertices)
+            logicalDevice.swapChain.recordCommands(commandBuffer, graphicsPipeline, vertexBuffer, vertices)
             renderPass.end(commandBuffer)
             commandBuffer.endRecording()
 
-            presentFrame(stack, swapChain, swapChainImageIndex)
+            presentFrame(stack, logicalDevice.swapChain, swapChainImageIndex)
         }
 
     private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {

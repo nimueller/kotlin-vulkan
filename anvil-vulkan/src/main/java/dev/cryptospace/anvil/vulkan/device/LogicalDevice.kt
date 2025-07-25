@@ -1,6 +1,10 @@
 package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.vkDestroyDevice
 import org.lwjgl.vulkan.VK10.vkGetDeviceQueue
@@ -38,7 +42,36 @@ data class LogicalDevice(
             VkQueue(buffer[0], handle)
         }
 
+    val renderPass: RenderPass = RenderPass(this)
+
+    val graphicsPipeline: GraphicsPipeline = GraphicsPipeline(this, renderPass)
+
+    /**
+     * The swap chain managing presentation of rendered images to the surface.
+     * Created from the logical device and handles image acquisition, rendering synchronization,
+     * and presentation to the display using the selected surface format and present mode.
+     * The swap chain dimensions and properties are determined based on the physical device's
+     * surface capabilities and the window size.
+     */
+    var swapChain: SwapChain = SwapChain(this, renderPass)
+
+    /**
+     * Command pool for allocating command buffers used to record and submit Vulkan commands.
+     * Created from the logical device and manages memory for command buffer allocation and deallocation.
+     * Command buffers from this pool are used for recording rendering and compute commands.
+     */
+    val commandPool: CommandPool = CommandPool(this)
+
+    fun recreateSwapChain() {
+        swapChain = swapChain.recreate(renderPass)
+    }
+
     override fun destroy() {
+        commandPool.close()
+        swapChain.close()
+        graphicsPipeline.close()
+        renderPass.close()
+
         vkDestroyDevice(handle, null)
     }
 }
