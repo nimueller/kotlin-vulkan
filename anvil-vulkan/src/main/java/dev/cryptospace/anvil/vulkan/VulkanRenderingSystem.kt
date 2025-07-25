@@ -57,6 +57,15 @@ class VulkanRenderingSystem(
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
 
+    private val stagingBufferResource =
+        bufferManager.allocateBuffer(
+            verticesBytes.remaining().toLong(),
+            EnumSet.of(BufferUsage.TRANSFER_SRC),
+            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+        ).also { allocation ->
+            bufferManager.uploadData(allocation, verticesBytes)
+        }
+
     /**
      * Vertex buffer resource containing the buffer and its associated memory.
      * Created by the buffer manager and used for rendering.
@@ -64,10 +73,10 @@ class VulkanRenderingSystem(
     private val vertexBufferResource =
         bufferManager.allocateBuffer(
             verticesBytes.remaining().toLong(),
-            EnumSet.of(BufferUsage.VERTEX),
-            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
+            EnumSet.of(BufferProperties.DEVICE_LOCAL),
         ).also { allocation ->
-            bufferManager.uploadData(allocation, verticesBytes)
+            bufferManager.transferBuffer(stagingBufferResource, allocation)
         }
 
     /**
@@ -133,8 +142,8 @@ class VulkanRenderingSystem(
         }
 
         bufferManager.close()
-        windowSurface.close()
         deviceManager.close()
+        windowSurface.close()
         vulkanContext.close()
     }
 

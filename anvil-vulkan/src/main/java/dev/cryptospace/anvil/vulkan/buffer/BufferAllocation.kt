@@ -11,6 +11,7 @@ data class BufferAllocation(
     private val logicalDevice: LogicalDevice,
     val buffer: VkBuffer,
     val memory: VkDeviceMemory,
+    val size: Long,
 ) : NativeResource() {
 
     override fun destroy() {

@@ -3,7 +3,6 @@ package dev.cryptospace.anvil.vulkan.buffer
 import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
@@ -11,20 +10,38 @@ import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY
+import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
+import org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers
 import org.lwjgl.vulkan.VK10.vkAllocateMemory
+import org.lwjgl.vulkan.VK10.vkBeginCommandBuffer
 import org.lwjgl.vulkan.VK10.vkBindBufferMemory
+import org.lwjgl.vulkan.VK10.vkCmdCopyBuffer
 import org.lwjgl.vulkan.VK10.vkCreateBuffer
+import org.lwjgl.vulkan.VK10.vkEndCommandBuffer
+import org.lwjgl.vulkan.VK10.vkFreeCommandBuffers
 import org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import org.lwjgl.vulkan.VK10.vkMapMemory
+import org.lwjgl.vulkan.VK10.vkQueueSubmit
+import org.lwjgl.vulkan.VK10.vkQueueWaitIdle
 import org.lwjgl.vulkan.VK10.vkUnmapMemory
+import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkBufferCreateInfo
+import org.lwjgl.vulkan.VkCommandBuffer
+import org.lwjgl.vulkan.VkCommandBufferAllocateInfo
+import org.lwjgl.vulkan.VkCommandBufferBeginInfo
 import org.lwjgl.vulkan.VkMemoryAllocateInfo
 import org.lwjgl.vulkan.VkMemoryRequirements
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
+import org.lwjgl.vulkan.VkSubmitInfo
 import java.nio.ByteBuffer
 import java.util.EnumSet
 
@@ -93,7 +110,7 @@ class BufferManager(
             VkDeviceMemory(pDeviceMemory[0])
         }
 
-        val allocation = BufferAllocation(logicalDevice, buffer, memory)
+        val allocation = BufferAllocation(logicalDevice, buffer, memory, size)
         buffers.add(allocation)
         logger.debug {
             "Allocated buffer: $buffer with memory: $memory (size: $size) for usage: $usage and properties: $properties"
@@ -117,29 +134,6 @@ class BufferManager(
     }
 
     /**
-     * Creates a vertex buffer and uploads the provided vertices to GPU memory.
-     *
-     * @param vertices List of vertices to upload to the buffer
-     * @return A BufferResource containing the buffer and its associated memory
-     */
-    fun uploadVertexData(allocation: BufferAllocation, vertices: List<Vertex2>) {
-        MemoryStack.stackPush().use { stack ->
-            val verticesBuffer = stack.malloc(vertices.size * Vertex2.BYTE_SIZE)
-            vertices.forEach { vertex ->
-                verticesBuffer
-                    .putFloat(vertex.position.x)
-                    .putFloat(vertex.position.y)
-                    .putFloat(vertex.color.x)
-                    .putFloat(vertex.color.y)
-                    .putFloat(vertex.color.z)
-            }
-            verticesBuffer.flip()
-
-            uploadData(allocation, verticesBuffer)
-        }
-    }
-
-    /**
      * Uploads arbitrary data to a Vulkan buffer allocation.
      * The data is copied from the provided ByteBuffer to the allocated GPU memory.
      *
@@ -147,15 +141,76 @@ class BufferManager(
      * @param data The ByteBuffer containing the data to upload
      */
     fun uploadData(allocation: BufferAllocation, data: ByteBuffer) {
+        check(allocation.size == data.remaining().toLong()) {
+            error("Buffer size mismatch: expected ${allocation.size} but was ${data.remaining()}")
+        }
+
         MemoryStack.stackPush().use { stack ->
             val verticesBufferAddress = MemoryUtil.memAddress(data)
-            val size = data.remaining().toLong()
 
             val pMemory = stack.mallocPointer(1)
-            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, size, 0, pMemory)
+            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, allocation.size, 0, pMemory)
                 .validateVulkanSuccess("Map vertex buffer memory", "Failed to map memory for uploading vertex data")
-            MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], size)
+            MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], allocation.size)
             vkUnmapMemory(logicalDevice.handle, allocation.memory.value)
+        }
+    }
+
+    fun transferBuffer(source: BufferAllocation, destination: BufferAllocation) {
+        check(source.size == destination.size) {
+            error("Buffer size mismatch: expected ${source.size} but was ${destination.size}")
+        }
+
+        MemoryStack.stackPush().use { stack ->
+            val allocateInfo = VkCommandBufferAllocateInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+                level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+                commandBufferCount(1)
+                commandPool(logicalDevice.commandPool.handle.value)
+            }
+
+            val pCommandBuffers = stack.mallocPointer(1)
+            vkAllocateCommandBuffers(logicalDevice.handle, allocateInfo, pCommandBuffers)
+                .validateVulkanSuccess("Allocate command buffer", "Failed to allocate command buffer for buffer copy")
+
+            val beginInfo = VkCommandBufferBeginInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+                flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+            }
+
+            val commandBuffer = VkCommandBuffer(pCommandBuffers[0], logicalDevice.handle)
+            vkBeginCommandBuffer(commandBuffer, beginInfo)
+                .validateVulkanSuccess("Begin command buffer", "Failed to begin command buffer for buffer copy")
+
+            val bufferCopy = VkBufferCopy.calloc(stack).apply {
+                srcOffset(0)
+                dstOffset(0)
+                size(source.size)
+            }
+
+            val bufferCopies = VkBufferCopy.calloc(1, stack)
+                .put(bufferCopy)
+                .flip()
+
+            vkCmdCopyBuffer(
+                commandBuffer,
+                source.buffer.value,
+                destination.buffer.value,
+                bufferCopies,
+            )
+            vkEndCommandBuffer(commandBuffer)
+                .validateVulkanSuccess("End command buffer", "Failed to end command buffer for buffer copy")
+
+            val queueSubmitInfo = VkSubmitInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+                pCommandBuffers(stack.pointers(commandBuffer))
+            }
+
+            vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, VK_NULL_HANDLE)
+                .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
+            vkQueueWaitIdle(logicalDevice.graphicsQueue)
+                .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
+            vkFreeCommandBuffers(logicalDevice.handle, allocateInfo.commandPool(), commandBuffer)
         }
     }
 
