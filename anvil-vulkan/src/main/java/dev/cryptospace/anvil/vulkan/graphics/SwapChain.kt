@@ -6,7 +6,6 @@ import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
-import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.handle.VkSwapChain
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.surface.Surface
@@ -25,16 +24,12 @@ import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
 import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
-import org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT16
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer
 import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
-import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
-import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
 import org.lwjgl.vulkan.VK10.vkCmdSetScissor
 import org.lwjgl.vulkan.VK10.vkCmdSetViewport
 import org.lwjgl.vulkan.VK10.vkCreateImageView
@@ -156,42 +151,30 @@ data class SwapChain(
             logger.debug { "Created ${framebuffers.size} framebuffers: $framebuffers" }
         }
 
-    fun recordCommands(
-        commandBuffer: CommandBuffer,
-        graphicsPipeline: GraphicsPipeline,
-        vertexBuffer: VkBuffer,
-        indexBuffer: VkBuffer,
-        indexSize: Int,
-    ) = MemoryStack.stackPush().use { stack ->
-        vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
+    fun preparePipeline(commandBuffer: CommandBuffer, graphicsPipeline: GraphicsPipeline) =
+        MemoryStack.stackPush().use { stack ->
+            vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
 
-        val viewport = VkViewport.calloc(stack).apply {
-            x(0.0f)
-            y(0.0f)
-            width(extent.width().toFloat())
-            height(extent.height().toFloat())
-            minDepth(0.0f)
-            maxDepth(1.0f)
+            val viewport = VkViewport.calloc(stack).apply {
+                x(0.0f)
+                y(0.0f)
+                width(extent.width().toFloat())
+                height(extent.height().toFloat())
+                minDepth(0.0f)
+                maxDepth(1.0f)
+            }
+            val pViewports = VkViewport.calloc(1, stack)
+                .put(viewport)
+                .flip()
+            vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
+
+            val scissor = VkRect2D.calloc(stack).apply {
+                offset { it.x(0).y(0) }
+                extent { it.width(extent.width()).height(extent.height()) }
+            }
+            val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
+            vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
         }
-        val pViewports = VkViewport.calloc(1, stack)
-            .put(viewport)
-            .flip()
-        vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
-
-        val scissor = VkRect2D.calloc(stack).apply {
-            offset { it.x(0).y(0) }
-            extent { it.width(extent.width()).height(extent.height()) }
-        }
-        val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
-        vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
-
-        val vertexBuffers = stack.longs(vertexBuffer.value)
-        val offsets = stack.longs(0L)
-        vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
-        vkCmdBindIndexBuffer(commandBuffer.handle, indexBuffer.value, 0L, VK_INDEX_TYPE_UINT16)
-
-        vkCmdDrawIndexed(commandBuffer.handle, indexSize, 1, 0, 0, 0)
-    }
 
     /**
      * Recreates the swap chain with new dimensions when the window is resized.

@@ -2,10 +2,10 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.Vec2
-import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.math.toByteBuffer
+import dev.cryptospace.anvil.core.rendering.Mesh
+import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
@@ -17,7 +17,6 @@ import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
@@ -43,70 +42,11 @@ class VulkanRenderingSystem(
 
     private val deviceManager: DeviceManager = DeviceManager(vulkanContext, windowSurface)
 
-    private val vertices = listOf(
-        Vertex2(Vec2(-0.5f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
-        Vertex2(Vec2(0.5f, -0.5f), Vec3(0.0f, 1.0f, 0.0f)),
-        Vertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
-        Vertex2(Vec2(-0.5f, 0.5f), Vec3(1.0f, 1.0f, 1.0f)),
-    )
-
-    private val indices = listOf(
-        0.toShort(),
-        1.toShort(),
-        2.toShort(),
-        2.toShort(),
-        3.toShort(),
-        0.toShort(),
-    )
-
-    private val verticesBytes = vertices.toByteBuffer()
-    private val indicesBytes = indices.toByteBuffer()
-
     /**
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
-
-    private val stagingVertexBufferResource =
-        bufferManager.allocateBuffer(
-            verticesBytes.remaining().toLong(),
-            EnumSet.of(BufferUsage.TRANSFER_SRC),
-            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
-        ).also { allocation ->
-            bufferManager.uploadData(allocation, verticesBytes)
-        }
-
-    /**
-     * Vertex buffer resource containing the buffer and its associated memory.
-     * Created by the buffer manager and used for rendering.
-     */
-    private val vertexBufferResource =
-        bufferManager.allocateBuffer(
-            verticesBytes.remaining().toLong(),
-            EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
-            EnumSet.of(BufferProperties.DEVICE_LOCAL),
-        ).also { allocation ->
-            bufferManager.transferBuffer(stagingVertexBufferResource, allocation)
-        }
-
-    private val stagingIndexBufferResource =
-        bufferManager.allocateBuffer(
-            indicesBytes.remaining().toLong(),
-            EnumSet.of(BufferUsage.TRANSFER_SRC),
-            EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
-        ).also { allocation ->
-            bufferManager.uploadData(allocation, indicesBytes)
-        }
-
-    private val indexBufferResource =
-        bufferManager.allocateBuffer(
-            indicesBytes.remaining().toLong(),
-            EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
-            EnumSet.of(BufferProperties.DEVICE_LOCAL),
-        ).also { allocation ->
-            bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
-        }
 
     /**
      * List of frames used for double buffering rendering operations.
@@ -128,12 +68,55 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun drawFrame() = MemoryStack.stackPush().use { stack ->
+    override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
+        val verticesBytes = vertex2.toByteBuffer()
+        val indicesBytes = indices.toByteBuffer()
+
+        val stagingVertexBufferResource =
+            bufferManager.allocateBuffer(
+                verticesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_SRC),
+                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            ).also { allocation ->
+                bufferManager.uploadData(allocation, verticesBytes)
+            }
+
+        val vertexBufferResource =
+            bufferManager.allocateBuffer(
+                verticesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
+                EnumSet.of(BufferProperties.DEVICE_LOCAL),
+            ).also { allocation ->
+                bufferManager.transferBuffer(stagingVertexBufferResource, allocation)
+            }
+
+        val stagingIndexBufferResource =
+            bufferManager.allocateBuffer(
+                indicesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_SRC),
+                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            ).also { allocation ->
+                bufferManager.uploadData(allocation, indicesBytes)
+            }
+
+        val indexBufferResource =
+            bufferManager.allocateBuffer(
+                indicesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
+                EnumSet.of(BufferProperties.DEVICE_LOCAL),
+            ).also { allocation ->
+                bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
+            }
+
+        return VulkanMesh(vertexBufferResource, indexBufferResource, indices.size)
+    }
+
+    override fun drawFrame(callback: (RenderingContext) -> Unit) = MemoryStack.stackPush().use { stack ->
         val frame = frames[currentFrameIndex]
         frame.syncObjects.waitForInFlightFence()
         val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
         frame.syncObjects.resetInFlightFence()
-        frame.draw(imageIndex, vertexBufferResource.buffer, indexBufferResource.buffer, indices.size)
+        frame.draw(imageIndex, callback)
         currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
     }
 
@@ -163,8 +146,6 @@ class VulkanRenderingSystem(
     override fun destroy() {
         vkDeviceWaitIdle(deviceManager.logicalDevice.handle)
             .validateVulkanSuccess()
-
-        MemoryUtil.memFree(verticesBytes)
 
         frames.forEach { frame ->
             frame.close()

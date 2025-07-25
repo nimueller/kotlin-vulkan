@@ -1,8 +1,9 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.vulkan.VulkanRenderingContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
@@ -63,27 +64,24 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChainImageIndex: Int, vertexBuffer: VkBuffer, indexBuffer: VkBuffer, indexCount: Int): Unit =
-        MemoryStack.stackPush().use { stack ->
-            vkResetCommandBuffer(commandBuffer.handle, 0)
+    fun draw(swapChainImageIndex: Int, callback: (RenderingContext) -> Unit) {
+        vkResetCommandBuffer(commandBuffer.handle, 0)
 
-            commandBuffer.startRecording()
-            val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
-            renderPass.start(commandBuffer, framebuffer)
-            logicalDevice.swapChain.recordCommands(
-                commandBuffer,
-                graphicsPipeline,
-                vertexBuffer,
-                indexBuffer,
-                indexCount,
-            )
-            renderPass.end(commandBuffer)
-            commandBuffer.endRecording()
+        commandBuffer.startRecording()
+        val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
+        renderPass.start(commandBuffer, framebuffer)
 
-            presentFrame(stack, logicalDevice.swapChain, swapChainImageIndex)
-        }
+        logicalDevice.swapChain.preparePipeline(commandBuffer, graphicsPipeline)
+        val renderingContext = VulkanRenderingContext(commandBuffer)
+        callback(renderingContext)
 
-    private fun presentFrame(stack: MemoryStack, swapChain: SwapChain, imageIndex: Int) {
+        renderPass.end(commandBuffer)
+        commandBuffer.endRecording()
+
+        presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+    }
+
+    private fun presentFrame(swapChain: SwapChain, imageIndex: Int) = MemoryStack.stackPush().use { stack ->
         val signalSemaphores = submitCommandBuffer(stack, imageIndex)
         val swapChains = stack.longs(swapChain.handle.value)
 

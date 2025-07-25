@@ -19,8 +19,8 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/anvil-app" />
             <option value="$PROJECT_DIR$/anvil-core" />
+            <option value="$PROJECT_DIR$/anvil-examples" />
             <option value="$PROJECT_DIR$/anvil-opengl" />
             <option value="$PROJECT_DIR$/anvil-vulkan" />
             <option value="$PROJECT_DIR$/build-logic" />
