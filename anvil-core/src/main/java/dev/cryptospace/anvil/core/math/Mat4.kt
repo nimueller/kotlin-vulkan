@@ -92,29 +92,51 @@ data class Mat4(
             row3 = Vec4(0f, 0f, 0f, 1f),
         )
 
-        fun lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
-            val zAxis = (target - eye).normalized()
-            val xAxis = (up cross zAxis).normalized()
-            val yAxis = zAxis cross xAxis
+        /**
+         * Creates a right-handed view matrix using OpenGL coordinate system conventions.
+         *
+         * In OpenGL's right-handed coordinate system:
+         * - Positive X points right
+         * - Positive Y points up
+         * - Negative Z points forward (into the screen)
+         *
+         * @param eye Position of the camera in world space
+         * @param target Position the camera is looking at in world space
+         * @param up Approximate up direction in world space (will be orthonormalized)
+         * @return View transformation matrix that transforms world space to view space
+         */
+        fun lookAtRH(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
+            val direction = (target - eye).normalized()
+            val left = (direction cross up).normalized()
+            val upNormalized = left cross direction
 
             return Mat4(
-                row0 = Vec4(xAxis.x, yAxis.x, zAxis.x, 0f),
-                row1 = Vec4(xAxis.y, yAxis.y, zAxis.y, 0f),
-                row2 = Vec4(xAxis.z, yAxis.z, zAxis.z, 0f),
-                row3 = Vec4(-(xAxis dot eye), -(yAxis dot eye), -(zAxis dot eye), 1f),
+                row0 = Vec4(x = left.x, y = left.y, z = left.z, w = -(left dot eye)),
+                row1 = Vec4(x = upNormalized.x, y = upNormalized.y, z = upNormalized.z, w = -(upNormalized dot eye)),
+                row2 = Vec4(x = -direction.x, y = -direction.y, z = -direction.z, w = (direction dot eye)),
+                row3 = Vec4(x = 0f, y = 0f, z = 0f, w = 1f),
             )
         }
 
-        fun perspective(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
+        /**
+         * Creates a perspective projection matrix using Vulkan's left-handed coordinate system.
+         *
+         * @param fov Vertical field of view in degrees
+         * @param aspectRatio Width divided by height of viewport
+         * @param near Distance to the near clipping plane
+         * @param far Distance to the far clipping plane
+         * @return Perspective projection matrix
+         */
+        fun perspectiveLH(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
             val focalLength = 1f / tan(Math.toRadians(fov.toDouble()).toFloat() / 2f)
-            val zScale = far / (far - near)
-            val zTranslation = -(near * far) / (far - near)
+            val zScale = far / (near - far)
+            val zTranslation = (near * far) / (near - far)
 
             return Mat4(
                 row0 = Vec4(focalLength / aspectRatio, 0f, 0f, 0f),
                 row1 = Vec4(0f, -focalLength, 0f, 0f),
                 row2 = Vec4(0f, 0f, zScale, zTranslation),
-                row3 = Vec4(0f, 0f, 1f, 0f),
+                row3 = Vec4(0f, 0f, -1f, 0f),
             )
         }
     }

@@ -27,6 +27,9 @@ private val indices = listOf(
     0.toShort(),
 )
 
+private var x = 0f
+private var z = 0f
+
 fun main() {
     println(
         (Mat4.identity.translate(Vec3(0f, 0f, 1f)) * Vec4(-0.5f, -0.5f, 0f, 1f)).toString(),
@@ -37,6 +40,22 @@ fun main() {
         MainLoop(engine).loop { timeSinceLastFrame, glfw, renderingContext ->
             updateUniformBufferObject(timeSinceLastFrame, renderingContext)
             renderingContext.drawMesh(mesh)
+
+            if (glfw.isKeyPressed(Key.A)) {
+                x -= 0.01f
+            }
+
+            if (glfw.isKeyPressed(Key.D)) {
+                x += 0.01f
+            }
+
+            if (glfw.isKeyPressed(Key.W)) {
+                z += 0.01f
+            }
+
+            if (glfw.isKeyPressed(Key.S)) {
+                z -= 0.01f
+            }
 
             if (glfw.isKeyPressed(Key.ESCAPE)) {
                 glfw.window.requestClose()
@@ -53,17 +72,14 @@ fun updateUniformBufferObject(timeSinceLastFrame: Long, renderingContext: Render
         (rotation + (timeSinceLastFrame.toFloat() / ROTATION_DURATION_NS) * 2f * Math.PI.toFloat()) %
         (2f * Math.PI.toFloat())
 
-    val projection = Mat4.perspective(
+    val model = Mat4.identity.translate(Vec3(0f, 0f, -3f))
+    val view = Mat4.lookAtRH(Vec3(x, 0f, z), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
+    val projection = Mat4.perspectiveLH(
         45f,
         16f / 9f,
         0.1f,
         100f,
     )
-
-    val model = Mat4.identity
-    val view = Mat4.identity
-
-    println(projection * view * model * Vec4(0f, 0f, 1.5f, 1f))
 
     renderingContext.uniformBufferObject = UniformBufferObject(
         model,

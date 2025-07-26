@@ -29,7 +29,7 @@ class Mat4Test {
         val center = Vec3(0f, 0f, 0f)
         val up = Vec3(0f, 1f, 0f)
 
-        val result = Mat4.lookAt(eye, center, up)
+        val result = Mat4.lookAtRH(eye, center, up)
 
         assertEquals(1f, result[0, 0], 0.0001f)
         assertEquals(0f, result[0, 1], 0.0001f)
