@@ -49,7 +49,7 @@ data class DescriptorSetLayout(
                 }
 
                 val pSetLayout = stack.mallocLong(1)
-                vkCreateDescriptorSetLayout(logicalDevice.handle, createInfo, null, stack.mallocLong(1))
+                vkCreateDescriptorSetLayout(logicalDevice.handle, createInfo, null, pSetLayout)
                     .validateVulkanSuccess("Create descriptor set layout", "Failed to create descriptor set layout")
                 VkDescriptorSetLayout(pSetLayout[0])
             }

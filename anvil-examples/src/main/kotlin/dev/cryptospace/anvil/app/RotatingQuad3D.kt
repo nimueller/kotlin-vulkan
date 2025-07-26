@@ -41,14 +41,24 @@ fun main() {
     }
 }
 
+private const val ROTATION_DURATION_NS = 10_000_000L
+private var rotation = 0f
+
 fun updateUniformBufferObject(timeSinceLastFrame: Long, renderingContext: RenderingContext) {
-    val model = Mat4.identity.rotate(timeSinceLastFrame * Math.toRadians(90.0).toFloat(), Vec3.forward)
-    val view = Mat4.identity.lookAt(Vec3(2f, 2f, 2f), Vec3.zero, Vec3.forward)
     val projection = Mat4.perspective(
         45f,
         renderingContext.width.toFloat() / renderingContext.height.toFloat(),
         0.1f,
         100f,
     )
-    renderingContext.uniformBufferObject = UniformBufferObject(model, view, projection)
+
+    rotation =
+        (rotation + (timeSinceLastFrame.toFloat() / ROTATION_DURATION_NS) * 2f * Math.PI.toFloat()) %
+        (2f * Math.PI.toFloat())
+
+    renderingContext.uniformBufferObject = UniformBufferObject(
+        Mat4.identity,
+        Mat4.identity,
+        projection,
+    )
 }

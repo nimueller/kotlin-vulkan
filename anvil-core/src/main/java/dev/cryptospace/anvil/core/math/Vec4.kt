@@ -19,9 +19,9 @@ data class Vec4(
         byteBuffer.putFloat(w)
     }
 
-    operator fun times(scalar: Float): Vec4 = Vec4(x * scalar, y * scalar, z * scalar, w * scalar)
+    infix fun dot(other: Vec4): Float = x * other.x + y * other.y + z * other.z + w * other.w
 
-    operator fun times(other: Vec4): Vec4 = Vec4(x * other.x, y * other.y, z * other.z, w * other.w)
+    operator fun times(scalar: Float): Vec4 = Vec4(x * scalar, y * scalar, z * scalar, w * scalar)
 
     operator fun div(scalar: Float): Vec4 = Vec4(x / scalar, y / scalar, z / scalar, w / scalar)
 
@@ -30,6 +30,14 @@ data class Vec4(
     operator fun minus(other: Vec4): Vec4 = Vec4(x - other.x, y - other.y, z - other.z, w - other.w)
 
     operator fun unaryMinus(): Vec4 = Vec4(-x, -y, -z, -w)
+
+    operator fun get(index: Int): Float = when (index) {
+        0 -> x
+        1 -> y
+        2 -> z
+        3 -> w
+        else -> throw IndexOutOfBoundsException("index must be in range [0, 3]")
+    }
 
     companion object {
 

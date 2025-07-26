@@ -52,25 +52,20 @@ data class Mat4(
         )
     }
 
-    fun lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
-        val forward = (target - eye).normalized()
-        val right = (forward cross up).normalized()
-        val upward = right cross forward
-
-        return Mat4(
-            Vec4(right.x, upward.x, -forward.x, 0f),
-            Vec4(right.y, upward.y, -forward.y, 0f),
-            Vec4(right.z, upward.z, -forward.z, 0f),
-            Vec4(-right.dot(eye), -upward.dot(eye), forward.dot(eye), 1f),
-        )
-    }
-
     operator fun times(other: Mat4): Mat4 = Mat4(
-        row0 = row0 * other.row0,
-        row1 = row1 * other.row1,
-        row2 = row2 * other.row2,
-        row3 = row3 * other.row3,
+        row0 = Vec4(row0.dot(other.column0), row0.dot(other.column1), row0.dot(other.column2), row0.dot(other.column3)),
+        row1 = Vec4(row1.dot(other.column0), row1.dot(other.column1), row1.dot(other.column2), row1.dot(other.column3)),
+        row2 = Vec4(row2.dot(other.column0), row2.dot(other.column1), row2.dot(other.column2), row2.dot(other.column3)),
+        row3 = Vec4(row3.dot(other.column0), row3.dot(other.column1), row3.dot(other.column2), row3.dot(other.column3)),
     )
+
+    operator fun get(row: Int, column: Int): Float = when (row) {
+        0 -> row0[column]
+        1 -> row1[column]
+        2 -> row2[column]
+        3 -> row3[column]
+        else -> throw IndexOutOfBoundsException("row must be in range [0, 3]")
+    }
 
     companion object {
 
@@ -82,6 +77,24 @@ data class Mat4(
             row2 = Vec4(0f, 0f, 1f, 0f),
             row3 = Vec4(0f, 0f, 0f, 1f),
         )
+
+        fun lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
+            val dir = (eye - target).normalized()
+            val left = (up cross dir).normalized()
+            val upn = dir cross left
+
+            return Mat4(
+                row0 = Vec4(left.x, left.y, left.z, 0f),
+                row1 = Vec4(upn.x, upn.y, upn.z, 0f),
+                row2 = Vec4(dir.x, dir.y, dir.z, 0f),
+                row3 = Vec4(
+                    -(left.x * eye.x + left.y * eye.y + left.z * eye.z),
+                    -(upn.x * eye.x + upn.y * eye.y + upn.z * eye.z),
+                    -(dir.x * eye.x + dir.y * eye.y + dir.z * eye.z),
+                    1f,
+                ),
+            )
+        }
 
         fun perspective(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
             val tanHalfFov = tan(fov / 2f)

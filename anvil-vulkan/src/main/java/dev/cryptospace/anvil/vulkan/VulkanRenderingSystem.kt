@@ -14,14 +14,18 @@ import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.graphics.Frame
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
+import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
+import org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
+import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.util.EnumSet
 
 /**
@@ -48,14 +52,43 @@ class VulkanRenderingSystem(
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
 
+    private val descriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
+        val logicalDevice = deviceManager.logicalDevice
+
+        val pDescriptorPools = stack.mallocLong(1)
+        pDescriptorPools.put(0, logicalDevice.descriptorPool.handle.value)
+
+        val setLayouts = stack.mallocLong(FRAMES_IN_FLIGHT)
+
+        for (i in 0 until FRAMES_IN_FLIGHT) {
+            setLayouts.put(logicalDevice.descriptorSetLayout.handle.value)
+        }
+
+        setLayouts.flip()
+
+        val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
+            sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+            descriptorPool(pDescriptorPools[0])
+            pSetLayouts(setLayouts)
+        }
+
+        val pDescriptorSets = stack.mallocLong(FRAMES_IN_FLIGHT)
+        vkAllocateDescriptorSets(logicalDevice.handle, setAllocateInfo, pDescriptorSets)
+            .validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
+        List(FRAMES_IN_FLIGHT) {
+            VkDescriptorSet(pDescriptorSets[it])
+        }
+    }
+
     /**
      * List of frames used for double buffering rendering operations.
      * Contains 2 frames that are used alternatively to allow concurrent CPU and GPU operations,
      * where one frame can be rendered while another is being prepared.
      * Each frame manages its own command buffers and synchronization objects.
      */
-    private val frames = List(2) {
-        Frame(deviceManager.logicalDevice, bufferManager)
+    private val frames = List(FRAMES_IN_FLIGHT) { index ->
+        val descriptorSet = descriptorSets[index]
+        Frame(deviceManager.logicalDevice, bufferManager, descriptorSet)
     }
 
     private var currentFrameIndex = 0
@@ -163,5 +196,7 @@ class VulkanRenderingSystem(
 
         @JvmStatic
         private val logger = logger<VulkanRenderingSystem>()
+
+        const val FRAMES_IN_FLIGHT = 2
     }
 }

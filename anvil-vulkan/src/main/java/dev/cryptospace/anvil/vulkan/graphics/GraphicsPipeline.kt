@@ -79,9 +79,13 @@ data class GraphicsPipeline(
          */
         private fun createGraphicsPipelineLayout(logicalDevice: LogicalDevice): VkPipelineLayout =
             MemoryStack.stackPush().use { stack ->
+                val setLayouts = stack.callocLong(1)
+                    .put(logicalDevice.descriptorSetLayout.handle.value)
+                    .flip()
+
                 val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                    pSetLayouts(null)
+                    pSetLayouts(setLayouts)
                     pPushConstantRanges(null)
                 }
 

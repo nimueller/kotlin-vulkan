@@ -9,17 +9,25 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
+import org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets
 import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
+import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
+import org.lwjgl.vulkan.VkDescriptorBufferInfo
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
+import org.lwjgl.vulkan.VkWriteDescriptorSet
 import java.nio.LongBuffer
 import java.util.EnumSet
 
@@ -45,6 +53,7 @@ import java.util.EnumSet
 class Frame(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
+    private val descriptorSet: VkDescriptorSet,
 ) : NativeResource() {
 
     private val renderPass: RenderPass = logicalDevice.renderPass
@@ -74,6 +83,36 @@ class Frame(
 
     private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
 
+    init {
+        MemoryStack.stackPush().use { stack ->
+            val descriptorBufferInfo = VkDescriptorBufferInfo.calloc(stack)
+                .offset(0)
+                .range(UniformBufferObject.BYTE_SIZE.toLong())
+                .buffer(uniformBuffer.buffer.value)
+
+            val descriptorBufferInfos = VkDescriptorBufferInfo.calloc(1, stack)
+                .put(descriptorBufferInfo)
+                .flip()
+
+            val writeDescriptorSet = VkWriteDescriptorSet.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                .dstSet(descriptorSet.value)
+                .dstBinding(0)
+                .dstArrayElement(0)
+                .descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                .descriptorCount(1)
+                .pBufferInfo(descriptorBufferInfos)
+                .pImageInfo(null)
+                .pTexelBufferView(null)
+
+            val writeDescriptorSets = VkWriteDescriptorSet.calloc(1, stack)
+                .put(writeDescriptorSet)
+                .flip()
+
+            vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSets, null)
+        }
+    }
+
     /**
      * Executes the frame's drawing operations and presents the result to the screen.
      *
@@ -84,7 +123,7 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChainImageIndex: Int, callback: (RenderingContext) -> Unit) {
+    fun draw(swapChainImageIndex: Int, callback: (RenderingContext) -> Unit) = MemoryStack.stackPush().use { stack ->
         vkResetCommandBuffer(commandBuffer.handle, 0)
 
         commandBuffer.startRecording()
@@ -92,6 +131,14 @@ class Frame(
         renderPass.start(commandBuffer, framebuffer)
 
         logicalDevice.swapChain.preparePipeline(commandBuffer, graphicsPipeline)
+        vkCmdBindDescriptorSets(
+            commandBuffer.handle,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            graphicsPipeline.pipelineLayoutHandle.value,
+            0,
+            stack.longs(descriptorSet.value),
+            null,
+        )
 
         val renderingContext = VulkanRenderingContext(logicalDevice, commandBuffer)
         callback(renderingContext)
