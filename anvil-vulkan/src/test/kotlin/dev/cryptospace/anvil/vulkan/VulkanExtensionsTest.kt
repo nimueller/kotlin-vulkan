@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
+import dev.cryptospace.anvil.vulkan.exception.VulkanUnknownException
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertThrows
 import org.lwjgl.system.MemoryStack
@@ -76,8 +77,8 @@ class VulkanExtensionsTest {
     }
 
     @Test
-    fun `getVulkanPointerBuffer throws on error code`() {
-        assertThrows(IllegalStateException::class.java) {
+    fun `getVulkanPointerBuffer should throw on error code`() {
+        assertThrows(VulkanUnknownException::class.java) {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanPointerBuffer { _, _ -> VK_ERROR_UNKNOWN }
             }
@@ -115,8 +116,8 @@ class VulkanExtensionsTest {
     }
 
     @Test
-    fun `getVulkanBuffer throws on error code`() {
-        assertThrows(IllegalStateException::class.java) {
+    fun `getVulkanBuffer should throw on error code`() {
+        assertThrows(VulkanUnknownException::class.java) {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanIntBuffer { _, _ -> VK_ERROR_UNKNOWN }
             }
@@ -124,7 +125,7 @@ class VulkanExtensionsTest {
     }
 
     @Test
-    fun `getVulkanBuffer for StructBuffer returns empty buffer if count is zero`() {
+    fun `getVulkanBuffer for StructBuffer should return empty buffer if count is zero`() {
         val buffer = MemoryStack.stackPush().use { stack ->
             stack.queryVulkanBuffer(
                 bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(0)) },
@@ -137,7 +138,7 @@ class VulkanExtensionsTest {
     }
 
     @Test
-    fun `getVulkanBuffer for StructBuffer returns filled buffer`() {
+    fun `getVulkanBuffer for StructBuffer should return filled buffer`() {
         val buffer = MemoryStack.stackPush().use { stack ->
             stack.queryVulkanBuffer(
                 bufferInitializer = { size -> DummyStruct.Buffer(ByteBuffer.allocateDirect(size)) },
@@ -153,8 +154,8 @@ class VulkanExtensionsTest {
     }
 
     @Test
-    fun `getVulkanBuffer for StructBuffer throws on error code`() {
-        assertThrows(IllegalStateException::class.java) {
+    fun `getVulkanBuffer for StructBuffer should throw on error code`() {
+        assertThrows(VulkanUnknownException::class.java) {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanBuffer(
                     bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(0)) },
