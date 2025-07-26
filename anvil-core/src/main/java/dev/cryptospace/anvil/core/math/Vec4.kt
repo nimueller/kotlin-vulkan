@@ -9,6 +9,13 @@ data class Vec4(
     val w: Float,
 ) : NativeBuffer {
 
+    constructor(vec3: Vec3, w: Float) : this(
+        vec3.x,
+        vec3.y,
+        vec3.z,
+        w,
+    )
+
     override val byteSize: Int
         get() = BYTE_SIZE
 

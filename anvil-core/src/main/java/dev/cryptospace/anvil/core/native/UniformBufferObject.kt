@@ -10,7 +10,8 @@ data class UniformBufferObject(
     val projection: Mat4,
 ) : NativeBuffer {
 
-    override val byteSize: Int = BYTE_SIZE
+    override val byteSize: Int
+        get() = BYTE_SIZE
 
     override fun toByteBuffer(byteBuffer: ByteBuffer) {
         model.toByteBuffer(byteBuffer)

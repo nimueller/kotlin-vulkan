@@ -80,7 +80,7 @@ object GlfwFactory {
         glfwDefaultWindowHints()
         glfwWindowHint(GLFW_CLIENT_API, clientApi)
 
-        val windowHandle = glfwCreateWindow(800, 600, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
+        val windowHandle = glfwCreateWindow(1200, 900, "Hello World", MemoryUtil.NULL, MemoryUtil.NULL)
         glfwShowWindow(windowHandle)
         check(windowHandle != MemoryUtil.NULL) { "Unable to create window" }
         return Window(Handle(windowHandle))

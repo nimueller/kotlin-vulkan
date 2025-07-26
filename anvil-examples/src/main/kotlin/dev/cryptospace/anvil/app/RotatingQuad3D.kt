@@ -5,6 +5,7 @@ import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
+import dev.cryptospace.anvil.core.math.Vec4
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -27,6 +28,9 @@ private val indices = listOf(
 )
 
 fun main() {
+    println(
+        (Mat4.identity.translate(Vec3(0f, 0f, 1f)) * Vec4(-0.5f, -0.5f, 0f, 1f)).toString(),
+    )
     VulkanEngine().use { engine ->
         val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
 
@@ -45,20 +49,25 @@ private const val ROTATION_DURATION_NS = 10_000_000L
 private var rotation = 0f
 
 fun updateUniformBufferObject(timeSinceLastFrame: Long, renderingContext: RenderingContext) {
-    val projection = Mat4.perspective(
-        45f,
-        renderingContext.width.toFloat() / renderingContext.height.toFloat(),
-        0.1f,
-        100f,
-    )
-
     rotation =
         (rotation + (timeSinceLastFrame.toFloat() / ROTATION_DURATION_NS) * 2f * Math.PI.toFloat()) %
         (2f * Math.PI.toFloat())
 
+    val projection = Mat4.perspective(
+        45f,
+        16f / 9f,
+        0.1f,
+        100f,
+    )
+
+    val model = Mat4.identity
+    val view = Mat4.identity
+
+    println(projection * view * model * Vec4(0f, 0f, 1.5f, 1f))
+
     renderingContext.uniformBufferObject = UniformBufferObject(
-        Mat4.identity,
-        Mat4.identity,
+        model,
+        view,
         projection,
     )
 }
