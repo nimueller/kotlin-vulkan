@@ -105,7 +105,7 @@ data class Mat4(
          * @param up Approximate up direction in world space (will be orthonormalized)
          * @return View transformation matrix that transforms world space to view space
          */
-        fun lookAtRH(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
+        fun lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
             val direction = (target - eye).normalized()
             val left = (direction cross up).normalized()
             val upNormalized = left cross direction
@@ -119,15 +119,46 @@ data class Mat4(
         }
 
         /**
-         * Creates a perspective projection matrix using Vulkan's left-handed coordinate system.
+         * Creates a perspective projection matrix for OpenGL using a right-handed coordinate system,
+         * where the camera looks down the -Z axis.
+         *
+         * The resulting matrix maps depth to OpenGL's clip space (Z from -1 to 1).
          *
          * @param fov Vertical field of view in degrees
          * @param aspectRatio Width divided by height of viewport
          * @param near Distance to the near clipping plane
          * @param far Distance to the far clipping plane
-         * @return Perspective projection matrix
+         * @return OpenGL-compatible perspective projection matrix (right-handed view, depth -1..1)
          */
-        fun perspectiveLH(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
+        fun perspectiveOpenGL(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
+            val focalLength = 1f / tan(Math.toRadians(fov.toDouble()).toFloat() / 2f)
+            val zScale = (far + near) / (far - near)
+            val zTranslation = 2f * far * near / (far - near)
+
+            return Mat4(
+                row0 = Vec4(x = focalLength / aspectRatio, y = 0f, z = 0f, w = 0f),
+                row1 = Vec4(x = 0f, y = focalLength, z = 0f, w = 0f),
+                row2 = Vec4(x = 0f, y = 0f, z = zScale, w = -1f),
+                row3 = Vec4(x = 0f, y = 0f, z = zTranslation, w = 0f),
+            )
+        }
+
+        /**
+         * Creates a perspective projection matrix for Vulkan using a right-handed coordinate system,
+         * where the camera looks down the -Z axis (OpenGL-style).
+         *
+         * The resulting matrix maps depth to Vulkan's clip space (Z from 0 to 1).
+         *
+         * **Note:** The Y axis is flipped (negative focal length) to account for Vulkan's
+         * coordinate system, where the origin is in the top-left and Y points down in NDC.
+         *
+         * @param fov Vertical field of view in degrees
+         * @param aspectRatio Width divided by height of viewport
+         * @param near Distance to the near clipping plane
+         * @param far Distance to the far clipping plane
+         * @return Vulkan-compatible perspective projection matrix (right-handed view, depth 0..1)
+         */
+        fun perspectiveVulkan(fov: Float, aspectRatio: Float, near: Float, far: Float): Mat4 {
             val focalLength = 1f / tan(Math.toRadians(fov.toDouble()).toFloat() / 2f)
             val zScale = far / (near - far)
             val zTranslation = (near * far) / (near - far)

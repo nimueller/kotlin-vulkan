@@ -73,8 +73,8 @@ fun updateUniformBufferObject(timeSinceLastFrame: Long, renderingContext: Render
         (2f * Math.PI.toFloat())
 
     val model = Mat4.identity.translate(Vec3(0f, 0f, -3f))
-    val view = Mat4.lookAtRH(Vec3(x, 0f, z), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
-    val projection = Mat4.perspectiveLH(
+    val view = Mat4.lookAt(Vec3(x, 0f, z), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
+    val projection = Mat4.perspectiveVulkan(
         45f,
         16f / 9f,
         0.1f,
