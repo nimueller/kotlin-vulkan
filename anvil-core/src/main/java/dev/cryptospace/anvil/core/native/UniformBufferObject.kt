@@ -22,5 +22,11 @@ data class UniformBufferObject(
     companion object {
 
         const val BYTE_SIZE = 3 * Mat4.BYTE_SIZE
+
+        val identity = UniformBufferObject(
+            model = Mat4.identity,
+            view = Mat4.identity,
+            projection = Mat4.identity,
+        )
     }
 }

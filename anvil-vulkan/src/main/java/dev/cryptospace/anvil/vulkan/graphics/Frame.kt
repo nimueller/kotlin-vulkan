@@ -152,7 +152,7 @@ class Frame(
     }
 
     private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
-        renderingContext.uniformBufferObject?.let { uniformBufferObject ->
+        renderingContext.uniformBufferObject.let { uniformBufferObject ->
             MemoryStack.stackPush().use { stack ->
                 val data = uniformBufferObject.toByteBuffer(stack)
                 val dataAddress = MemoryUtil.memAddress(data)

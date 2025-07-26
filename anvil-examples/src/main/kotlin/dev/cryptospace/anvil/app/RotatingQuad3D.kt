@@ -5,7 +5,6 @@ import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.math.Vec4
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -31,9 +30,6 @@ private var x = 0f
 private var z = 0f
 
 fun main() {
-    println(
-        (Mat4.identity.translate(Vec3(0f, 0f, 1f)) * Vec4(-0.5f, -0.5f, 0f, 1f)).toString(),
-    )
     VulkanEngine().use { engine ->
         val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
 

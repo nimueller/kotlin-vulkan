@@ -22,7 +22,7 @@ class VulkanRenderingContext(
     override val height: Int
         get() = logicalDevice.swapChain.extent.height()
 
-    override var uniformBufferObject: UniformBufferObject? = null
+    override var uniformBufferObject: UniformBufferObject = UniformBufferObject.identity
 
     override fun drawMesh(mesh: Mesh) {
         require(mesh is VulkanMesh) { "Only VulkanMesh is supported" }

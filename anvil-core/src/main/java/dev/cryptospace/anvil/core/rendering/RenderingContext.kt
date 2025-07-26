@@ -8,7 +8,7 @@ interface RenderingContext {
 
     val height: Int
 
-    var uniformBufferObject: UniformBufferObject?
+    var uniformBufferObject: UniformBufferObject
 
     fun drawMesh(mesh: Mesh)
 }
