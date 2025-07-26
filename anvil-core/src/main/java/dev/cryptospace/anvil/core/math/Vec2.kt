@@ -7,7 +7,8 @@ data class Vec2(
     val y: Float,
 ) : NativeBuffer {
 
-    override val byteSize: Int = BYTE_SIZE
+    override val byteSize: Int
+        get() = BYTE_SIZE
 
     override fun toByteBuffer(byteBuffer: ByteBuffer) {
         byteBuffer.putFloat(x)

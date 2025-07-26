@@ -55,7 +55,7 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames = List(2) {
-        Frame(deviceManager.logicalDevice)
+        Frame(deviceManager.logicalDevice, bufferManager)
     }
 
     private var currentFrameIndex = 0

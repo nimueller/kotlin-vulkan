@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
+import dev.cryptospace.anvil.vulkan.graphics.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
@@ -44,6 +45,8 @@ data class LogicalDevice(
 
     val renderPass: RenderPass = RenderPass(this)
 
+    val descriptorSetLayout: DescriptorSetLayout = DescriptorSetLayout(this)
+
     val graphicsPipeline: GraphicsPipeline = GraphicsPipeline(this, renderPass)
 
     /**
@@ -70,6 +73,7 @@ data class LogicalDevice(
         commandPool.close()
         swapChain.close()
         graphicsPipeline.close()
+        descriptorSetLayout.close()
         renderPass.close()
 
         vkDestroyDevice(handle, null)

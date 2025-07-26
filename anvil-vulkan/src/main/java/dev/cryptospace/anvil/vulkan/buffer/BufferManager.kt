@@ -156,6 +156,28 @@ class BufferManager(
         }
     }
 
+    /**
+     * Maps the buffer memory and returns a pointer to the mapped memory region.
+     *
+     * @param allocation The buffer allocation to map memory from
+     * @return A native memory pointer to the mapped region
+     */
+    fun getPointer(allocation: BufferAllocation): Long {
+        MemoryStack.stackPush().use { stack ->
+            val pMemory = stack.mallocPointer(1)
+            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, allocation.size, 0, pMemory)
+            val pointer = pMemory[0]
+            return pointer
+        }
+    }
+
+    /**
+     * Copies data from one buffer to another using a command buffer.
+     *
+     * @param source The source buffer allocation to copy from
+     * @param destination The destination buffer allocation to copy to
+     * @throws IllegalStateException If source and destination buffer sizes don't match
+     */
     fun transferBuffer(source: BufferAllocation, destination: BufferAllocation) {
         check(source.size == destination.size) {
             error("Buffer size mismatch: expected ${source.size} but was ${destination.size}")

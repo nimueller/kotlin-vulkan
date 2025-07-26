@@ -1,11 +1,17 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanRenderingContext
+import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
+import dev.cryptospace.anvil.vulkan.buffer.BufferManager
+import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
+import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -15,6 +21,7 @@ import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
 import java.nio.LongBuffer
+import java.util.EnumSet
 
 /**
  * Represents a single frame in the rendering pipeline, managing command buffers and synchronization objects.
@@ -37,6 +44,7 @@ import java.nio.LongBuffer
  */
 class Frame(
     private val logicalDevice: LogicalDevice,
+    private val bufferManager: BufferManager,
 ) : NativeResource() {
 
     private val renderPass: RenderPass = logicalDevice.renderPass
@@ -53,6 +61,18 @@ class Frame(
         logicalDevice = logicalDevice,
         imageCount = imageCount,
     )
+
+    private val uniformBuffer: BufferAllocation =
+        bufferManager.allocateBuffer(
+            size = UniformBufferObject.BYTE_SIZE.toLong(),
+            usage = EnumSet.of(BufferUsage.UNIFORM_BUFFER),
+            properties = EnumSet.of(
+                BufferProperties.HOST_VISIBLE,
+                BufferProperties.HOST_COHERENT,
+            ),
+        )
+
+    private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
 
     /**
      * Executes the frame's drawing operations and presents the result to the screen.
@@ -72,13 +92,26 @@ class Frame(
         renderPass.start(commandBuffer, framebuffer)
 
         logicalDevice.swapChain.preparePipeline(commandBuffer, graphicsPipeline)
-        val renderingContext = VulkanRenderingContext(commandBuffer)
+
+        val renderingContext = VulkanRenderingContext(logicalDevice, commandBuffer)
         callback(renderingContext)
+
+        updateUniformBuffer(renderingContext)
 
         renderPass.end(commandBuffer)
         commandBuffer.endRecording()
 
         presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+    }
+
+    private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
+        renderingContext.uniformBufferObject?.let { uniformBufferObject ->
+            MemoryStack.stackPush().use { stack ->
+                val data = uniformBufferObject.toByteBuffer(stack)
+                val dataAddress = MemoryUtil.memAddress(data)
+                MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
+            }
+        }
     }
 
     private fun presentFrame(swapChain: SwapChain, imageIndex: Int) = MemoryStack.stackPush().use { stack ->
