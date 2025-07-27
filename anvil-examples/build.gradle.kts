@@ -51,6 +51,6 @@ fun ExternalModuleDependency.natives() {
 }
 
 application {
-    mainClass.set("dev.cryptospace.anvil.app.Triangle2DKt")
-    applicationDefaultJvmArgs = listOf("-Duse-validation-layers", "-Duse-x11")
+    mainClass.set("dev.cryptospace.anvil.app.RotatingQuad3DKt")
+    applicationDefaultJvmArgs = listOf("-Duse-validation-layers")
 }

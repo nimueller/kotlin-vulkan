@@ -107,6 +107,7 @@ class VulkanContext(
             appInfo: VkApplicationInfo,
         ): VkInstanceCreateInfo {
             val additionalExtensions = getAdditionalVulkanExtensions()
+            logger.info("Using extensions: ${surfaceExtensions + additionalExtensions}")
 
             val extensions = stack.callocPointer(surfaceExtensions.size + additionalExtensions.size)
             extensions.putAllStrings(stack, surfaceExtensions)

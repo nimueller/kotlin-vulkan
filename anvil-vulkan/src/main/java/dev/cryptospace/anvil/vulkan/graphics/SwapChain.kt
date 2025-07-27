@@ -278,6 +278,10 @@ data class SwapChain(
             val graphicsQueueFamilyIndex = deviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex
             val presentQueueFamilyIndex = deviceSurfaceInfo.presentQueueFamilyIndex
 
+            // TODO would be nice to make VSync configurable in the future,
+            //  like selecting between triple-buffering (MAILBOX; if supported), double-buffering (FIFO) or no v-sync (IMMEDIATE)
+            val presentMode = swapChainDetails.bestPresentMode.vulkanValue
+
             sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
             surface(surface.handle.value)
             minImageCount(imageCount)
@@ -299,9 +303,13 @@ data class SwapChain(
 
             preTransform(surfaceCapabilities.currentTransform())
             compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
-            presentMode(swapChainDetails.bestPresentMode.vulkanValue)
+            presentMode(presentMode)
             clipped(true)
             oldSwapchain(VK_NULL_HANDLE)
+
+            logger.info(
+                "Created swap chain with present mode: ${swapChainDetails.bestPresentMode.name} and image count: $imageCount",
+            )
         }
     }
 }

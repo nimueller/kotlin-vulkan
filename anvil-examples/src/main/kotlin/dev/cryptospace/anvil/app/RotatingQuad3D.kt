@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.app
 
+import dev.cryptospace.anvil.core.DeltaTime
 import dev.cryptospace.anvil.core.MainLoop
 import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
@@ -27,14 +28,14 @@ private val indices = listOf(
 )
 
 private var x = 0f
-private var z = 0f
+private var z = 3f
 
 fun main() {
     VulkanEngine().use { engine ->
         val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
 
-        MainLoop(engine).loop { timeSinceLastFrame, glfw, renderingContext ->
-            updateUniformBufferObject(timeSinceLastFrame, renderingContext)
+        MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
+            updateUniformBufferObject(deltaTime, renderingContext)
             renderingContext.drawMesh(mesh)
 
             if (glfw.isKeyPressed(Key.A)) {
@@ -45,11 +46,11 @@ fun main() {
                 x += 0.01f
             }
 
-            if (glfw.isKeyPressed(Key.W)) {
+            if (glfw.isKeyPressed(Key.S)) {
                 z += 0.01f
             }
 
-            if (glfw.isKeyPressed(Key.S)) {
+            if (glfw.isKeyPressed(Key.W)) {
                 z -= 0.01f
             }
 
@@ -60,19 +61,20 @@ fun main() {
     }
 }
 
-private const val ROTATION_DURATION_NS = 10_000_000L
-private var rotation = 0f
+private const val ROTATION_DEGREES_PER_SECOND: Float = 90f
+private var rotationInDegrees: Double = 0.0
 
-fun updateUniformBufferObject(timeSinceLastFrame: Long, renderingContext: RenderingContext) {
-    rotation =
-        (rotation + (timeSinceLastFrame.toFloat() / ROTATION_DURATION_NS) * 2f * Math.PI.toFloat()) %
-        (2f * Math.PI.toFloat())
+fun updateUniformBufferObject(deltaTime: DeltaTime, renderingContext: RenderingContext) {
+    val deltaRotation = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
+    print("\r ${(deltaTime.seconds * 1_000_000_000).toInt()}\t $deltaRotation")
+    rotationInDegrees += deltaRotation.toLong()
+    rotationInDegrees %= 360.0
 
-    val model = Mat4.identity.translate(Vec3(0f, 0f, -3f))
+    val model = Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
     val view = Mat4.lookAt(Vec3(x, 0f, z), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
     val projection = Mat4.perspectiveVulkan(
         45f,
-        16f / 9f,
+        renderingContext.width.toFloat() / renderingContext.height.toFloat(),
         0.1f,
         100f,
     )

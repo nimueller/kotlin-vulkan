@@ -4,10 +4,10 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
+import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
 import org.lwjgl.vulkan.VK10.VK_FALSE
-import org.lwjgl.vulkan.VK10.VK_SUCCESS
 
 /**
  * Represents the relationship between a physical device (GPU) and a surface in Vulkan.
@@ -37,13 +37,15 @@ data class PhysicalDeviceSurfaceInfo(
             val presentSupport = stack.mallocInt(1)
 
             physicalDevice.queueFamilies.forEachIndexed { index, _ ->
-                val result = vkGetPhysicalDeviceSurfaceSupportKHR(
+                vkGetPhysicalDeviceSurfaceSupportKHR(
                     physicalDevice.handle,
                     index,
                     surface.handle.value,
                     presentSupport,
+                ).validateVulkanSuccess(
+                    "Query device surface support",
+                    "Failed to query for surface support capabilities for queue family index: $index",
                 )
-                check(result == VK_SUCCESS) { "Failed to query for surface support capabilities" }
 
                 if (presentSupport[0] != VK_FALSE) {
                     return@use index

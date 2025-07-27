@@ -5,6 +5,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
 
+/**
+ * A 4x4 matrix that stores data in row-major order for more natural and intuitive matrix operations.
+ *
+ * The matrix is stored internally using four Vec4 objects representing rows, making operations like
+ * matrix multiplication and transformations more straightforward. However, when writing to byte
+ * buffers (e.g., for graphics APIs), the data can be automatically converted to column-major order
+ * as required by OpenGL and Vulkan.
+ *
+ * This dual representation allows for natural mathematical operations while maintaining compatibility
+ * with graphics APIs that expect column-major data.
+ */
 data class Mat4(
     val row0: Vec4,
     val row1: Vec4,
@@ -21,26 +32,59 @@ data class Mat4(
         get() = BYTE_SIZE
 
     override fun toByteBuffer(byteBuffer: ByteBuffer) {
-        column0.toByteBuffer(byteBuffer)
-        column1.toByteBuffer(byteBuffer)
-        column2.toByteBuffer(byteBuffer)
-        column3.toByteBuffer(byteBuffer)
+        toByteBuffer(byteBuffer, columnMajor = true)
     }
 
-    fun transpose(): Mat4 = Mat4(
-        row0 = Vec4(row0.x, row1.x, row2.x, row3.x),
-        row1 = Vec4(row0.y, row1.y, row2.y, row3.y),
-        row2 = Vec4(row0.z, row1.z, row2.z, row3.z),
-        row3 = Vec4(row0.w, row1.w, row2.w, row3.w),
-    )
+    /**
+     * Writes the matrix data to a ByteBuffer in either column-major or row-major order.
+     *
+     * @param byteBuffer The buffer to write the matrix data into
+     * @param columnMajor If true, writes data in column-major order (default for OpenGL/Vulkan).
+     *                    If false, writes in row-major order.
+     */
+    fun toByteBuffer(byteBuffer: ByteBuffer, columnMajor: Boolean) {
+        if (columnMajor) {
+            column0.toByteBuffer(byteBuffer)
+            column1.toByteBuffer(byteBuffer)
+            column2.toByteBuffer(byteBuffer)
+            column3.toByteBuffer(byteBuffer)
+        } else {
+            row0.toByteBuffer(byteBuffer)
+            row1.toByteBuffer(byteBuffer)
+            row2.toByteBuffer(byteBuffer)
+            row3.toByteBuffer(byteBuffer)
+        }
+    }
 
-    fun translate(translation: Vec3): Mat4 = Mat4(
+    fun translate(translation: Vec3): Mat4 = translate(Vec4(translation, 1f))
+
+    fun translate(translation: Vec4): Mat4 = Mat4(
         row0 = Vec4(row0.x, row0.y, row0.z, row0.w + translation.x),
         row1 = Vec4(row1.x, row1.y, row1.z, row1.w + translation.y),
         row2 = Vec4(row2.x, row2.y, row2.z, row2.w + translation.z),
-        row3 = row3,
+        row3 = Vec4(row3.x, row3.y, row3.z, row3.w + translation.w),
     )
 
+    fun scale(scale: Vec3): Mat4 = scale(Vec4(scale, 1f))
+
+    fun scale(scale: Vec4): Mat4 = Mat4(
+        row0 = Vec4(row0.x * scale.x, row0.y * scale.y, row0.z * scale.z, row0.w),
+        row1 = Vec4(row1.x * scale.x, row1.y * scale.y, row1.z * scale.z, row1.w),
+        row2 = Vec4(row2.x * scale.x, row2.y * scale.y, row2.z * scale.z, row2.w),
+        row3 = Vec4(row3.x * scale.w, row3.y * scale.w, row3.z * scale.w, row3.w),
+    )
+
+    /**
+     * Creates a rotation matrix that rotates around the specified axis by the given angle.
+     *
+     * This function uses Rodrigues' rotation formula to create a rotation matrix that can be
+     * used to rotate vectors or compose with other transformations. The axis vector will be
+     * automatically normalized.
+     *
+     * @param angle The rotation angle in radians
+     * @param axis The vector representing the axis of rotation
+     * @return A new Mat4 representing the rotation transformation
+     */
     fun rotate(angle: Float, axis: Vec3): Mat4 {
         val normalized = axis.normalized()
         val x = normalized.x
@@ -51,12 +95,14 @@ data class Mat4(
         val s = sin(angle)
         val t = 1f - c
 
-        return Mat4(
+        val rotation = Mat4(
             row0 = Vec4(t * x * x + c, t * x * y - s * z, t * x * z + s * y, 0f),
             row1 = Vec4(t * x * y + s * z, t * y * y + c, t * y * z - s * x, 0f),
             row2 = Vec4(t * x * z - s * y, t * y * z + s * x, t * z * z + c, 0f),
             row3 = Vec4(0f, 0f, 0f, 1f),
         )
+
+        return this * rotation
     }
 
     operator fun times(other: Mat4): Mat4 = Mat4(
@@ -67,10 +113,10 @@ data class Mat4(
     )
 
     operator fun times(other: Vec4): Vec4 = Vec4(
-        row0.dot(other),
-        row1.dot(other),
-        row2.dot(other),
-        row3.dot(other),
+        x = row0.dot(other),
+        y = row1.dot(other),
+        z = row2.dot(other),
+        w = row3.dot(other),
     )
 
     operator fun get(row: Int, column: Int): Float = when (row) {

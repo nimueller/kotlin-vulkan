@@ -14,10 +14,10 @@ open class Engine(
     val window = glfw.window
     val renderingSystem: RenderingSystem = renderingSystemCreator(glfw)
 
-    fun update(timeSinceLastFrame: Long, logic: (Long, Glfw, RenderingContext) -> Unit) {
+    fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()
         renderingSystem.drawFrame { renderingContext ->
-            logic(timeSinceLastFrame, glfw, renderingContext)
+            logic(deltaTime, glfw, renderingContext)
         }
     }
 

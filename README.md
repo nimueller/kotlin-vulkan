@@ -64,6 +64,8 @@ Requires JDK 21 to be installed, nothing else.
 
 ## Running
 
+Examples are located in the `anvil-examples` module.
+
 ```bash
 ./gradlew run
 ```
