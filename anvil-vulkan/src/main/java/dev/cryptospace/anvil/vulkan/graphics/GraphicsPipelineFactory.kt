@@ -15,7 +15,7 @@ import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_A_BIT
 import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_B_BIT
 import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_G_BIT
 import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_R_BIT
-import org.lwjgl.vulkan.VK10.VK_CULL_MODE_NONE
+import org.lwjgl.vulkan.VK10.VK_CULL_MODE_BACK_BIT
 import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_SCISSOR
 import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_VIEWPORT
 import org.lwjgl.vulkan.VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE
@@ -260,7 +260,7 @@ object GraphicsPipelineFactory {
             rasterizerDiscardEnable(false)
             polygonMode(VK_POLYGON_MODE_FILL)
             lineWidth(1.0f)
-            cullMode(VK_CULL_MODE_NONE)
+            cullMode(VK_CULL_MODE_BACK_BIT)
             frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
             depthBiasEnable(false)
         }
