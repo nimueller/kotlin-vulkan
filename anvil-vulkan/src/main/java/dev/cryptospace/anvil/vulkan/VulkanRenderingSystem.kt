@@ -12,7 +12,7 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
-import dev.cryptospace.anvil.vulkan.graphics.Frame
+import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.surface.Surface
@@ -86,7 +86,7 @@ class VulkanRenderingSystem(
      * where one frame can be rendered while another is being prepared.
      * Each frame manages its own command buffers and synchronization objects.
      */
-    private val frames = List(FRAMES_IN_FLIGHT) { index ->
+    private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
         val descriptorSet = descriptorSets[index]
         Frame(deviceManager.logicalDevice, bufferManager, descriptorSet)
     }

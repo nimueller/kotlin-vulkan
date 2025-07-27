@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.graphics
+package dev.cryptospace.anvil.vulkan.frame
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.native.UniformBufferObject
@@ -9,6 +9,13 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
+import dev.cryptospace.anvil.vulkan.graphics.Framebuffer
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -124,12 +131,18 @@ class Frame(
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
     fun draw(swapChainImageIndex: Int, callback: (RenderingContext) -> Unit) = MemoryStack.stackPush().use { stack ->
+        val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
+        prepareRecordCommands(stack, framebuffer)
+        recordCommands(callback)
+        finishRecordCommands()
+        presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+    }
+
+    private fun prepareRecordCommands(stack: MemoryStack, framebuffer: Framebuffer) {
         vkResetCommandBuffer(commandBuffer.handle, 0)
 
         commandBuffer.startRecording()
-        val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
         renderPass.start(commandBuffer, framebuffer)
-
         logicalDevice.swapChain.preparePipeline(commandBuffer, graphicsPipeline)
         vkCmdBindDescriptorSets(
             commandBuffer.handle,
@@ -139,16 +152,17 @@ class Frame(
             stack.longs(descriptorSet.value),
             null,
         )
+    }
 
+    private fun recordCommands(callback: (RenderingContext) -> Unit) {
         val renderingContext = VulkanRenderingContext(logicalDevice, commandBuffer)
         callback(renderingContext)
-
         updateUniformBuffer(renderingContext)
+    }
 
+    private fun finishRecordCommands() {
         renderPass.end(commandBuffer)
         commandBuffer.endRecording()
-
-        presentFrame(logicalDevice.swapChain, swapChainImageIndex)
     }
 
     private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
