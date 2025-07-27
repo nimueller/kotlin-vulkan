@@ -279,7 +279,8 @@ data class SwapChain(
             val presentQueueFamilyIndex = deviceSurfaceInfo.presentQueueFamilyIndex
 
             // TODO would be nice to make VSync configurable in the future,
-            //  like selecting between triple-buffering (MAILBOX; if supported), double-buffering (FIFO) or no v-sync (IMMEDIATE)
+            //  like selecting between triple-buffering (MAILBOX; if supported),
+            //  double-buffering (FIFO) or no v-sync (IMMEDIATE)
             val presentMode = swapChainDetails.bestPresentMode.vulkanValue
 
             sType(VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
@@ -308,7 +309,7 @@ data class SwapChain(
             oldSwapchain(VK_NULL_HANDLE)
 
             logger.info(
-                "Created swap chain with present mode: ${swapChainDetails.bestPresentMode.name} and image count: $imageCount",
+                "Created swap chain with present mode: $presentMode and image count: $imageCount",
             )
         }
     }

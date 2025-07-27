@@ -27,9 +27,6 @@ private val indices = listOf(
     0.toShort(),
 )
 
-private var x = 0f
-private var z = 3f
-
 fun main() {
     VulkanEngine().use { engine ->
         val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
@@ -37,22 +34,6 @@ fun main() {
         MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
             updateUniformBufferObject(deltaTime, renderingContext)
             renderingContext.drawMesh(mesh)
-
-            if (glfw.isKeyPressed(Key.A)) {
-                x -= 0.01f
-            }
-
-            if (glfw.isKeyPressed(Key.D)) {
-                x += 0.01f
-            }
-
-            if (glfw.isKeyPressed(Key.S)) {
-                z += 0.01f
-            }
-
-            if (glfw.isKeyPressed(Key.W)) {
-                z -= 0.01f
-            }
 
             if (glfw.isKeyPressed(Key.ESCAPE)) {
                 glfw.window.requestClose()
