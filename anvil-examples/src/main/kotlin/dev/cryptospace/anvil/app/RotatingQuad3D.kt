@@ -66,12 +66,12 @@ private var rotationInDegrees: Double = 0.0
 
 fun updateUniformBufferObject(deltaTime: DeltaTime, renderingContext: RenderingContext) {
     val deltaRotation = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
-    print("\r ${(deltaTime.seconds * 1_000_000_000).toInt()}\t $deltaRotation")
-    rotationInDegrees += deltaRotation.toLong()
+    rotationInDegrees += deltaRotation
     rotationInDegrees %= 360.0
 
-    val model = Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
-    val view = Mat4.lookAt(Vec3(x, 0f, z), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
+    val model =
+        Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
+    val view = Mat4.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
     val projection = Mat4.perspectiveVulkan(
         45f,
         renderingContext.width.toFloat() / renderingContext.height.toFloat(),

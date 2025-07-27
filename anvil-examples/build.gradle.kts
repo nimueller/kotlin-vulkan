@@ -51,6 +51,11 @@ fun ExternalModuleDependency.natives() {
 }
 
 application {
-    mainClass.set("dev.cryptospace.anvil.app.RotatingQuad3DKt")
+    if (project.hasProperty("mainClass")) {
+        mainClass.set(project.property("mainClass") as String)
+    } else {
+        mainClass.set("dev.cryptospace.anvil.app.RotatingQuad3DKt")
+    }
+
     applicationDefaultJvmArgs = listOf("-Duse-validation-layers")
 }

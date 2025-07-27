@@ -18,10 +18,10 @@ class MainLoop(
 
         while (!window.shouldClose()) {
             val currentFrameTime = glfwGetTime()
-            val deltaTime = DeltaTime(currentFrameTime - lastFrameTime)
+            val deltaTime = DeltaTime(seconds = currentFrameTime - lastFrameTime)
 
             engine.update(deltaTime, logic)
-            lastFrameTime = glfwGetTime()
+            lastFrameTime = currentFrameTime
         }
     }
 }
