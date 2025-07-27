@@ -20,9 +20,13 @@ import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
+import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
@@ -130,12 +134,44 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(swapChainImageIndex: Int, callback: (RenderingContext) -> Unit) = MemoryStack.stackPush().use { stack ->
+    fun draw(callback: (RenderingContext) -> Unit): FrameDrawResult = MemoryStack.stackPush().use { stack ->
+        val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
+
         val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
+
         prepareRecordCommands(stack, framebuffer)
         recordCommands(callback)
         finishRecordCommands()
+
         presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+        return FrameDrawResult.SUCCESS
+    }
+
+    private fun acquireSwapChainImage(stack: MemoryStack): Int? {
+        syncObjects.waitForInFlightFence()
+
+        try {
+            val pImageIndex = stack.mallocInt(1)
+
+            val result = vkAcquireNextImageKHR(
+                logicalDevice.handle,
+                logicalDevice.swapChain.handle.value,
+                Long.MAX_VALUE,
+                syncObjects.imageAvailableSemaphores.value,
+                VK_NULL_HANDLE,
+                pImageIndex,
+            )
+
+            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+                return null
+            } else {
+                result.validateVulkanSuccess("Acquire swap chain image", "Acquire swap chain image failed")
+            }
+
+            return pImageIndex[0]
+        } finally {
+            syncObjects.resetInFlightFence()
+        }
     }
 
     private fun prepareRecordCommands(stack: MemoryStack, framebuffer: Framebuffer) {

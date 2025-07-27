@@ -13,16 +13,12 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
-import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
+import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
-import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
-import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
@@ -144,36 +140,25 @@ class VulkanRenderingSystem(
         return VulkanMesh(vertexBufferResource, indexBufferResource, indices.size)
     }
 
-    override fun drawFrame(callback: (RenderingContext) -> Unit) = MemoryStack.stackPush().use { stack ->
-        val frame = frames[currentFrameIndex]
-        frame.syncObjects.waitForInFlightFence()
-        val imageIndex = acquireSwapChainImage(stack, frame.syncObjects) ?: return
-        frame.syncObjects.resetInFlightFence()
-        frame.draw(imageIndex, callback)
-        currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
-    }
-
-    private fun acquireSwapChainImage(stack: MemoryStack, syncObjects: SyncObjects): Int? {
-        val pImageIndex = stack.mallocInt(1)
-
-        val result = vkAcquireNextImageKHR(
-            deviceManager.logicalDevice.handle,
-            deviceManager.logicalDevice.swapChain.handle.value,
-            Long.MAX_VALUE,
-            syncObjects.imageAvailableSemaphores.value,
-            VK_NULL_HANDLE,
-            pImageIndex,
-        )
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+    override fun drawFrame(callback: (RenderingContext) -> Unit) {
+        if (framebufferResized) {
             framebufferResized = false
             deviceManager.logicalDevice.recreateSwapChain()
-            return null
-        } else {
-            result.validateVulkanSuccess()
         }
 
-        return pImageIndex[0]
+        val frame = frames[currentFrameIndex]
+        val result = frame.draw(callback)
+
+        when (result) {
+            FrameDrawResult.FRAMEBUFFER_RESIZED -> {
+                framebufferResized = false
+                deviceManager.logicalDevice.recreateSwapChain()
+            }
+
+            FrameDrawResult.SUCCESS -> {
+                currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
+            }
+        }
     }
 
     override fun destroy() {
