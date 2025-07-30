@@ -15,6 +15,7 @@ dependencies {
     runtimeOnly(libs.lwjgl.glfw) { natives() }
     runtimeOnly(libs.lwjgl.openal) { natives() }
     runtimeOnly(libs.lwjgl.opengl) { natives() }
+    runtimeOnly(libs.lwjgl.stb) { natives() }
     runtimeOnly(libs.lwjgl.vulkan) {
         // Vulkan driver must be manually included for macOS and is pre-installed on Windows and Linux
         if (System.getProperty("os.name").lowercase().contains("mac")) {

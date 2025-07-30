@@ -16,6 +16,7 @@ import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.surface.Surface
+import dev.cryptospace.anvil.vulkan.texture.TextureManager
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
@@ -47,6 +48,8 @@ class VulkanRenderingSystem(
      * Handles vertex buffer creation and memory management.
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
+
+    private val textureManager = TextureManager(deviceManager.logicalDevice)
 
     private val descriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
         val logicalDevice = deviceManager.logicalDevice
