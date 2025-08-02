@@ -11,7 +11,7 @@ import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
 
-private const val ROTATION_DEGREES_PER_SECOND: Float = 90f
+private const val ROTATION_DEGREES_PER_SECOND: Float = 45f
 
 fun main() {
     TexturedQuad()

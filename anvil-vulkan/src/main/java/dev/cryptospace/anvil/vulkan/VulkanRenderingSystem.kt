@@ -103,7 +103,11 @@ class VulkanRenderingSystem(
     }
 
     override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image =
-        textureManager.uploadImage(imageSize, width, height, imageData)
+        textureManager.uploadImage(imageSize, width, height, imageData).also {
+            frames.forEach { frame ->
+                frame.updateDescriptorSets()
+            }
+        }
 
     override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
         val verticesBytes = vertex2.toByteBuffer()

@@ -100,21 +100,15 @@ class Frame(
     private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
 
     init {
+        updateDescriptorSets()
+    }
+
+    fun updateDescriptorSets() {
         MemoryStack.stackPush().use { stack ->
             val descriptorBufferInfo = VkDescriptorBufferInfo.calloc(stack)
                 .offset(0)
                 .range(UniformBufferObject.BYTE_SIZE.toLong())
                 .buffer(uniformBuffer.buffer.value)
-
-            // TODO this is temporary and texture should be dynamic per model
-            val texture = textureManager.textureImages.firstOrNull()
-            val imageInfo = VkDescriptorImageInfo.calloc(stack)
-                .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                .imageView(texture?.textureImageView?.handle?.value ?: VK_NULL_HANDLE)
-                .sampler(textureManager.sampler.value)
-            val imageInfos = VkDescriptorImageInfo.calloc(1, stack)
-                .put(imageInfo)
-                .flip()
 
             val descriptorBufferInfos = VkDescriptorBufferInfo.calloc(1, stack)
                 .put(descriptorBufferInfo)
@@ -131,18 +125,34 @@ class Frame(
                 .pImageInfo(null)
                 .pTexelBufferView(null)
 
-            val imageInfoDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                .dstSet(descriptorSet.value)
-                .dstBinding(1)
-                .dstArrayElement(0)
-                .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                .descriptorCount(1)
-                .pImageInfo(imageInfos)
+            // TODO this is temporary and texture should be dynamic per model
+            val texture = textureManager.textureImages.firstOrNull()
 
-            val writeDescriptorSets = VkWriteDescriptorSet.calloc(1, stack)
-                .put(uniformBufferDescriptorWrite)
-                .flip()
+            val writeDescriptorSets = if (texture == null) {
+                VkWriteDescriptorSet.calloc(1, stack)
+                    .put(uniformBufferDescriptorWrite)
+                    .flip()
+            } else {
+                val imageInfo = VkDescriptorImageInfo.calloc(stack)
+                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .imageView(texture.textureImageView.handle.value)
+                    .sampler(textureManager.sampler.value)
+                val imageInfos = VkDescriptorImageInfo.calloc(1, stack)
+                    .put(imageInfo)
+                    .flip()
+                val imageInfoDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
+                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                    .dstSet(descriptorSet.value)
+                    .dstBinding(1)
+                    .dstArrayElement(0)
+                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    .descriptorCount(1)
+                    .pImageInfo(imageInfos)
+                VkWriteDescriptorSet.calloc(2, stack)
+                    .put(uniformBufferDescriptorWrite)
+                    .put(imageInfoDescriptorWrite)
+                    .flip()
+            }
 
             vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSets, null)
         }
