@@ -1,14 +1,14 @@
 package dev.cryptospace.anvil.core.native
 
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.NativeBuffer
+import dev.cryptospace.anvil.core.math.NativeType
 import java.nio.ByteBuffer
 
 data class UniformBufferObject(
     val model: Mat4,
     val view: Mat4,
     val projection: Mat4,
-) : NativeBuffer {
+) : NativeType {
 
     override val byteSize: Int
         get() = BYTE_SIZE

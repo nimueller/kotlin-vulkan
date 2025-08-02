@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 data class Vec2(
     val x: Float,
     val y: Float,
-) : NativeBuffer {
+) : NativeType {
 
     override val byteSize: Int
         get() = BYTE_SIZE
@@ -18,5 +18,6 @@ data class Vec2(
     companion object {
 
         const val BYTE_SIZE = 2 * Float.SIZE_BYTES
+        val zero = Vec2(0f, 0f)
     }
 }

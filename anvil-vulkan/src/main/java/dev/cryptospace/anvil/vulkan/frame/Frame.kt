@@ -17,6 +17,7 @@ import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
+import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
@@ -25,7 +26,9 @@ import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -36,6 +39,7 @@ import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
 import org.lwjgl.vulkan.VkDescriptorBufferInfo
+import org.lwjgl.vulkan.VkDescriptorImageInfo
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
 import org.lwjgl.vulkan.VkWriteDescriptorSet
@@ -64,6 +68,7 @@ import java.util.EnumSet
 class Frame(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
+    private val textureManager: TextureManager,
     private val descriptorSet: VkDescriptorSet,
 ) : NativeResource() {
 
@@ -101,11 +106,21 @@ class Frame(
                 .range(UniformBufferObject.BYTE_SIZE.toLong())
                 .buffer(uniformBuffer.buffer.value)
 
+            // TODO this is temporary and texture should be dynamic per model
+            val texture = textureManager.textureImages.firstOrNull()
+            val imageInfo = VkDescriptorImageInfo.calloc(stack)
+                .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .imageView(texture?.textureImageView?.handle?.value ?: VK_NULL_HANDLE)
+                .sampler(textureManager.sampler.value)
+            val imageInfos = VkDescriptorImageInfo.calloc(1, stack)
+                .put(imageInfo)
+                .flip()
+
             val descriptorBufferInfos = VkDescriptorBufferInfo.calloc(1, stack)
                 .put(descriptorBufferInfo)
                 .flip()
 
-            val writeDescriptorSet = VkWriteDescriptorSet.calloc(stack)
+            val uniformBufferDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                 .dstSet(descriptorSet.value)
                 .dstBinding(0)
@@ -116,8 +131,17 @@ class Frame(
                 .pImageInfo(null)
                 .pTexelBufferView(null)
 
+            val imageInfoDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
+                .dstSet(descriptorSet.value)
+                .dstBinding(1)
+                .dstArrayElement(0)
+                .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                .descriptorCount(1)
+                .pImageInfo(imageInfos)
+
             val writeDescriptorSets = VkWriteDescriptorSet.calloc(1, stack)
-                .put(writeDescriptorSet)
+                .put(uniformBufferDescriptorWrite)
                 .flip()
 
             vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSets, null)

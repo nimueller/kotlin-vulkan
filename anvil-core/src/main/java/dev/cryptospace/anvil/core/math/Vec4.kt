@@ -7,7 +7,7 @@ data class Vec4(
     val y: Float,
     val z: Float,
     val w: Float,
-) : NativeBuffer {
+) : NativeType {
 
     constructor(vec3: Vec3, w: Float) : this(
         vec3.x,

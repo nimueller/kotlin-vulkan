@@ -20,10 +20,10 @@ fun main() {
 class TexturedQuad {
 
     private val vertices = listOf(
-        Vertex2(Vec2(-0.5f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
-        Vertex2(Vec2(0.5f, -0.5f), Vec3(0.0f, 1.0f, 0.0f)),
-        Vertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
-        Vertex2(Vec2(-0.5f, 0.5f), Vec3(1.0f, 1.0f, 1.0f)),
+        Vertex2(position = Vec2(-0.5f, -0.5f), color = Vec3(1.0f, 0.0f, 0.0f), textureCoordinates = Vec2(1f, 0f)),
+        Vertex2(position = Vec2(0.5f, -0.5f), color = Vec3(0.0f, 1.0f, 0.0f), textureCoordinates = Vec2(0f, 0f)),
+        Vertex2(position = Vec2(0.5f, 0.5f), color = Vec3(0.0f, 0.0f, 1.0f), textureCoordinates = Vec2(0f, 1f)),
+        Vertex2(position = Vec2(-0.5f, 0.5f), color = Vec3(1.0f, 1.0f, 1.0f), textureCoordinates = Vec2(1f, 1f)),
     )
 
     private val indices = listOf(

@@ -21,7 +21,7 @@ data class Mat4(
     val row1: Vec4,
     val row2: Vec4,
     val row3: Vec4,
-) : NativeBuffer {
+) : NativeType {
 
     val column0: Vec4 by lazy { Vec4(row0.x, row1.x, row2.x, row3.x) }
     val column1: Vec4 by lazy { Vec4(row0.y, row1.y, row2.y, row3.y) }

@@ -5,6 +5,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorPool
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateDescriptorPool
@@ -27,13 +28,19 @@ data class DescriptorPool(
 
         private fun createDescriptorPool(device: LogicalDevice, maxSets: Int): VkDescriptorPool {
             MemoryStack.stackPush().use { stack ->
-                val poolSize = VkDescriptorPoolSize.calloc(stack).apply {
+                val uniformBufferPoolSize = VkDescriptorPoolSize.calloc(stack).apply {
                     type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                     descriptorCount(maxSets)
                 }
 
-                val poolSizes = VkDescriptorPoolSize.calloc(1, stack)
-                    .put(poolSize)
+                val imageSamplerPoolSize = VkDescriptorPoolSize.calloc(stack).apply {
+                    type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                    descriptorCount(maxSets)
+                }
+
+                val poolSizes = VkDescriptorPoolSize.calloc(2, stack)
+                    .put(uniformBufferPoolSize)
+                    .put(imageSamplerPoolSize)
                     .flip()
 
                 val createInfo = VkDescriptorPoolCreateInfo.calloc(stack).apply {

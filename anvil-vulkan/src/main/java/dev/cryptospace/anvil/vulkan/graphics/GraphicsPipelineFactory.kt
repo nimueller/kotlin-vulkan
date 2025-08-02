@@ -2,8 +2,8 @@ package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.getAttributeDescriptions
-import dev.cryptospace.anvil.vulkan.getBindingDescription
+import dev.cryptospace.anvil.vulkan.getVertex2AttributeDescriptions
+import dev.cryptospace.anvil.vulkan.getVertex2BindingDescription
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
@@ -190,9 +190,9 @@ object GraphicsPipelineFactory {
     private fun setupVertexShaderInputInfo(stack: MemoryStack): VkPipelineVertexInputStateCreateInfo =
         VkPipelineVertexInputStateCreateInfo.calloc(stack).apply {
             val bindingDescriptions = VkVertexInputBindingDescription.calloc(1, stack)
-                .put(getBindingDescription(stack))
+                .put(getVertex2BindingDescription(stack))
                 .flip()
-            val attributeDescriptions = getAttributeDescriptions(stack)
+            val attributeDescriptions = getVertex2AttributeDescriptions(stack)
             sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
             pVertexBindingDescriptions(bindingDescriptions)
             pVertexAttributeDescriptions(attributeDescriptions)

@@ -43,7 +43,7 @@ class TextureManager(
     private val bufferManager: BufferManager,
 ) : NativeResource() {
 
-    private val textureImages: MutableList<VulkanImage> = mutableListOf()
+    val textureImages: MutableList<VulkanImage> = mutableListOf()
 
     val sampler = MemoryStack.stackPush().use { stack ->
         val samplerCreateInfo = VkSamplerCreateInfo.calloc(stack).apply {

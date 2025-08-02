@@ -7,7 +7,7 @@ data class Vec3(
     val x: Float,
     val y: Float,
     val z: Float,
-) : NativeBuffer {
+) : NativeType {
 
     override val byteSize: Int
         get() = BYTE_SIZE

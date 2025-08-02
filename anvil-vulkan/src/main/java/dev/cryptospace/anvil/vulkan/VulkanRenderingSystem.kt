@@ -89,7 +89,7 @@ class VulkanRenderingSystem(
      */
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
         val descriptorSet = descriptorSets[index]
-        Frame(deviceManager.logicalDevice, bufferManager, descriptorSet)
+        Frame(deviceManager.logicalDevice, bufferManager, textureManager, descriptorSet)
     }
 
     private var currentFrameIndex = 0
