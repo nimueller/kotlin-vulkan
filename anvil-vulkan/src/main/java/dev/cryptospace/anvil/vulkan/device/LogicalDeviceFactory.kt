@@ -28,7 +28,12 @@ object LogicalDeviceFactory {
         check(presentQueueFamily >= 0) { "Got an invalid present_queue family index" }
 
         val queueCreateInfo = buildQueueCreateInfo(stack, graphicsQueueFamily, presentQueueFamily)
-        val features = VkPhysicalDeviceFeatures.calloc(stack)
+        val features = VkPhysicalDeviceFeatures.calloc(stack).apply {
+            // only enable anisotropy if it is supported
+            if (deviceSurfaceInfo.physicalDevice.features.samplerAnisotropy()) {
+                samplerAnisotropy(true)
+            }
+        }
         val deviceCreateInfo = buildDeviceCreateInfo(stack, queueCreateInfo, features)
         val devicePointer = buildDevice(stack, device, deviceCreateInfo)
 
