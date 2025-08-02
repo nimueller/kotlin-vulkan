@@ -10,11 +10,6 @@ import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
-import org.lwjgl.stb.STBImage
-import org.lwjgl.stb.STBImage.STBI_rgb_alpha
-import org.lwjgl.system.MemoryStack
-import java.nio.ByteBuffer
-import java.nio.IntBuffer
 
 private const val ROTATION_DEGREES_PER_SECOND: Float = 90f
 
@@ -42,33 +37,10 @@ class TexturedQuad {
 
     init {
         VulkanEngine().use { engine ->
-            MemoryStack.stackPush().use { stack ->
-                val imageName = "/textures/texture.jpg"
-                val textureBytes = TexturedQuad::class.java.getResourceAsStream(imageName).readAllBytes()
-                val textureByteBuffer = stack.malloc(textureBytes.size)
-                    .put(textureBytes, 0, textureBytes.size)
-                    .flip()
-
-                val widthBuffer: IntBuffer = stack.ints(0)
-                val heightBuffer: IntBuffer = stack.ints(0)
-                val channelsInFileBuffer: IntBuffer = stack.ints(0)
-                val data: ByteBuffer? = STBImage.stbi_load_from_memory(
-                    textureByteBuffer,
-                    widthBuffer,
-                    heightBuffer,
-                    channelsInFileBuffer,
-                    STBI_rgb_alpha,
-                )
-
-                check(data != null) { "Failed to load texture image $imageName: ${STBImage.stbi_failure_reason()}" }
-                val imageSize = widthBuffer[0] * heightBuffer[0] * 4
-                val textureImage = engine.renderingSystem.createTextureImage(
-                    imageSize,
-                    data,
-                    widthBuffer[0],
-                    heightBuffer[0],
-                )
-            }
+            val imageName = "/images/texture.jpg"
+            val imageResourceStream = TexturedQuad::class.java.getResourceAsStream(imageName)
+                ?: error("Image resource $imageName not found")
+            engine.imageManager.loadImage(imageResourceStream)
 
             val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
 

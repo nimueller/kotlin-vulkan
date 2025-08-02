@@ -1,6 +1,7 @@
 package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.RenderingSystem
+import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.math.toByteBuffer
@@ -15,14 +16,26 @@ import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.surface.Surface
-import dev.cryptospace.anvil.vulkan.texture.TextureManager
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
+import org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
+import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets
+import org.lwjgl.vulkan.VK10.vkCreateImage
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
+import org.lwjgl.vulkan.VkImageCreateInfo
+import java.nio.ByteBuffer
 import java.util.EnumSet
 
 /**
@@ -49,8 +62,6 @@ class VulkanRenderingSystem(
      */
     private val bufferManager = BufferManager(deviceManager.logicalDevice)
 
-    private val textureManager = TextureManager(deviceManager.logicalDevice)
-
     private val descriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
         val logicalDevice = deviceManager.logicalDevice
 
@@ -66,7 +77,7 @@ class VulkanRenderingSystem(
         setLayouts.flip()
 
         val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
-            sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+            sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
             descriptorPool(pDescriptorPools[0])
             pSetLayouts(setLayouts)
         }
@@ -99,6 +110,42 @@ class VulkanRenderingSystem(
             logger.info("Framebuffer resized to $width x $height")
         }
     }
+
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image =
+        MemoryStack.stackPush().use { stack ->
+            val imageBuffer = bufferManager.allocateBuffer(
+                imageSize.toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_SRC),
+                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            )
+
+            bufferManager.uploadData(imageBuffer, imageData)
+
+            val imageInfo = VkImageCreateInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+                imageType(VK_IMAGE_TYPE_2D)
+                extent().width(width)
+                extent().height(height)
+                extent().depth(1)
+                mipLevels(1)
+                arrayLayers(1)
+                format(VK_FORMAT_R8G8B8A8_UNORM)
+                tiling(VK_IMAGE_TILING_OPTIMAL)
+                initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+                usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
+                sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+                samples(VK_SAMPLE_COUNT_1_BIT)
+                flags(0)
+            }
+
+            val pTextureImage = stack.mallocLong(1)
+            vkCreateImage(deviceManager.logicalDevice.handle, imageInfo, null, pTextureImage)
+                .validateVulkanSuccess("Create texture image", "Failed to create texture image")
+            val textureImage = VkImage(pTextureImage[0])
+            bufferManager.allocateImageBuffer(textureImage)
+
+            return VulkanImage(imageBuffer)
+        }
 
     override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
         val verticesBytes = vertex2.toByteBuffer()

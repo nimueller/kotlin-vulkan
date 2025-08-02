@@ -7,11 +7,13 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
@@ -23,11 +25,13 @@ import org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers
 import org.lwjgl.vulkan.VK10.vkAllocateMemory
 import org.lwjgl.vulkan.VK10.vkBeginCommandBuffer
 import org.lwjgl.vulkan.VK10.vkBindBufferMemory
+import org.lwjgl.vulkan.VK10.vkBindImageMemory
 import org.lwjgl.vulkan.VK10.vkCmdCopyBuffer
 import org.lwjgl.vulkan.VK10.vkCreateBuffer
 import org.lwjgl.vulkan.VK10.vkEndCommandBuffer
 import org.lwjgl.vulkan.VK10.vkFreeCommandBuffers
 import org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements
+import org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements
 import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
 import org.lwjgl.vulkan.VK10.vkMapMemory
 import org.lwjgl.vulkan.VK10.vkQueueSubmit
@@ -116,6 +120,26 @@ class BufferManager(
             "Allocated buffer: $buffer with memory: $memory (size: $size) for usage: $usage and properties: $properties"
         }
         return allocation
+    }
+
+    fun allocateImageBuffer(textureImage: VkImage): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
+        val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
+        vkGetImageMemoryRequirements(logicalDevice.handle, textureImage.value, bufferMemoryRequirements)
+
+        val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+            allocationSize(bufferMemoryRequirements.size())
+            memoryTypeIndex(
+                findMemoryType(bufferMemoryRequirements.memoryTypeBits(), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+            )
+        }
+
+        val pTextureImageMemory = stack.mallocLong(1)
+        vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pTextureImageMemory)
+            .validateVulkanSuccess("Allocate buffer memory", "Failed to allocate memory for vertex buffer")
+        vkBindImageMemory(logicalDevice.handle, textureImage.value, pTextureImageMemory[0], 0)
+            .validateVulkanSuccess("Bind buffer memory", "Failed to bind memory to vertex buffer")
+        return VkDeviceMemory(pTextureImageMemory[0])
     }
 
     private fun findMemoryType(typeFilter: Int, properties: Int): Int = MemoryStack.stackPush().use { stack ->

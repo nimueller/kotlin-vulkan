@@ -1,6 +1,7 @@
 package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.RenderingSystem
+import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -11,6 +12,7 @@ import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
 import org.lwjgl.opengl.GL11.glClear
 import org.lwjgl.opengl.GL11.glClearColor
+import java.nio.ByteBuffer
 
 class OpenGLRenderingSystem(
     private val glfw: Glfw,
@@ -19,6 +21,10 @@ class OpenGLRenderingSystem(
     init {
         glfwMakeContextCurrent(glfw.window.handle.value)
         GL.createCapabilities()
+    }
+
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image {
+        TODO("Not yet implemented")
     }
 
     override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
