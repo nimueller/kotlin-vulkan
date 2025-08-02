@@ -1,8 +1,10 @@
 package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.image.Image
-import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
+import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 
 data class VulkanImage(
-    val imageBuffer: BufferAllocation,
+    val textureImage: VkImage,
+    val textureImageMemory: VkDeviceMemory,
 ) : Image

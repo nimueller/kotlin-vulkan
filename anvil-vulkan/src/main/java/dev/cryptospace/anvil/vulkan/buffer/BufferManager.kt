@@ -11,14 +11,25 @@ import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.VK10.VK_ACCESS_SHADER_READ_BIT
+import org.lwjgl.vulkan.VK10.VK_ACCESS_TRANSFER_WRITE_BIT
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY
 import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TRANSFER_BIT
+import org.lwjgl.vulkan.VK10.VK_QUEUE_FAMILY_IGNORED
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
 import org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers
@@ -27,6 +38,8 @@ import org.lwjgl.vulkan.VK10.vkBeginCommandBuffer
 import org.lwjgl.vulkan.VK10.vkBindBufferMemory
 import org.lwjgl.vulkan.VK10.vkBindImageMemory
 import org.lwjgl.vulkan.VK10.vkCmdCopyBuffer
+import org.lwjgl.vulkan.VK10.vkCmdCopyBufferToImage
+import org.lwjgl.vulkan.VK10.vkCmdPipelineBarrier
 import org.lwjgl.vulkan.VK10.vkCreateBuffer
 import org.lwjgl.vulkan.VK10.vkEndCommandBuffer
 import org.lwjgl.vulkan.VK10.vkFreeCommandBuffers
@@ -39,9 +52,11 @@ import org.lwjgl.vulkan.VK10.vkQueueWaitIdle
 import org.lwjgl.vulkan.VK10.vkUnmapMemory
 import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkBufferCreateInfo
+import org.lwjgl.vulkan.VkBufferImageCopy
 import org.lwjgl.vulkan.VkCommandBuffer
 import org.lwjgl.vulkan.VkCommandBufferAllocateInfo
 import org.lwjgl.vulkan.VkCommandBufferBeginInfo
+import org.lwjgl.vulkan.VkImageMemoryBarrier
 import org.lwjgl.vulkan.VkMemoryAllocateInfo
 import org.lwjgl.vulkan.VkMemoryRequirements
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
@@ -207,27 +222,7 @@ class BufferManager(
             error("Buffer size mismatch: expected ${source.size} but was ${destination.size}")
         }
 
-        MemoryStack.stackPush().use { stack ->
-            val allocateInfo = VkCommandBufferAllocateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
-                level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
-                commandBufferCount(1)
-                commandPool(logicalDevice.commandPool.handle.value)
-            }
-
-            val pCommandBuffers = stack.mallocPointer(1)
-            vkAllocateCommandBuffers(logicalDevice.handle, allocateInfo, pCommandBuffers)
-                .validateVulkanSuccess("Allocate command buffer", "Failed to allocate command buffer for buffer copy")
-
-            val beginInfo = VkCommandBufferBeginInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
-                flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-            }
-
-            val commandBuffer = VkCommandBuffer(pCommandBuffers[0], logicalDevice.handle)
-            vkBeginCommandBuffer(commandBuffer, beginInfo)
-                .validateVulkanSuccess("Begin command buffer", "Failed to begin command buffer for buffer copy")
-
+        recordSingleTimeCommands { stack, commandBuffer ->
             val bufferCopy = VkBufferCopy.calloc(stack).apply {
                 srcOffset(0)
                 dstOffset(0)
@@ -244,20 +239,136 @@ class BufferManager(
                 destination.buffer.value,
                 bufferCopies,
             )
-            vkEndCommandBuffer(commandBuffer)
-                .validateVulkanSuccess("End command buffer", "Failed to end command buffer for buffer copy")
+        }
+    }
 
-            val queueSubmitInfo = VkSubmitInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
-                pCommandBuffers(stack.pointers(commandBuffer))
+    fun transitionImageLayout(image: VkImage, format: Int, oldLayout: Int, newLayout: Int) {
+        recordSingleTimeCommands { stack, commandBuffer ->
+            var sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+            var destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
+
+            val barrier = VkImageMemoryBarrier.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
+                oldLayout(oldLayout)
+                newLayout(newLayout)
+                srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                image(image.value)
+                subresourceRange { range ->
+                    range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    range.baseMipLevel(0)
+                    range.levelCount(1)
+                    range.baseArrayLayer(0)
+                    range.layerCount(1)
+                }
+
+                if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+                    srcAccessMask(0)
+                    dstAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
+                } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+                    newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                ) {
+                    srcAccessMask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                    dstAccessMask(VK_ACCESS_SHADER_READ_BIT)
+                    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT
+                    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                } else {
+                    error("Unsupported layout transition")
+                }
             }
 
-            vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, VK_NULL_HANDLE)
-                .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
-            vkQueueWaitIdle(logicalDevice.graphicsQueue)
-                .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
-            vkFreeCommandBuffers(logicalDevice.handle, allocateInfo.commandPool(), commandBuffer)
+            val barriers = VkImageMemoryBarrier.calloc(1, stack)
+                .put(barrier)
+                .flip()
+
+            vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, null, null, barriers)
         }
+    }
+
+    fun copyBufferToImage(buffer: VkBuffer, image: VkImage, width: Int, height: Int) {
+        recordSingleTimeCommands { stack, commandBuffer ->
+            val region = VkBufferImageCopy.calloc(stack).apply {
+                bufferOffset(0)
+                bufferRowLength(0)
+                bufferImageHeight(0)
+                imageSubresource { subresource ->
+                    subresource.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    subresource.mipLevel(0)
+                    subresource.baseArrayLayer(0)
+                    subresource.layerCount(1)
+                }
+                imageOffset { offset ->
+                    offset.x(0)
+                    offset.y(0)
+                    offset.z(0)
+                }
+                imageExtent { extent ->
+                    extent.width(width)
+                    extent.height(height)
+                    extent.depth(1)
+                }
+            }
+
+            val regions = VkBufferImageCopy.calloc(1, stack)
+                .put(region)
+                .flip()
+
+            vkCmdCopyBufferToImage(
+                commandBuffer,
+                buffer.value,
+                image.value,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                regions,
+            )
+        }
+    }
+
+    private fun recordSingleTimeCommands(callback: (MemoryStack, VkCommandBuffer) -> Unit) =
+        MemoryStack.stackPush().use { stack ->
+            val commandBuffer = beginSingleTimeCommands(stack)
+            callback(stack, commandBuffer)
+            endSingleTimeCommands(stack, commandBuffer)
+        }
+
+    private fun beginSingleTimeCommands(stack: MemoryStack): VkCommandBuffer {
+        val allocateInfo = VkCommandBufferAllocateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
+            level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+            commandBufferCount(1)
+            commandPool(logicalDevice.commandPool.handle.value)
+        }
+
+        val pCommandBuffers = stack.mallocPointer(1)
+        vkAllocateCommandBuffers(logicalDevice.handle, allocateInfo, pCommandBuffers)
+            .validateVulkanSuccess("Allocate command buffer", "Failed to allocate command buffer for buffer copy")
+
+        val beginInfo = VkCommandBufferBeginInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO)
+            flags(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+        }
+
+        val commandBuffer = VkCommandBuffer(pCommandBuffers[0], logicalDevice.handle)
+        vkBeginCommandBuffer(commandBuffer, beginInfo)
+            .validateVulkanSuccess("Begin command buffer", "Failed to begin command buffer for buffer copy")
+        return commandBuffer
+    }
+
+    private fun endSingleTimeCommands(stack: MemoryStack, commandBuffer: VkCommandBuffer) {
+        vkEndCommandBuffer(commandBuffer)
+            .validateVulkanSuccess("End command buffer", "Failed to end command buffer for buffer copy")
+
+        val queueSubmitInfo = VkSubmitInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_SUBMIT_INFO)
+            pCommandBuffers(stack.pointers(commandBuffer))
+        }
+
+        vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, VK_NULL_HANDLE)
+            .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
+        vkQueueWaitIdle(logicalDevice.graphicsQueue)
+            .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
+        vkFreeCommandBuffers(logicalDevice.handle, logicalDevice.commandPool.handle.value, commandBuffer)
     }
 
     /**
