@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
@@ -34,24 +35,32 @@ data class GraphicsPipeline(
      *
      * @param logicalDevice The logical device to create the pipeline on
      * @param renderPass The render pass this pipeline will be compatible with
+     * @param vertexLayout The vertex layout describing the structure of vertex data
      */
-    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass) : this(
+    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass, vertexLayout: VertexLayout<*>) : this(
         logicalDevice,
         renderPass,
         createGraphicsPipelineLayout(logicalDevice),
+        vertexLayout,
     )
 
     /**
-     * Creates a graphics pipeline with a provided pipeline layout.
+     * Creates a graphics pipeline with a provided pipeline layout and vertex layout.
      *
      * @param logicalDevice The logical device to create the pipeline on
      * @param renderPass The render pass this pipeline will be compatible with
      * @param pipelineLayoutHandle The pipeline layout to use for this pipeline
+     * @param vertexLayout The vertex layout describing the structure and attributes of vertex data
      */
-    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass, pipelineLayoutHandle: VkPipelineLayout) : this(
+    constructor(
+        logicalDevice: LogicalDevice,
+        renderPass: RenderPass,
+        pipelineLayoutHandle: VkPipelineLayout,
+        vertexLayout: VertexLayout<*>,
+    ) : this(
         logicalDevice,
         pipelineLayoutHandle,
-        GraphicsPipelineFactory.createGraphicsPipeline(logicalDevice, renderPass, pipelineLayoutHandle)
+        GraphicsPipelineFactory.createGraphicsPipeline(logicalDevice, renderPass, pipelineLayoutHandle, vertexLayout)
             .also { graphicsPipeline ->
                 logger.debug { "Created graphics pipeline: $graphicsPipeline" }
             },

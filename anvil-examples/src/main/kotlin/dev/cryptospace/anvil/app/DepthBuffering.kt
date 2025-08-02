@@ -11,19 +11,31 @@ import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
 
-private const val ROTATION_DEGREES_PER_SECOND: Float = 90f
+private const val ROTATION_DEGREES_PER_SECOND: Float = 45f
 
 fun main() {
-    RotatingQuad3D()
+    DepthBuffering()
 }
 
-class RotatingQuad3D {
+class DepthBuffering {
 
     private val vertices = listOf(
-        TexturedVertex2(Vec2(-0.5f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
-        TexturedVertex2(Vec2(0.5f, -0.5f), Vec3(0.0f, 1.0f, 0.0f)),
-        TexturedVertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
-        TexturedVertex2(Vec2(-0.5f, 0.5f), Vec3(1.0f, 1.0f, 1.0f)),
+        TexturedVertex2(
+            position = Vec2(-0.5f, -0.5f),
+            color = Vec3(1.0f, 0.0f, 0.0f),
+            texture = Vec2(1f, 0f),
+        ),
+        TexturedVertex2(
+            position = Vec2(0.5f, -0.5f),
+            color = Vec3(0.0f, 1.0f, 0.0f),
+            texture = Vec2(0f, 0f),
+        ),
+        TexturedVertex2(position = Vec2(0.5f, 0.5f), color = Vec3(0.0f, 0.0f, 1.0f), texture = Vec2(0f, 1f)),
+        TexturedVertex2(
+            position = Vec2(-0.5f, 0.5f),
+            color = Vec3(1.0f, 1.0f, 1.0f),
+            texture = Vec2(1f, 1f),
+        ),
     )
 
     private val indices = listOf(
@@ -37,6 +49,11 @@ class RotatingQuad3D {
 
     init {
         VulkanEngine().use { engine ->
+            val imageName = "/images/texture.jpg"
+            val imageResourceStream = DepthBuffering::class.java.getResourceAsStream(imageName)
+                ?: error("Image resource $imageName not found")
+            engine.imageManager.loadImage(imageResourceStream)
+
             val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->

@@ -1,11 +1,12 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
+import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.getVertex2AttributeDescriptions
-import dev.cryptospace.anvil.vulkan.getVertex2BindingDescription
+import dev.cryptospace.anvil.vulkan.getVertexBindingDescription
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
+import dev.cryptospace.anvil.vulkan.toAttributeDescriptions
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
@@ -53,30 +54,45 @@ import org.lwjgl.vulkan.VkShaderModuleCreateInfo
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 /**
- * Factory for creating and configuring Vulkan graphics pipelines.
+ * Factory responsible for creating and configuring Vulkan graphics pipelines.
  *
- * Handles the creation of graphics pipelines including shader setup, vertex input configuration,
- * rasterization settings, and other pipeline states.
+ * This factory handles the complete pipeline creation process including:
+ * - Loading and configuring vertex and fragment shaders
+ * - Setting up vertex input and attribute descriptions
+ * - Configuring fixed-function pipeline states (rasterization, blending, etc.)
+ * - Managing pipeline resources and memory
+ *
+ * The created pipelines are optimized for 2D rendering with basic texture mapping
+ * and use dynamic viewport/scissor states for flexibility.
  */
 object GraphicsPipelineFactory {
 
     /**
-     * Creates a new graphics pipeline with the specified configuration.
+     * Creates a new Vulkan graphics pipeline with the specified configuration.
+     *
+     * This method performs the following steps:
+     * 1. Loads and creates shader modules for vertex and fragment shaders
+     * 2. Sets up all pipeline states (vertex input, assembly, rasterization, etc.)
+     * 3. Creates the pipeline using the configured settings
+     * 4. Cleans up temporary resources (shader modules)
      *
      * @param logicalDevice The logical device to create the pipeline on
      * @param renderPass The render pass that this pipeline will be compatible with
-     * @param pipelineLayoutHandle The pipeline layout to use
-     * @return A new VkPipeline instance
+     * @param pipelineLayoutHandle The pipeline layout defining descriptor set layouts and push constants
+     * @param vertexLayout The vertex attribute layout describing vertex buffer structure
+     * @return A new VkPipeline instance ready for rendering
      */
     fun createGraphicsPipeline(
         logicalDevice: LogicalDevice,
         renderPass: RenderPass,
         pipelineLayoutHandle: VkPipelineLayout,
+        vertexLayout: VertexLayout<*>,
     ): VkPipeline = MemoryStack.stackPush().use { stack ->
         val vertexShaderHandle = loadShader(logicalDevice, "/shaders/vert.spv")
         val fragmentShaderHandle = loadShader(logicalDevice, "/shaders/frag.spv")
         val shaderStages = createShaderStageCreateInfo(stack, vertexShaderHandle, fragmentShaderHandle)
-        val pipelineCreateInfos = createPipelineCreateInfoBuffer(stack, shaderStages, pipelineLayoutHandle, renderPass)
+        val pipelineCreateInfos =
+            createPipelineCreateInfoBuffer(stack, shaderStages, pipelineLayoutHandle, renderPass, vertexLayout)
 
         val pPipelines = stack.mallocLong(1)
         vkCreateGraphicsPipelines(
@@ -85,7 +101,7 @@ object GraphicsPipelineFactory {
             pipelineCreateInfos,
             null,
             pPipelines,
-        ).validateVulkanSuccess()
+        ).validateVulkanSuccess("Create graphics pipeline", "Failed to create graphics pipeline")
 
         vkDestroyShaderModule(logicalDevice.handle, vertexShaderHandle.value, null)
         vkDestroyShaderModule(logicalDevice.handle, fragmentShaderHandle.value, null)
@@ -107,8 +123,9 @@ object GraphicsPipelineFactory {
         shaderStages: VkPipelineShaderStageCreateInfo.Buffer,
         pipelineLayoutHandle: VkPipelineLayout,
         renderPass: RenderPass,
+        vertexLayout: VertexLayout<*>,
     ): VkGraphicsPipelineCreateInfo.Buffer {
-        val vertexInputInfo = setupVertexShaderInputInfo(stack)
+        val vertexInputInfo = setupVertexShaderInputInfo(stack, vertexLayout)
         val dynamicState = setupDynamicState(stack)
         val inputAssembly = setupVertexInputAssembly(stack)
         val viewportState = setupViewport(stack)
@@ -144,7 +161,11 @@ object GraphicsPipelineFactory {
      * Sets up color blending state for the pipeline.
      *
      * Configures how color outputs from fragment shader are combined with existing framebuffer colors.
-     * Currently sets up a basic configuration with blending disabled.
+     * The current configuration:
+     * - Disables blending (color output directly overwrites framebuffer)
+     * - Enables all color component writes (R,G,B,A)
+     * - Uses VK_BLEND_OP_ADD with VK_BLEND_FACTOR_ONE and VK_BLEND_FACTOR_ZERO
+     * - Disables logical operations
      *
      * @param stack Memory stack for allocating Vulkan structures
      * @return Color blend state configuration
@@ -187,16 +208,18 @@ object GraphicsPipelineFactory {
      * @param stack Memory stack for allocating Vulkan structures
      * @return Vertex input state configuration
      */
-    private fun setupVertexShaderInputInfo(stack: MemoryStack): VkPipelineVertexInputStateCreateInfo =
-        VkPipelineVertexInputStateCreateInfo.calloc(stack).apply {
-            val bindingDescriptions = VkVertexInputBindingDescription.calloc(1, stack)
-                .put(getVertex2BindingDescription(stack))
-                .flip()
-            val attributeDescriptions = getVertex2AttributeDescriptions(stack)
-            sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
-            pVertexBindingDescriptions(bindingDescriptions)
-            pVertexAttributeDescriptions(attributeDescriptions)
-        }
+    private fun setupVertexShaderInputInfo(
+        stack: MemoryStack,
+        vertexLayout: VertexLayout<*>,
+    ): VkPipelineVertexInputStateCreateInfo = VkPipelineVertexInputStateCreateInfo.calloc(stack).apply {
+        val bindingDescriptions = VkVertexInputBindingDescription.calloc(1, stack)
+            .put(vertexLayout.getVertexBindingDescription(stack))
+            .flip()
+        val attributeDescriptions = vertexLayout.toAttributeDescriptions(stack)
+        sType(VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO)
+        pVertexBindingDescriptions(bindingDescriptions)
+        pVertexAttributeDescriptions(attributeDescriptions)
+    }
 
     /**
      * Configures which pipeline states can be dynamically changed.
@@ -288,10 +311,14 @@ object GraphicsPipelineFactory {
     /**
      * Loads and creates a shader module from the specified resource path.
      *
+     * Reads the compiled SPIR-V shader code from resources and creates
+     * a Vulkan shader module. The shader code must be pre-compiled to SPIR-V
+     * format (typically using glslc compiler).
+     *
      * @param logicalDevice The logical device to create the shader module on
-     * @param path Resource path to the shader file
+     * @param path Resource path to the compiled SPIR-V shader file
      * @return Handle to the created shader module
-     * @throws IllegalStateException if shader file cannot be found
+     * @throws IllegalStateException if shader file cannot be found or shader creation fails
      */
     private fun loadShader(logicalDevice: LogicalDevice, path: String): Handle = MemoryStack.stackPush().use { stack ->
         val shaderCode = GraphicsPipelineFactory::class.java.getResourceAsStream(path)?.readAllBytes()

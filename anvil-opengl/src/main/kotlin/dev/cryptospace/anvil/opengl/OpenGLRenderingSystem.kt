@@ -2,7 +2,7 @@ package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
-import dev.cryptospace.anvil.core.math.Vertex2
+import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
@@ -27,7 +27,7 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
+    override fun uploadMesh(vertex2: List<TexturedVertex2>, indices: List<Short>): Mesh {
         TODO("Not yet implemented")
     }
 

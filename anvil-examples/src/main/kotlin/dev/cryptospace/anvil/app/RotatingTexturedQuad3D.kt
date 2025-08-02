@@ -4,9 +4,9 @@ import dev.cryptospace.anvil.core.DeltaTime
 import dev.cryptospace.anvil.core.MainLoop
 import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
+import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.math.Vertex2
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
@@ -14,16 +14,28 @@ import dev.cryptospace.anvil.vulkan.VulkanEngine
 private const val ROTATION_DEGREES_PER_SECOND: Float = 45f
 
 fun main() {
-    TexturedQuad()
+    DepthBuffering()
 }
 
 class TexturedQuad {
 
     private val vertices = listOf(
-        Vertex2(position = Vec2(-0.5f, -0.5f), color = Vec3(1.0f, 0.0f, 0.0f), textureCoordinates = Vec2(1f, 0f)),
-        Vertex2(position = Vec2(0.5f, -0.5f), color = Vec3(0.0f, 1.0f, 0.0f), textureCoordinates = Vec2(0f, 0f)),
-        Vertex2(position = Vec2(0.5f, 0.5f), color = Vec3(0.0f, 0.0f, 1.0f), textureCoordinates = Vec2(0f, 1f)),
-        Vertex2(position = Vec2(-0.5f, 0.5f), color = Vec3(1.0f, 1.0f, 1.0f), textureCoordinates = Vec2(1f, 1f)),
+        TexturedVertex2(
+            position = Vec2(-0.5f, -0.5f),
+            color = Vec3(1.0f, 0.0f, 0.0f),
+            texture = Vec2(1f, 0f),
+        ),
+        TexturedVertex2(
+            position = Vec2(0.5f, -0.5f),
+            color = Vec3(0.0f, 1.0f, 0.0f),
+            texture = Vec2(0f, 0f),
+        ),
+        TexturedVertex2(position = Vec2(0.5f, 0.5f), color = Vec3(0.0f, 0.0f, 1.0f), texture = Vec2(0f, 1f)),
+        TexturedVertex2(
+            position = Vec2(-0.5f, 0.5f),
+            color = Vec3(1.0f, 1.0f, 1.0f),
+            texture = Vec2(1f, 1f),
+        ),
     )
 
     private val indices = listOf(
@@ -38,7 +50,7 @@ class TexturedQuad {
     init {
         VulkanEngine().use { engine ->
             val imageName = "/images/texture.jpg"
-            val imageResourceStream = TexturedQuad::class.java.getResourceAsStream(imageName)
+            val imageResourceStream = DepthBuffering::class.java.getResourceAsStream(imageName)
                 ?: error("Image resource $imageName not found")
             engine.imageManager.loadImage(imageResourceStream)
 

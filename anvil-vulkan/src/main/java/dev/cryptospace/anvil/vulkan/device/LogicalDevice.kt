@@ -1,5 +1,7 @@
 package dev.cryptospace.anvil.vulkan.device
 
+import dev.cryptospace.anvil.core.math.TexturedVertex2
+import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
@@ -51,7 +53,9 @@ data class LogicalDevice(
 
     val renderPass: RenderPass = RenderPass(this)
 
-    val graphicsPipeline: GraphicsPipeline = GraphicsPipeline(this, renderPass)
+    val graphicsPipelineTextured2D: GraphicsPipeline = GraphicsPipeline(this, renderPass, TexturedVertex2)
+
+    val graphicsPipelineTextured3D: GraphicsPipeline = GraphicsPipeline(this, renderPass, TexturedVertex3)
 
     /**
      * The swap chain managing presentation of rendered images to the surface.
@@ -76,7 +80,8 @@ data class LogicalDevice(
     override fun destroy() {
         commandPool.close()
         swapChain.close()
-        graphicsPipeline.close()
+        graphicsPipelineTextured2D.close()
+        graphicsPipelineTextured3D.close()
         renderPass.close()
         descriptorSetLayout.close()
         descriptorPool.close()

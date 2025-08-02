@@ -3,7 +3,7 @@ package dev.cryptospace.anvil.vulkan
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.Vertex2
+import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -109,7 +109,7 @@ class VulkanRenderingSystem(
             }
         }
 
-    override fun uploadMesh(vertex2: List<Vertex2>, indices: List<Short>): Mesh {
+    override fun uploadMesh(vertex2: List<TexturedVertex2>, indices: List<Short>): Mesh {
         val verticesBytes = vertex2.toByteBuffer()
         val indicesBytes = indices.toByteBuffer()
 
