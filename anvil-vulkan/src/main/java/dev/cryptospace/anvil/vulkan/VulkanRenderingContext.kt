@@ -7,9 +7,11 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT16
+import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
 import org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer
 import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
 import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
+import org.lwjgl.vulkan.VK10.vkCmdPushConstants
 
 class VulkanRenderingContext(
     private val logicalDevice: LogicalDevice,
@@ -30,6 +32,14 @@ class VulkanRenderingContext(
         MemoryStack.stackPush().use { stack ->
             val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
             val offsets = stack.longs(0L)
+
+            vkCmdPushConstants(
+                commandBuffer.handle,
+                logicalDevice.graphicsPipelineTextured2D.pipelineLayoutHandle.value,
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                mesh.modelMatrix.toByteBuffer(stack),
+            )
             vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
             vkCmdBindIndexBuffer(
                 commandBuffer.handle,

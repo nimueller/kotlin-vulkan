@@ -2,18 +2,22 @@ package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
+import dev.cryptospace.anvil.vulkan.toBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
 import org.lwjgl.vulkan.VK10.vkDestroyPipeline
 import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo
+import org.lwjgl.vulkan.VkPushConstantRange
 
 /**
  * Represents a Vulkan graphics pipeline that defines the rendering state and shader stages.
@@ -92,10 +96,19 @@ data class GraphicsPipeline(
                     .put(logicalDevice.descriptorSetLayout.handle.value)
                     .flip()
 
+                val pushConstantRanges = listOf(
+                    VkPushConstantRange.calloc(stack)
+                        .stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+                        .offset(0)
+                        .size(Mat4.BYTE_SIZE),
+                ).toBuffer { size ->
+                    VkPushConstantRange.calloc(size, stack)
+                }
+
                 val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
                     pSetLayouts(setLayouts)
-                    pPushConstantRanges(null)
+                    pPushConstantRanges(pushConstantRanges)
                 }
 
                 val pPipelineLayout = stack.mallocLong(1)
