@@ -1,13 +1,11 @@
 package dev.cryptospace.anvil.core.window
 
 import dev.cryptospace.anvil.core.input.Key
+import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
+import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFW.GLFW_PRESS
-import org.lwjgl.glfw.GLFW.glfwDestroyWindow
-import org.lwjgl.glfw.GLFW.glfwGetKey
-import org.lwjgl.glfw.GLFW.glfwSetWindowShouldClose
-import org.lwjgl.glfw.GLFW.glfwWindowShouldClose
 
 /**
  * Represents a window in the application using GLFW.
@@ -18,7 +16,24 @@ data class Window(
     val handle: Handle,
 ) : NativeResource() {
 
-    fun isKeyPressed(key: Key): Boolean = glfwGetKey(handle.value, key.code) == GLFW_PRESS
+    var previousCursorPosition: Vec2 = Vec2(0f, 0f)
+        internal set
+
+    var cursorPosition: Vec2 = Vec2(0f, 0f)
+        internal set
+
+    fun captureCursor() {
+        GLFW.glfwSetInputMode(handle.value, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED)
+    }
+
+    /**
+     * Checks if a specific key is currently being pressed.
+     *
+     * @param key The key to check
+     * @return true if the key is pressed, false otherwise
+     * @throws IllegalStateException if the window has already been destroyed
+     */
+    fun isKeyPressed(key: Key): Boolean = GLFW.glfwGetKey(handle.value, key.code) == GLFW_PRESS
 
     /**
      * Checks if the window should close.
@@ -28,7 +43,7 @@ data class Window(
      */
     fun shouldClose(): Boolean {
         check(!isDestroyed) { "Already destroyed" }
-        return glfwWindowShouldClose(handle.value)
+        return GLFW.glfwWindowShouldClose(handle.value)
     }
 
     /**
@@ -38,10 +53,10 @@ data class Window(
      */
     fun requestClose() {
         check(!isDestroyed) { "Already destroyed" }
-        glfwSetWindowShouldClose(handle.value, true)
+        GLFW.glfwSetWindowShouldClose(handle.value, true)
     }
 
     override fun destroy() {
-        glfwDestroyWindow(handle.value)
+        GLFW.glfwDestroyWindow(handle.value)
     }
 }

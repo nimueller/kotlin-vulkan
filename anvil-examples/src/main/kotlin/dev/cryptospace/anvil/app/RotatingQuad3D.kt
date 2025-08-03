@@ -7,7 +7,7 @@ import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.vulkan.VulkanEngine
 
 private const val ROTATION_DEGREES_PER_SECOND: Float = 90f
@@ -39,7 +39,7 @@ class RotatingQuad3D {
             val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
-                updateUniformBufferObject(deltaTime, renderingContext)
+                updateModelMatrix(deltaTime, mesh)
                 renderingContext.drawMesh(mesh)
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
@@ -51,25 +51,10 @@ class RotatingQuad3D {
 
     private var rotationInDegrees: Double = 0.0
 
-    private fun updateUniformBufferObject(deltaTime: DeltaTime, renderingContext: RenderingContext) {
+    private fun updateModelMatrix(deltaTime: DeltaTime, mesh: Mesh) {
         val deltaRotation = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
         rotationInDegrees += deltaRotation
         rotationInDegrees %= 360.0
-
-        val model =
-            Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
-        val view = Mat4.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
-        val projection = Mat4.perspectiveVulkan(
-            45f,
-            renderingContext.width.toFloat() / renderingContext.height.toFloat(),
-            0.1f,
-            100f,
-        )
-
-//        renderingContext.uniformBufferObject = UniformBufferObject(
-//            model,
-//            view,
-//            projection,
-//        )
+        mesh.modelMatrix = Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
     }
 }

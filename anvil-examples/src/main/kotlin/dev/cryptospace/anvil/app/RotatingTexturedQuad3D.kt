@@ -52,8 +52,12 @@ class TexturedQuad {
             val imageResourceStream = TexturedQuad::class.java.getResourceAsStream(imageName)
                 ?: error("Image resource $imageName not found")
             engine.imageManager.loadImage(imageResourceStream)
-            engine.camera.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
+//            engine.camera.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
+//            engine.camera.lookInDirection(Vec3(0f, 0f, -1f), Vec3(0f, 0f, 1f))
+            engine.camera.lookAt(Vec3(0f, 0f, 0f), Vec3(0f, 0f, -3f), Vec3(0f, 1f, 0f))
             engine.camera.movementEnabled = true
+            engine.camera.rotationEnabled = true
+            engine.window.captureCursor()
 
             val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
@@ -73,8 +77,9 @@ class TexturedQuad {
 
     private fun updateModelMatrix(deltaTime: DeltaTime, mesh: Mesh) {
         val deltaRotation = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
-        rotationInDegrees += deltaRotation
-        rotationInDegrees %= 360.0
-        mesh.modelMatrix = Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
+//        rotationInDegrees += deltaRotation
+//        rotationInDegrees %= 360.0
+        mesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -3f))
+//            .rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
     }
 }
