@@ -205,6 +205,9 @@ class VulkanRenderingSystem(
         vulkanContext.close()
     }
 
+    override fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4 =
+        Mat4.perspectiveVulkan(fov, aspect, near, far)
+
     override fun toString(): String = "Vulkan"
 
     companion object {

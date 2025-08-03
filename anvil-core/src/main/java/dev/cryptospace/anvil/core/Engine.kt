@@ -16,7 +16,7 @@ open class Engine(
     val window = glfw.window
     val renderingSystem: RenderingSystem = renderingSystemCreator(glfw)
     val imageManager: ImageManager = ImageManager(renderingSystem)
-    val camera: Camera = Camera()
+    val camera: Camera = Camera(renderingSystem)
 
     internal fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()

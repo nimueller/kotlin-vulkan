@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.opengl
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
+import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -38,6 +39,9 @@ class OpenGLRenderingSystem(
         glClear(GL_COLOR_BUFFER_BIT)
         glfwSwapBuffers(glfw.window.handle.value)
     }
+
+    override fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4 =
+        Mat4.perspectiveOpenGL(fov, aspect, near, far)
 
     override fun destroy() {
         // Nothing to do

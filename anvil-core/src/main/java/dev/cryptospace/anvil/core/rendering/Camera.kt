@@ -1,6 +1,7 @@
 package dev.cryptospace.anvil.core.rendering
 
 import dev.cryptospace.anvil.core.DeltaTime
+import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.input.Input
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.NativeType
@@ -16,8 +17,9 @@ private const val DEFAULT_NEAR_PLANE = 0.1f
 private const val DEFAULT_FAR_PLANE = 100f
 
 data class Camera(
+    private val renderingSystem: RenderingSystem,
     private var viewMatrix: Mat4 = Mat4.identity,
-    var projectionMatrix: Mat4 = Mat4.identity,
+    private var projectionMatrix: Mat4 = Mat4.identity,
 ) : NativeType {
 
     var position: Vec3 = Vec3.zero
@@ -39,9 +41,25 @@ data class Camera(
     var movementSpeed: Float = DEFAULT_MOVEMENT_SPEED
     var mouseSensitivity: Float = DEFAULT_MOUSE_SENSITIVITY
     var fov: Float = DEFAULT_FOV
+        set(value) {
+            field = value
+            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+        }
     var aspectRatio: Float? = DYNAMIC_ASPECT_RATIO
+        set(value) {
+            field = value
+            field?.let { ratio -> updateProjectionMatrix(ratio) }
+        }
     var near: Float = DEFAULT_NEAR_PLANE
+        set(value) {
+            field = value
+            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+        }
     var viewDistance: Float = DEFAULT_FAR_PLANE
+        set(value) {
+            field = value
+            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+        }
 
     override val byteSize: Int
         get() = Mat4.BYTE_SIZE * 2
@@ -66,7 +84,12 @@ data class Camera(
 
     fun update(window: Window, renderingContext: RenderingContext, deltaTime: DeltaTime) {
         if (aspectRatio == DYNAMIC_ASPECT_RATIO) {
-            updateProjectionMatrix(renderingContext)
+            val renderCanvasWidth = renderingContext.width.toFloat()
+            val renderCanvasHeight = renderingContext.height.toFloat()
+            if (renderCanvasWidth > 0f || renderCanvasHeight > 0f) {
+                val ratio = aspectRatio ?: (renderCanvasWidth / renderCanvasHeight)
+                updateProjectionMatrix(ratio)
+            }
         }
 
         if (!movementEnabled) {
@@ -76,9 +99,8 @@ data class Camera(
         processKeyboardEvents(window, deltaTime)
     }
 
-    private fun updateProjectionMatrix(renderingContext: RenderingContext) {
-        val ratio = aspectRatio ?: (renderingContext.width.toFloat() / renderingContext.height.toFloat())
-        projectionMatrix = Mat4.perspectiveVulkan(fov, ratio, near, viewDistance)
+    private fun updateProjectionMatrix(ratio: Float) {
+        projectionMatrix = renderingSystem.perspective(fov, ratio, near, viewDistance)
     }
 
     private fun processKeyboardEvents(window: Window, deltaTime: DeltaTime) {
