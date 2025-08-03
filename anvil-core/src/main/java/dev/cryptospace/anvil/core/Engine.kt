@@ -21,6 +21,7 @@ open class Engine(
     internal fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()
         renderingSystem.drawFrame(this) { renderingContext ->
+            camera.update(window, renderingContext, deltaTime)
             logic(deltaTime, glfw, renderingContext)
         }
     }
