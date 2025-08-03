@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.native.UniformBufferObject
+import dev.cryptospace.anvil.core.rendering.Camera
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -16,13 +16,13 @@ class VulkanRenderingContext(
     private val commandBuffer: CommandBuffer,
 ) : RenderingContext {
 
+    override val camera: Camera = Camera()
+
     override val width: Int
         get() = logicalDevice.swapChain.extent.width()
 
     override val height: Int
         get() = logicalDevice.swapChain.extent.height()
-
-    override var uniformBufferObject: UniformBufferObject = UniformBufferObject.identity
 
     override fun drawMesh(mesh: Mesh) {
         require(mesh is VulkanMesh) { "Only VulkanMesh is supported" }

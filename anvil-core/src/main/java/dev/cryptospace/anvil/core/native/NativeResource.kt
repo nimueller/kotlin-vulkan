@@ -37,8 +37,8 @@ abstract class NativeResource : AutoCloseable {
         try {
             logger.debug("Destroying {}", this)
             destroy()
-            logger.info("Destroyed $this")
-        } catch (e: Throwable) {
+            logger.debug("Destroyed {}", this)
+        } catch (e: Exception) {
             logger.error("Failed to destroy $this", e)
             throw e
         } finally {

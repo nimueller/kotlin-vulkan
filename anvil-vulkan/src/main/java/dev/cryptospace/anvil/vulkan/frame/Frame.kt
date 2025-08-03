@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.frame
 
+import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -238,12 +239,12 @@ class Frame(
     }
 
     private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
-        renderingContext.uniformBufferObject.let { uniformBufferObject ->
-            MemoryStack.stackPush().use { stack ->
-                val data = uniformBufferObject.toByteBuffer(stack)
-                val dataAddress = MemoryUtil.memAddress(data)
-                MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
-            }
+        val camera = renderingContext.camera
+        val uniformBufferObject = UniformBufferObject(Mat4.identity, camera.viewMatrix, camera.projectionMatrix)
+        MemoryStack.stackPush().use { stack ->
+            val data = uniformBufferObject.toByteBuffer(stack)
+            val dataAddress = MemoryUtil.memAddress(data)
+            MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
         }
     }
 

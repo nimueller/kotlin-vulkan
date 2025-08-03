@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.vulkan
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.logger
+import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
@@ -158,7 +159,13 @@ class VulkanRenderingSystem(
             else -> error("Unsupported vertex type: $vertexType")
         }
 
-        return VulkanMesh(vertexBufferResource, indexBufferResource, indices.size, graphicsPipeline)
+        return VulkanMesh(
+            modelMatrix = Mat4.identity,
+            vertexBufferResource,
+            indexBufferResource,
+            indices.size,
+            graphicsPipeline,
+        )
     }
 
     override fun drawFrame(callback: (RenderingContext) -> Unit) {

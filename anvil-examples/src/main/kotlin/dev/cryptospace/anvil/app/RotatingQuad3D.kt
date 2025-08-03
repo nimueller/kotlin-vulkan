@@ -7,7 +7,6 @@ import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
 
@@ -67,10 +66,10 @@ class RotatingQuad3D {
             100f,
         )
 
-        renderingContext.uniformBufferObject = UniformBufferObject(
-            model,
-            view,
-            projection,
-        )
+//        renderingContext.uniformBufferObject = UniformBufferObject(
+//            model,
+//            view,
+//            projection,
+//        )
     }
 }
