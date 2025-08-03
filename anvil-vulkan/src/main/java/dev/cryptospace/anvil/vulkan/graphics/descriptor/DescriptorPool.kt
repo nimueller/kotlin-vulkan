@@ -1,8 +1,9 @@
-package dev.cryptospace.anvil.vulkan.graphics
+package dev.cryptospace.anvil.vulkan.graphics.descriptor
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorPool
+import dev.cryptospace.anvil.vulkan.toBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
@@ -13,11 +14,25 @@ import org.lwjgl.vulkan.VK10.vkDestroyDescriptorPool
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo
 import org.lwjgl.vulkan.VkDescriptorPoolSize
 
+/**
+ * Manages a Vulkan descriptor pool for allocating descriptor sets.
+ * A descriptor pool maintains a pool of descriptors from which descriptor sets can be allocated.
+ * It contains a collection of pools for each descriptor type (uniform buffers and combined image samplers).
+ *
+ * @property logicalDevice The logical device this descriptor pool belongs to
+ * @property handle The native Vulkan handle for this descriptor pool
+ */
 data class DescriptorPool(
     private val logicalDevice: LogicalDevice,
     val handle: VkDescriptorPool,
 ) : NativeResource() {
 
+    /**
+     * Creates a new descriptor pool with specified capacity.
+     *
+     * @param device The logical device to create the descriptor pool for
+     * @param maxSets The maximum number of descriptor sets that can be allocated from this pool
+     */
     constructor(device: LogicalDevice, maxSets: Int) : this(device, createDescriptorPool(device, maxSets))
 
     override fun destroy() {
@@ -28,20 +43,18 @@ data class DescriptorPool(
 
         private fun createDescriptorPool(device: LogicalDevice, maxSets: Int): VkDescriptorPool {
             MemoryStack.stackPush().use { stack ->
-                val uniformBufferPoolSize = VkDescriptorPoolSize.calloc(stack).apply {
-                    type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-                    descriptorCount(maxSets)
+                val poolSizes = listOf(
+                    VkDescriptorPoolSize.calloc(stack).apply {
+                        type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                        descriptorCount(maxSets)
+                    },
+                    VkDescriptorPoolSize.calloc(stack).apply {
+                        type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                        descriptorCount(maxSets)
+                    },
+                ).toBuffer { size ->
+                    VkDescriptorPoolSize.calloc(size, stack)
                 }
-
-                val imageSamplerPoolSize = VkDescriptorPoolSize.calloc(stack).apply {
-                    type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    descriptorCount(maxSets)
-                }
-
-                val poolSizes = VkDescriptorPoolSize.calloc(2, stack)
-                    .put(uniformBufferPoolSize)
-                    .put(imageSamplerPoolSize)
-                    .flip()
 
                 val createInfo = VkDescriptorPoolCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)

@@ -88,6 +88,31 @@ fun Int.validateVulkanSuccess(operation: String? = null, message: String? = null
 }
 
 /**
+ * Converts a list of Vulkan structs into a struct buffer.
+ * This function takes a list of Vulkan struct objects and creates a buffer containing those structs
+ * using the provided buffer creation callback.
+ *
+ * Example:
+ * ```kotlin
+ * val structs = listOf(struct1, struct2, struct3)
+ * val buffer = structs.toBuffer { size -> VkSomeStruct.malloc(size, stack) }
+ * ```
+ *
+ * @param S The type of Vulkan struct being stored
+ * @param B The type of struct buffer being created
+ * @param createCallback A function that creates a new struct buffer of the specified size
+ * @return A struct buffer containing all the structs from the list
+ */
+inline fun <S : Struct<S>, B : StructBuffer<S, B>> List<S>.toBuffer(createCallback: (Int) -> B): B {
+    val buffer = createCallback(size)
+    for (struct in this) {
+        buffer.put(struct)
+    }
+    buffer.flip()
+    return buffer
+}
+
+/**
  * Fetches a Vulkan integer buffer using the provided query function.
  * This function internally manages memory allocation and ensures that Vulkan calls are successful before returning the
  * result.

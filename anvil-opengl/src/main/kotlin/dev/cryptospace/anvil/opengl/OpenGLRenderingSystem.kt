@@ -2,7 +2,7 @@ package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
-import dev.cryptospace.anvil.core.math.TexturedVertex2
+import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
 import org.lwjgl.opengl.GL11.glClear
 import org.lwjgl.opengl.GL11.glClearColor
 import java.nio.ByteBuffer
+import kotlin.reflect.KClass
 
 class OpenGLRenderingSystem(
     private val glfw: Glfw,
@@ -27,7 +28,7 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun uploadMesh(vertex2: List<TexturedVertex2>, indices: List<Short>): Mesh {
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh {
         TODO("Not yet implemented")
     }
 

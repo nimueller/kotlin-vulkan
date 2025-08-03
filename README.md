@@ -40,11 +40,12 @@ No existing engine can give you that kind of satisfaction (or frustration).
     - [x] Draw first triangle
 - [ ] Advanced features
     - [x] Vertex buffers and attributes
-    - [ ] Textures and materials
+    - [x] Textures
+    - [ ] Depth buffering
+        - [ ] 3D model loading and animation
     - [ ] Basic lighting system
-    - [ ] 3D model loading and animation
 - [ ] Optimization
-    - [ ] Proper Transfer queue
+    - [ ] Proper Transfer queue for staging buffers
     - [ ] Better Vulkan Memory allocation using Vulkan Memory Allocator
 
 ## Building

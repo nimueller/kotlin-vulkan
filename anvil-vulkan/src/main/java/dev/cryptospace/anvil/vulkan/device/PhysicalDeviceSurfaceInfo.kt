@@ -57,7 +57,7 @@ data class PhysicalDeviceSurfaceInfo(
 
     /**
      * Details about the swap chain capabilities and properties for this physical device and surface combination.
-     * This includes information about surface formats, present modes, and other swap chain related capabilities.
+     * This includes information about surface formats, present modes, and other swap-chain-related capabilities.
      * The property can only be modified internally, but can be refreshed using [refreshSwapChainDetails].
      */
     var swapChainDetails: SurfaceSwapChainDetails = SurfaceSwapChainDetails.query(this)
@@ -65,11 +65,11 @@ data class PhysicalDeviceSurfaceInfo(
 
     /**
      * Refreshes the swap chain details by closing the existing details and querying for new ones.
-     * This is useful when the surface properties might have changed, such as after a window resize.
+     * This is useful when the surface properties might have changed, such as after a window resizes.
      *
      * @return The newly queried [SurfaceSwapChainDetails]
      */
-    fun refreshSwapChainDetails(): SurfaceSwapChainDetails {
+    internal fun refreshSwapChainDetails(): SurfaceSwapChainDetails {
         swapChainDetails.close()
         swapChainDetails = SurfaceSwapChainDetails.query(this)
         return swapChainDetails

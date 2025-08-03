@@ -213,11 +213,13 @@ class Frame(
 
         commandBuffer.startRecording()
         renderPass.start(commandBuffer, framebuffer)
-        logicalDevice.swapChain.preparePipeline(commandBuffer, graphicsPipeline)
+
+        val pipeline2D = graphicsPipeline.logicalDevice.graphicsPipelineTextured2D
+        logicalDevice.swapChain.preparePipeline(commandBuffer, pipeline2D)
         vkCmdBindDescriptorSets(
             commandBuffer.handle,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            graphicsPipeline.pipelineLayoutHandle.value,
+            pipeline2D.pipelineLayoutHandle.value,
             0,
             stack.longs(descriptorSet.value),
             null,

@@ -5,11 +5,11 @@ import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
-import dev.cryptospace.anvil.vulkan.graphics.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.vkDestroyDevice
 import org.lwjgl.vulkan.VK10.vkGetDeviceQueue

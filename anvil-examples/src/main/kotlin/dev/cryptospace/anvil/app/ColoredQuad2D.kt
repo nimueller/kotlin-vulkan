@@ -25,7 +25,7 @@ private val indices = listOf(
 
 fun main() {
     VulkanEngine().use { engine ->
-        val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
+        val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
         MainLoop(engine).loop { _, glfw, renderingContext ->
             renderingContext.drawMesh(mesh)

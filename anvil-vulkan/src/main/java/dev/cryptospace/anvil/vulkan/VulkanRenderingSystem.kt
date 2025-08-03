@@ -4,6 +4,8 @@ import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.TexturedVertex2
+import dev.cryptospace.anvil.core.math.TexturedVertex3
+import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -26,6 +28,7 @@ import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.nio.ByteBuffer
 import java.util.EnumSet
+import kotlin.reflect.KClass
 
 /**
  * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
@@ -109,8 +112,8 @@ class VulkanRenderingSystem(
             }
         }
 
-    override fun uploadMesh(vertex2: List<TexturedVertex2>, indices: List<Short>): Mesh {
-        val verticesBytes = vertex2.toByteBuffer()
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh {
+        val verticesBytes = vertices.toByteBuffer()
         val indicesBytes = indices.toByteBuffer()
 
         val stagingVertexBufferResource =
@@ -149,7 +152,13 @@ class VulkanRenderingSystem(
                 bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
             }
 
-        return VulkanMesh(vertexBufferResource, indexBufferResource, indices.size)
+        val graphicsPipeline = when (vertexType) {
+            TexturedVertex2::class -> deviceManager.logicalDevice.graphicsPipelineTextured2D
+            TexturedVertex3::class -> deviceManager.logicalDevice.graphicsPipelineTextured3D
+            else -> error("Unsupported vertex type: $vertexType")
+        }
+
+        return VulkanMesh(vertexBufferResource, indexBufferResource, indices.size, graphicsPipeline)
     }
 
     override fun drawFrame(callback: (RenderingContext) -> Unit) {

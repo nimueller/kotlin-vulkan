@@ -31,19 +31,44 @@ data class PhysicalDevice(
     val handle: VkPhysicalDevice,
 ) : NativeResource() {
 
-    /** Physical device properties including device limits and capabilities */
+    /**
+     * Physical device properties including device limits and capabilities.
+     * Contains detailed information about the device's hardware characteristics including:
+     * - Device name, type, and vendor information
+     * - API version support
+     * - Memory limits and constraints
+     * - Maximum supported dimensions and sizes
+     * - Hardware-specific capabilities and limitations
+     */
     val properties: VkPhysicalDeviceProperties =
         VkPhysicalDeviceProperties.malloc().apply {
             vkGetPhysicalDeviceProperties(handle, this)
         }
 
-    /** Optional features supported by the physical device */
+    /**
+     * Optional features supported by the physical device.
+     * Represents the available hardware features that can be enabled, including
+     * - Geometry shader support
+     * - Tessellation shader support
+     * - Multi-viewport rendering
+     * - Various texture compression formats
+     * - Advanced blending operations
+     * - Other optional rendering capabilities
+     */
     val features: VkPhysicalDeviceFeatures =
         VkPhysicalDeviceFeatures.malloc().apply {
             vkGetPhysicalDeviceFeatures(handle, this)
         }
 
-    /** Queue families supported by this physical device */
+    /**
+     * Queue families supported by this physical device.
+     * Describes the different types of command queues available on the device:
+     * - Graphics queues for rendering commands
+     * - Compute queues for computational work
+     * - Transfer queues for memory operations
+     * - Sparse binding queues for memory management
+     * Each family can support multiple queues with different capabilities
+     */
     val queueFamilies: VkQueueFamilyProperties.Buffer =
         MemoryStack.stackPush().use { stack ->
             stack.queryVulkanBufferWithoutSuccessValidation(
@@ -54,11 +79,25 @@ data class PhysicalDevice(
             )
         }
 
-    /** Index of the queue family that supports graphics operations */
+    /**
+     * Index of the queue family that supports graphics operations.
+     * Points to the first queue family that supports VK_QUEUE_GRAPHICS_BIT operations.
+     * Essential for:
+     * - Creating graphics command pools
+     * - Submitting rendering commands
+     * - Managing graphics pipeline operations
+     */
     val graphicsQueueFamilyIndex =
         queueFamilies.indexOfFirst { it.queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0 }
 
-    /** List of supported device extensions */
+    /**
+     * List of supported device extensions.
+     * Contains all available Vulkan extensions for this device, which can:
+     * - Enable additional device features
+     * - Provide new rendering capabilities
+     * - Support platform-specific functionality
+     * - Add debugging and profiling tools
+     */
     val extensions =
         MemoryStack.stackPush().use { stack ->
             stack.queryVulkanBuffer(
@@ -71,7 +110,14 @@ data class PhysicalDevice(
             }
         }
 
-    /** The name of the physical device */
+    /**
+     * The name of the physical device.
+     * Human-readable device identifier that typically includes:
+     * - GPU marketing name
+     * - Manufacturer specific information
+     * - Device generation or model information
+     * Used for logging and device selection purposes
+     */
     val name: String = properties.deviceNameString()
 
     override fun toString(): String = "${this::class.simpleName}(name=$name)"

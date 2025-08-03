@@ -54,7 +54,7 @@ class DepthBuffering {
                 ?: error("Image resource $imageName not found")
             engine.imageManager.loadImage(imageResourceStream)
 
-            val mesh = engine.renderingSystem.uploadMesh(vertices, indices)
+            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
                 updateUniformBufferObject(deltaTime, renderingContext)
