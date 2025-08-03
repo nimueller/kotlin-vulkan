@@ -1,8 +1,11 @@
 package dev.cryptospace.anvil.core.window
 
+import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
+import org.lwjgl.glfw.GLFW.GLFW_PRESS
 import org.lwjgl.glfw.GLFW.glfwDestroyWindow
+import org.lwjgl.glfw.GLFW.glfwGetKey
 import org.lwjgl.glfw.GLFW.glfwSetWindowShouldClose
 import org.lwjgl.glfw.GLFW.glfwWindowShouldClose
 
@@ -14,6 +17,8 @@ import org.lwjgl.glfw.GLFW.glfwWindowShouldClose
 data class Window(
     val handle: Handle,
 ) : NativeResource() {
+
+    fun isKeyPressed(key: Key): Boolean = glfwGetKey(handle.value, key.code) == GLFW_PRESS
 
     /**
      * Checks if the window should close.

@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.opengl
 
+import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.math.Vertex
@@ -32,7 +33,7 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun drawFrame(callback: (RenderingContext) -> Unit) {
+    override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
         glClear(GL_COLOR_BUFFER_BIT)
         glfwSwapBuffers(glfw.window.handle.value)

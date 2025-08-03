@@ -49,5 +49,14 @@ data class Vec4(
     companion object {
 
         const val BYTE_SIZE = 4 * Float.SIZE_BYTES
+
+        val zero = Vec4(0f, 0f, 0f, 0f)
+        val one = Vec4(1f, 1f, 1f, 1f)
+        val right = Vec4(1f, 0f, 0f, 0f)
+        val left = Vec4(-1f, 0f, 0f, 0f)
+        val up = Vec4(0f, 1f, 0f, 0f)
+        val down = Vec4(0f, -1f, 0f, 0f)
+        val forward = Vec4(0f, 0f, 1f, 0f)
+        val backward = Vec4(0f, 0f, -1f, 0f)
     }
 }

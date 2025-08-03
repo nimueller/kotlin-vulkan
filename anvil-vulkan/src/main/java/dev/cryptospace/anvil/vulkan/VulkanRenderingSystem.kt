@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
+import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Image
 import dev.cryptospace.anvil.core.logger
@@ -168,14 +169,14 @@ class VulkanRenderingSystem(
         )
     }
 
-    override fun drawFrame(callback: (RenderingContext) -> Unit) {
+    override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) {
         if (framebufferResized) {
             framebufferResized = false
             deviceManager.logicalDevice.recreateSwapChain()
         }
 
         val frame = frames[currentFrameIndex]
-        val result = frame.draw(callback)
+        val result = frame.draw(engine, callback)
 
         when (result) {
             FrameDrawResult.FRAMEBUFFER_RESIZED -> {

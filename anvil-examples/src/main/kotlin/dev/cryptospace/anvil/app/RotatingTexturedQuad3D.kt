@@ -1,12 +1,14 @@
 package dev.cryptospace.anvil.app
 
 import dev.cryptospace.anvil.core.DeltaTime
+import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.MainLoop
 import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
+import dev.cryptospace.anvil.core.rendering.Camera
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanEngine
@@ -53,11 +55,12 @@ class TexturedQuad {
             val imageResourceStream = TexturedQuad::class.java.getResourceAsStream(imageName)
                 ?: error("Image resource $imageName not found")
             engine.imageManager.loadImage(imageResourceStream)
+            engine.camera.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
 
             val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
-                updateCamera(renderingContext)
+                updateCamera(engine, renderingContext, engine.camera, deltaTime)
                 updateModelMatrix(deltaTime, mesh)
 
                 renderingContext.drawMesh(mesh)
@@ -69,18 +72,15 @@ class TexturedQuad {
         }
     }
 
-    private fun updateCamera(renderingContext: RenderingContext) {
-        val view = Mat4.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
-        val projection = Mat4.perspectiveVulkan(
+    private fun updateCamera(engine: Engine, renderingContext: RenderingContext, camera: Camera, deltaTime: DeltaTime) {
+        camera.projectionMatrix = Mat4.perspectiveVulkan(
             45f,
             renderingContext.width.toFloat() / renderingContext.height.toFloat(),
             0.1f,
             100f,
         )
 
-        val camera = renderingContext.camera
-        camera.projectionMatrix = projection
-        camera.viewMatrix = view
+        camera.update(engine.window, deltaTime)
     }
 
     private var rotationInDegrees: Double = 0.0

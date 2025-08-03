@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.rendering.Camera
+import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -14,11 +14,10 @@ import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
 import org.lwjgl.vulkan.VK10.vkCmdPushConstants
 
 class VulkanRenderingContext(
+    val engine: Engine,
     private val logicalDevice: LogicalDevice,
     private val commandBuffer: CommandBuffer,
 ) : RenderingContext {
-
-    override val camera: Camera = Camera()
 
     override val width: Int
         get() = logicalDevice.swapChain.extent.width()

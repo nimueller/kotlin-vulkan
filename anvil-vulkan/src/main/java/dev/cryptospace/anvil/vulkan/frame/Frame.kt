@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.frame
 
+import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -168,18 +169,19 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(callback: (RenderingContext) -> Unit): FrameDrawResult = MemoryStack.stackPush().use { stack ->
-        val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
+    fun draw(engine: Engine, callback: (RenderingContext) -> Unit): FrameDrawResult =
+        MemoryStack.stackPush().use { stack ->
+            val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
 
-        val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
+            val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
 
-        prepareRecordCommands(stack, framebuffer)
-        recordCommands(callback)
-        finishRecordCommands()
+            prepareRecordCommands(stack, framebuffer)
+            recordCommands(engine, callback)
+            finishRecordCommands()
 
-        presentFrame(logicalDevice.swapChain, swapChainImageIndex)
-        return FrameDrawResult.SUCCESS
-    }
+            presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+            return FrameDrawResult.SUCCESS
+        }
 
     private fun acquireSwapChainImage(stack: MemoryStack): Int? {
         syncObjects.waitForInFlightFence()
@@ -226,8 +228,8 @@ class Frame(
         )
     }
 
-    private fun recordCommands(callback: (RenderingContext) -> Unit) {
-        val renderingContext = VulkanRenderingContext(logicalDevice, commandBuffer)
+    private fun recordCommands(engine: Engine, callback: (RenderingContext) -> Unit) {
+        val renderingContext = VulkanRenderingContext(engine, logicalDevice, commandBuffer)
         callback(renderingContext)
         updateUniformBuffer(renderingContext)
     }
@@ -238,7 +240,7 @@ class Frame(
     }
 
     private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
-        val camera = renderingContext.camera
+        val camera = renderingContext.engine.camera
         MemoryStack.stackPush().use { stack ->
             val data = camera.toByteBuffer(stack)
             val dataAddress = MemoryUtil.memAddress(data)

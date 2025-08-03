@@ -14,5 +14,5 @@ abstract class RenderingSystem : NativeResource() {
 
     abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh
 
-    abstract fun drawFrame(callback: (RenderingContext) -> Unit)
+    abstract fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit)
 }
