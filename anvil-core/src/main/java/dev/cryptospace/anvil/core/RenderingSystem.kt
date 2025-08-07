@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.core
 
-import dev.cryptospace.anvil.core.image.Image
+import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.native.NativeResource
@@ -13,7 +13,7 @@ abstract class RenderingSystem : NativeResource() {
 
     abstract fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4
 
-    abstract fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image
+    abstract fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture
 
     abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh
 

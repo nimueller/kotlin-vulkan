@@ -2,14 +2,10 @@ package dev.cryptospace.anvil.vulkan.image
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkImageView
+import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
-import org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreateImageView
-import org.lwjgl.vulkan.VK10.vkDestroyImageView
+import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 
 /**
@@ -26,32 +22,43 @@ data class ImageView(
 ) : NativeResource() {
 
     /**
-     * Creates a new image view with the specified device, image handle, and format.
+     * Creates a new image view with the specified configuration.
      *
      * @param device The logical device used to create the image view
-     * @param image The Vulkan image handle to create the view for
-     * @param format The format of the image view (VkFormat)
+     * @param image The source image to create the view for
+     * @param createInfo Configuration parameters for the image view creation
      */
-    constructor(device: LogicalDevice, image: VkImage, format: Int) : this(
+    constructor(device: LogicalDevice, image: Image, createInfo: CreateInfo) : this(
         device,
-        createImageView(device, image, format),
+        createImageView(device, image, createInfo),
     )
 
     override fun destroy() {
         vkDestroyImageView(device.handle, handle.value, null)
     }
 
+    data class CreateInfo(
+        val format: Int,
+        val aspectMask: Int,
+    )
+
     companion object {
 
-        private fun createImageView(device: LogicalDevice, imageHandle: VkImage, format: Int): VkImageView =
+        private fun createImageView(device: LogicalDevice, imageHandle: Image, createInfo: CreateInfo): VkImageView =
             MemoryStack.stackPush().use { stack ->
                 val viewCreateInfo = VkImageViewCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-                    image(imageHandle.value)
+                    image(imageHandle.handle.value)
                     viewType(VK_IMAGE_TYPE_2D)
-                    format(format)
+                    format(createInfo.format)
+                    components { mapping ->
+                        mapping.r(VK_COMPONENT_SWIZZLE_IDENTITY)
+                        mapping.g(VK_COMPONENT_SWIZZLE_IDENTITY)
+                        mapping.b(VK_COMPONENT_SWIZZLE_IDENTITY)
+                        mapping.a(VK_COMPONENT_SWIZZLE_IDENTITY)
+                    }
                     subresourceRange().apply {
-                        aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        aspectMask(createInfo.aspectMask)
                         baseMipLevel(0)
                         levelCount(1)
                         baseArrayLayer(0)
@@ -61,6 +68,7 @@ data class ImageView(
 
                 val pImageView = stack.mallocLong(1)
                 vkCreateImageView(device.handle, viewCreateInfo, null, pImageView)
+                    .validateVulkanSuccess("Create image view", "Failed to create image view")
                 val handle = VkImageView(pImageView[0])
                 VkImageView(handle.value)
             }

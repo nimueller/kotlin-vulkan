@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.vulkan.graphics
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkImage
+import dev.cryptospace.anvil.vulkan.image.ImageView
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
@@ -23,13 +24,15 @@ data class Framebuffer(
             device: LogicalDevice,
             swapChain: SwapChain,
             renderPass: RenderPass,
+            depthImageView: ImageView,
         ): List<Framebuffer> = MemoryStack.stackPush().use { stack ->
             val result = ArrayList<Framebuffer>(swapChain.imageViews.size)
             val attachments = stack.mallocLong(1)
 
             for (imageView in swapChain.imageViews) {
                 attachments.clear()
-                    .put(imageView.value)
+                    .put(imageView.handle.value)
+                    .put(depthImageView.handle.value)
                     .flip()
 
                 val framebufferCreateInfo = VkFramebufferCreateInfo.calloc(stack).apply {

@@ -2,11 +2,13 @@ package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkSwapChain
+import dev.cryptospace.anvil.vulkan.image.Image
+import dev.cryptospace.anvil.vulkan.image.ImageView
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
@@ -16,31 +18,12 @@ import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
-import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR
-import org.lwjgl.vulkan.KHRSwapchain.vkCreateSwapchainKHR
-import org.lwjgl.vulkan.KHRSwapchain.vkDestroySwapchainKHR
-import org.lwjgl.vulkan.KHRSwapchain.vkGetSwapchainImagesKHR
-import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
-import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
-import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-import org.lwjgl.vulkan.VK10.VK_IMAGE_VIEW_TYPE_2D
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
-import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
-import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
-import org.lwjgl.vulkan.VK10.vkCmdSetScissor
-import org.lwjgl.vulkan.VK10.vkCmdSetViewport
-import org.lwjgl.vulkan.VK10.vkCreateImageView
-import org.lwjgl.vulkan.VK10.vkDestroyImageView
-import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
+import org.lwjgl.vulkan.KHRSwapchain.*
+import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkExtent2D
-import org.lwjgl.vulkan.VkImageViewCreateInfo
 import org.lwjgl.vulkan.VkRect2D
 import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
 import org.lwjgl.vulkan.VkViewport
-import java.nio.LongBuffer
 
 /**
  * Represents a Vulkan swap chain, which manages a collection of presentable images that can be
@@ -86,15 +69,23 @@ data class SwapChain(
      * Note: This buffer is allocated using native memory and must be freed
      * when the swap chain is destroyed.
      */
-    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val images: LongBuffer =
+    val images: List<Image> =
         MemoryStack.stackPush().use { stack ->
-            stack.queryVulkanBuffer(
+            val longBuffer = stack.queryVulkanBuffer(
                 bufferInitializer = { size -> MemoryUtil.memAllocLong(size) },
                 bufferQuery = { countBuffer, resultBuffer ->
                     vkGetSwapchainImagesKHR(logicalDevice.handle, handle.value, countBuffer, resultBuffer)
                 },
             )
+
+            val images = mutableListOf<Image>()
+
+            for (i in 0 until longBuffer.remaining()) {
+                val handle = VkImage(longBuffer[i])
+                images.add(Image(logicalDevice, handle))
+            }
+
+            images
         }
 
     /**
@@ -109,47 +100,53 @@ data class SwapChain(
      * These image views are automatically created during swap chain initialization
      * and are destroyed when the swap chain is destroyed.
      */
-    @Suppress("MemberVisibilityCanBePrivate") // may be used in the future
-    val imageViews: List<Handle> =
-        MemoryStack.stackPush().use { stack ->
-            val resultList = mutableListOf<Handle>()
+    val imageViews: List<ImageView> =
+        MemoryStack.stackPush().use {
+            val resultList = mutableListOf<ImageView>()
+            val swapChainDetails = logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails
+            val format = swapChainDetails.bestSurfaceFormat.format()
 
-            images.rewind()
-            while (images.hasRemaining()) {
-                val image = images.get()
-
-                val createInfo = VkImageViewCreateInfo.calloc(stack).apply {
-                    sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-                    image(image)
-                    viewType(VK_IMAGE_VIEW_TYPE_2D)
-                    format(logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.bestSurfaceFormat.format())
-                    components { mapping ->
-                        mapping.r(VK_COMPONENT_SWIZZLE_IDENTITY)
-                        mapping.g(VK_COMPONENT_SWIZZLE_IDENTITY)
-                        mapping.b(VK_COMPONENT_SWIZZLE_IDENTITY)
-                        mapping.a(VK_COMPONENT_SWIZZLE_IDENTITY)
-                    }
-                    subresourceRange { range ->
-                        range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        range.baseMipLevel(0)
-                        range.levelCount(1)
-                        range.baseArrayLayer(0)
-                        range.layerCount(1)
-                    }
-                }
-
-                val imageView = stack.mallocLong(1)
-                vkCreateImageView(logicalDevice.handle, createInfo, null, imageView).validateVulkanSuccess()
-                resultList.add(Handle(imageView[0]))
+            for (image in images) {
+                val imageView = ImageView(
+                    logicalDevice,
+                    image,
+                    ImageView.CreateInfo(
+                        format = format,
+                        aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    ),
+                )
+                resultList.add(imageView)
             }
 
             resultList
         }
 
+    val depthImage =
+        Image(
+            logicalDevice,
+            Image.CreateInfo(
+                width = extent.width(),
+                height = extent.height(),
+                format = VK_FORMAT_D32_SFLOAT,
+                usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            ),
+        )
+
+    val depthImageView =
+        ImageView(
+            logicalDevice,
+            depthImage,
+            ImageView.CreateInfo(
+                format = VK_FORMAT_D32_SFLOAT,
+                aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            ),
+        )
+
     val framebuffers: List<Framebuffer> =
-        Framebuffer.createFramebuffersForSwapChain(logicalDevice, this, renderPass).also { framebuffers ->
-            logger.debug { "Created ${framebuffers.size} framebuffers: $framebuffers" }
-        }
+        Framebuffer.createFramebuffersForSwapChain(logicalDevice, this, renderPass, depthImageView)
+            .also { framebuffers ->
+                logger.debug { "Created ${framebuffers.size} framebuffers: $framebuffers" }
+            }
 
     fun preparePipeline(commandBuffer: CommandBuffer, graphicsPipeline: GraphicsPipeline) =
         MemoryStack.stackPush().use { stack ->
@@ -203,14 +200,14 @@ data class SwapChain(
     }
 
     override fun destroy() {
+        depthImage.close()
+
         framebuffers.forEach { framebuffer ->
             framebuffer.close()
         }
         imageViews.forEach { imageView ->
-            vkDestroyImageView(logicalDevice.handle, imageView.value, null)
+            imageView.close()
         }
-
-        MemoryUtil.memFree(images)
 
         vkDestroySwapchainKHR(logicalDevice.handle, handle.value, null)
     }

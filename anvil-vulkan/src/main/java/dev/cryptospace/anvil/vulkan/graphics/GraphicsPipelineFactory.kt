@@ -9,49 +9,8 @@ import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
 import dev.cryptospace.anvil.vulkan.toAttributeDescriptions
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
-import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ZERO
-import org.lwjgl.vulkan.VK10.VK_BLEND_OP_ADD
-import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_A_BIT
-import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_B_BIT
-import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_G_BIT
-import org.lwjgl.vulkan.VK10.VK_COLOR_COMPONENT_R_BIT
-import org.lwjgl.vulkan.VK10.VK_CULL_MODE_BACK_BIT
-import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_SCISSOR
-import org.lwjgl.vulkan.VK10.VK_DYNAMIC_STATE_VIEWPORT
-import org.lwjgl.vulkan.VK10.VK_FRONT_FACE_COUNTER_CLOCKWISE
-import org.lwjgl.vulkan.VK10.VK_LOGIC_OP_COPY
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_POLYGON_MODE_FILL
-import org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
-import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_FRAGMENT_BIT
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreateGraphicsPipelines
-import org.lwjgl.vulkan.VK10.vkCreateShaderModule
-import org.lwjgl.vulkan.VK10.vkDestroyShaderModule
-import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo
-import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState
-import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineDynamicStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineInputAssemblyStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineMultisampleStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo
-import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
-import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo
-import org.lwjgl.vulkan.VkShaderModuleCreateInfo
-import org.lwjgl.vulkan.VkVertexInputBindingDescription
+import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.*
 
 /**
  * Factory responsible for creating and configuring Vulkan graphics pipelines.
@@ -131,6 +90,7 @@ object GraphicsPipelineFactory {
         val viewportState = setupViewport(stack)
         val rasterizer = setupRasterizer(stack)
         val multisampling = setupMultisampling(stack)
+        val depthStencilState = setupDepthStencilState(stack)
         val colorBlending = setupColorBlending(stack)
 
         val pipelineCreateInfo = VkGraphicsPipelineCreateInfo.calloc(stack).apply {
@@ -142,7 +102,7 @@ object GraphicsPipelineFactory {
             pViewportState(viewportState)
             pRasterizationState(rasterizer)
             pMultisampleState(multisampling)
-            pDepthStencilState(null)
+            pDepthStencilState(depthStencilState)
             pColorBlendState(colorBlending)
             pDynamicState(dynamicState)
             layout(pipelineLayoutHandle.value)
@@ -307,6 +267,22 @@ object GraphicsPipelineFactory {
             alphaToCoverageEnable(false)
             alphaToOneEnable(false)
         }
+
+    private fun setupDepthStencilState(
+        stack: MemoryStack,
+        depthTest: Boolean = true,
+        depthWrite: Boolean = true,
+        depthCompareOpOnDepthTest: Int = VK_COMPARE_OP_LESS_OR_EQUAL,
+    ): VkPipelineDepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo.calloc(stack).apply {
+        sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
+        depthTestEnable(depthTest)
+        depthWriteEnable(depthWrite)
+        depthCompareOp(if (depthTest) depthCompareOpOnDepthTest else VK_COMPARE_OP_ALWAYS)
+        depthBoundsTestEnable(false)
+        stencilTestEnable(false)
+        minDepthBounds(0.0f)
+        maxDepthBounds(1.0f)
+    }
 
     /**
      * Loads and creates a shader module from the specified resource path.

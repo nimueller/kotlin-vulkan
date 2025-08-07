@@ -27,8 +27,13 @@ data class RenderPass(
     fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
         val clearColor = VkClearColorValue.calloc(stack)
             .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
-        val clearValue = VkClearValue.calloc(1, stack)
+        val clearValues = VkClearValue.calloc(1, stack)
             .put(VkClearValue.calloc(stack).color(clearColor))
+            .put(
+                VkClearValue.calloc(stack).depthStencil { stencil ->
+                    stencil.depth(1.0f)
+                },
+            )
             .flip()
 
         val beginInfo = VkRenderPassBeginInfo.calloc(stack).apply {
@@ -44,8 +49,8 @@ data class RenderPass(
                     extent.set(logicalDevice.physicalDeviceSurfaceInfo.swapChainDetails.swapChainExtent)
                 }
             }
-            clearValueCount(clearValue.remaining())
-            pClearValues(clearValue)
+            clearValueCount(clearValues.remaining())
+            pClearValues(clearValues)
         }
 
         vkCmdBeginRenderPass(commandBuffer.handle, beginInfo, VK_SUBPASS_CONTENTS_INLINE)

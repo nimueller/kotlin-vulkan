@@ -7,62 +7,14 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
-import dev.cryptospace.anvil.vulkan.handle.VkImage
+import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.VK10.VK_ACCESS_SHADER_READ_BIT
-import org.lwjgl.vulkan.VK10.VK_ACCESS_TRANSFER_WRITE_BIT
-import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_LEVEL_PRIMARY
-import org.lwjgl.vulkan.VK10.VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_COLOR_BIT
-import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
-import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_TRANSFER_BIT
-import org.lwjgl.vulkan.VK10.VK_QUEUE_FAMILY_IGNORED
-import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
-import org.lwjgl.vulkan.VK10.vkAllocateCommandBuffers
-import org.lwjgl.vulkan.VK10.vkAllocateMemory
-import org.lwjgl.vulkan.VK10.vkBeginCommandBuffer
-import org.lwjgl.vulkan.VK10.vkBindBufferMemory
-import org.lwjgl.vulkan.VK10.vkBindImageMemory
-import org.lwjgl.vulkan.VK10.vkCmdCopyBuffer
-import org.lwjgl.vulkan.VK10.vkCmdCopyBufferToImage
-import org.lwjgl.vulkan.VK10.vkCmdPipelineBarrier
-import org.lwjgl.vulkan.VK10.vkCreateBuffer
-import org.lwjgl.vulkan.VK10.vkEndCommandBuffer
-import org.lwjgl.vulkan.VK10.vkFreeCommandBuffers
-import org.lwjgl.vulkan.VK10.vkGetBufferMemoryRequirements
-import org.lwjgl.vulkan.VK10.vkGetImageMemoryRequirements
-import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceMemoryProperties
-import org.lwjgl.vulkan.VK10.vkMapMemory
-import org.lwjgl.vulkan.VK10.vkQueueSubmit
-import org.lwjgl.vulkan.VK10.vkQueueWaitIdle
-import org.lwjgl.vulkan.VK10.vkUnmapMemory
-import org.lwjgl.vulkan.VkBufferCopy
-import org.lwjgl.vulkan.VkBufferCreateInfo
-import org.lwjgl.vulkan.VkBufferImageCopy
-import org.lwjgl.vulkan.VkCommandBuffer
-import org.lwjgl.vulkan.VkCommandBufferAllocateInfo
-import org.lwjgl.vulkan.VkCommandBufferBeginInfo
-import org.lwjgl.vulkan.VkImageMemoryBarrier
-import org.lwjgl.vulkan.VkMemoryAllocateInfo
-import org.lwjgl.vulkan.VkMemoryRequirements
-import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
-import org.lwjgl.vulkan.VkSubmitInfo
+import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
-import java.util.EnumSet
+import java.util.*
 
 /**
  * Manages Vulkan buffer resources and memory allocation.
@@ -137,9 +89,9 @@ class BufferManager(
         return allocation
     }
 
-    fun allocateImageBuffer(textureImage: VkImage): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
+    fun allocateImageBuffer(image: Image): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
         val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
-        vkGetImageMemoryRequirements(logicalDevice.handle, textureImage.value, bufferMemoryRequirements)
+        vkGetImageMemoryRequirements(logicalDevice.handle, image.handle.value, bufferMemoryRequirements)
 
         val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
@@ -152,7 +104,7 @@ class BufferManager(
         val pTextureImageMemory = stack.mallocLong(1)
         vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pTextureImageMemory)
             .validateVulkanSuccess("Allocate buffer memory", "Failed to allocate memory for vertex buffer")
-        vkBindImageMemory(logicalDevice.handle, textureImage.value, pTextureImageMemory[0], 0)
+        vkBindImageMemory(logicalDevice.handle, image.handle.value, pTextureImageMemory[0], 0)
             .validateVulkanSuccess("Bind buffer memory", "Failed to bind memory to vertex buffer")
         return VkDeviceMemory(pTextureImageMemory[0])
     }
@@ -242,7 +194,7 @@ class BufferManager(
         }
     }
 
-    fun transitionImageLayout(image: VkImage, format: Int, oldLayout: Int, newLayout: Int) {
+    fun transitionImageLayout(image: Image, format: Int, oldLayout: Int, newLayout: Int) {
         recordSingleTimeCommands { stack, commandBuffer ->
             var sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
             var destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
@@ -253,7 +205,7 @@ class BufferManager(
                 newLayout(newLayout)
                 srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
                 dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                image(image.value)
+                image(image.handle.value)
                 subresourceRange { range ->
                     range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                     range.baseMipLevel(0)
@@ -287,7 +239,7 @@ class BufferManager(
         }
     }
 
-    fun copyBufferToImage(buffer: VkBuffer, image: VkImage, width: Int, height: Int) {
+    fun copyBufferToImage(buffer: VkBuffer, image: Image, width: Int, height: Int) {
         recordSingleTimeCommands { stack, commandBuffer ->
             val region = VkBufferImageCopy.calloc(stack).apply {
                 bufferOffset(0)
@@ -318,7 +270,7 @@ class BufferManager(
             vkCmdCopyBufferToImage(
                 commandBuffer,
                 buffer.value,
-                image.value,
+                image.handle.value,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 regions,
             )

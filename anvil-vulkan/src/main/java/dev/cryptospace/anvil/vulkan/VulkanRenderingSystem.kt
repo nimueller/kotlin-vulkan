@@ -2,13 +2,9 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
-import dev.cryptospace.anvil.core.image.Image
+import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.TexturedVertex2
-import dev.cryptospace.anvil.core.math.TexturedVertex3
-import dev.cryptospace.anvil.core.math.Vertex
-import dev.cryptospace.anvil.core.math.toByteBuffer
+import dev.cryptospace.anvil.core.math.*
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
@@ -24,12 +20,10 @@ import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
-import org.lwjgl.vulkan.VK10.vkAllocateDescriptorSets
-import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
+import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.nio.ByteBuffer
-import java.util.EnumSet
+import java.util.*
 import kotlin.reflect.KClass
 
 /**
@@ -107,7 +101,7 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image =
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture =
         textureManager.uploadImage(imageSize, width, height, imageData).also {
             frames.forEach { frame ->
                 frame.updateDescriptorSets()

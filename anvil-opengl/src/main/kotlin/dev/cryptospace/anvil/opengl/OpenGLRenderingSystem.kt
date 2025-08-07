@@ -2,7 +2,7 @@ package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
-import dev.cryptospace.anvil.core.image.Image
+import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.Mesh
@@ -11,9 +11,7 @@ import dev.cryptospace.anvil.core.window.Glfw
 import org.lwjgl.glfw.GLFW.glfwMakeContextCurrent
 import org.lwjgl.glfw.GLFW.glfwSwapBuffers
 import org.lwjgl.opengl.GL
-import org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
-import org.lwjgl.opengl.GL11.glClear
-import org.lwjgl.opengl.GL11.glClearColor
+import org.lwjgl.opengl.GL11.*
 import java.nio.ByteBuffer
 import kotlin.reflect.KClass
 
@@ -26,7 +24,7 @@ class OpenGLRenderingSystem(
         GL.createCapabilities()
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Image {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture {
         TODO("Not yet implemented")
     }
 
