@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.vulkan.graphics
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.handle.VkImage
@@ -130,7 +131,13 @@ data class SwapChain(
                 format = VK_FORMAT_D32_SFLOAT,
                 usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             ),
-        )
+        ).also { image ->
+            // TODO this should not be this way but it works at the moment
+            // Maybe use Vulkan Memory Allocator here
+            // The allocated memory is also NOT cleaned up, this needs to be fixed
+            // (check validation layers for details)
+            BufferManager(logicalDevice).allocateImageBuffer(image)
+        }
 
     val depthImageView =
         ImageView(

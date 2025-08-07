@@ -41,9 +41,10 @@ No existing engine can give you that kind of satisfaction (or frustration).
 - [ ] Advanced features
     - [x] Vertex buffers and attributes
     - [x] Textures
-    - [ ] Depth buffering
-        - [ ] 3D model loading and animation
-    - [ ] Basic lighting system
+    - [x] Depth buffering
+    - [ ] 3D model loading
+    - [ ] Basic lightning system
+    - [ ] Scene Management
 - [ ] Optimization
     - [ ] Proper Transfer queue for staging buffers
     - [ ] Better Vulkan Memory allocation using Vulkan Memory Allocator

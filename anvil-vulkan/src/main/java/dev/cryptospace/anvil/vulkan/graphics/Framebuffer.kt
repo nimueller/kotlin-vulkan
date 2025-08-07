@@ -27,7 +27,7 @@ data class Framebuffer(
             depthImageView: ImageView,
         ): List<Framebuffer> = MemoryStack.stackPush().use { stack ->
             val result = ArrayList<Framebuffer>(swapChain.imageViews.size)
-            val attachments = stack.mallocLong(1)
+            val attachments = stack.mallocLong(2)
 
             for (imageView in swapChain.imageViews) {
                 attachments.clear()

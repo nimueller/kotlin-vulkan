@@ -25,16 +25,17 @@ data class RenderPass(
     constructor(logicalDevice: LogicalDevice) : this(logicalDevice, createRenderPass(logicalDevice))
 
     fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
-        val clearColor = VkClearColorValue.calloc(stack)
-            .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f))
-        val clearValues = VkClearValue.calloc(1, stack)
-            .put(VkClearValue.calloc(stack).color(clearColor))
-            .put(
-                VkClearValue.calloc(stack).depthStencil { stencil ->
-                    stencil.depth(1.0f)
-                },
-            )
-            .flip()
+        val clearValues = listOf(
+            VkClearValue.calloc(stack).color(
+                VkClearColorValue.calloc(stack)
+                    .float32(stack.floats(0.0f, 0.0f, 0.0f, 1.0f)),
+            ),
+            VkClearValue.calloc(stack).depthStencil { stencil ->
+                stencil.depth(1.0f)
+            },
+        ).toBuffer { size ->
+            VkClearValue.calloc(size, stack)
+        }
 
         val beginInfo = VkRenderPassBeginInfo.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO)
