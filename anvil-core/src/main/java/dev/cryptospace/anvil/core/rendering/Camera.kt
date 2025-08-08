@@ -12,7 +12,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 private const val DEFAULT_MOVEMENT_SPEED: Float = 1f
-private const val DEFAULT_MOUSE_SENSITIVITY: Float = 90f
+private const val DEFAULT_MOUSE_SENSITIVITY: Float = 0.1f
 private const val DEFAULT_FOV: Float = 45f
 private val DYNAMIC_ASPECT_RATIO: Float? = null
 private const val DEFAULT_NEAR_PLANE = 0.1f
@@ -152,8 +152,8 @@ data class Camera(
         val offsetX = window.cursorPosition.x - window.previousCursorPosition.x
         val offsetY = window.cursorPosition.y - window.previousCursorPosition.y
 
-        val newYaw = yaw + offsetX * mouseSensitivity * deltaTime.seconds.toFloat()
-        val newPitch = pitch - offsetY * mouseSensitivity * deltaTime.seconds.toFloat()
+        val newYaw = yaw + offsetX * mouseSensitivity
+        val newPitch = pitch - offsetY * mouseSensitivity
 
         lookInDirection(newYaw, newPitch)
     }
