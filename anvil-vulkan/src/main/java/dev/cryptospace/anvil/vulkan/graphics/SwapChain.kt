@@ -3,7 +3,6 @@ package dev.cryptospace.anvil.vulkan.graphics
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.handle.VkImage
@@ -18,13 +17,10 @@ import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VkExtent2D
-import org.lwjgl.vulkan.VkRect2D
-import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
-import org.lwjgl.vulkan.VkViewport
 
 /**
  * Represents a Vulkan swap chain, which manages a collection of presentable images that can be
@@ -136,8 +132,52 @@ data class SwapChain(
             // Maybe use Vulkan Memory Allocator here
             // The allocated memory is also NOT cleaned up, this needs to be fixed
             // (check validation layers for details)
-            BufferManager(logicalDevice).allocateImageBuffer(image)
+            MemoryStack.stackPush().use { stack ->
+                val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
+                VK10.vkGetImageMemoryRequirements(
+                    logicalDevice.handle,
+                    image.handle.value,
+                    bufferMemoryRequirements,
+                )
+
+                val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply<VkMemoryAllocateInfo> {
+                    sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
+                    allocationSize(bufferMemoryRequirements.size())
+                    memoryTypeIndex(
+                        findMemoryType(
+                            bufferMemoryRequirements.memoryTypeBits(),
+                            VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        ),
+                    )
+                }
+
+                val pTextureImageMemory = stack.mallocLong(1)
+                VK10.vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pTextureImageMemory)
+                    .validateVulkanSuccess("Allocate buffer memory", "Failed to allocate memory for vertex buffer")
+                VK10.vkBindImageMemory(
+                    logicalDevice.handle,
+                    image.handle.value,
+                    pTextureImageMemory[0],
+                    0,
+                )
+                    .validateVulkanSuccess("Bind buffer memory", "Failed to bind memory to vertex buffer")
+            }
         }
+
+    private fun findMemoryType(typeFilter: Int, properties: Int): Int = MemoryStack.stackPush().use { stack ->
+        val memProperties = VkPhysicalDeviceMemoryProperties.calloc(stack)
+        vkGetPhysicalDeviceMemoryProperties(logicalDevice.physicalDevice.handle, memProperties)
+
+        for (i in 0 until memProperties.memoryTypeCount()) {
+            if ((typeFilter and (1 shl i)) != 0 &&
+                (memProperties.memoryTypes(i).propertyFlags() and properties) == properties
+            ) {
+                return i
+            }
+        }
+
+        error("Failed to find suitable memory type")
+    }
 
     val depthImageView =
         ImageView(

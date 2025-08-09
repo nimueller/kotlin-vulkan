@@ -6,6 +6,7 @@ dependencies {
     api(projects.anvilCore)
 
     implementation(libs.lwjgl.vulkan)
+    implementation(libs.lwjgl.vma)
 }
 
 val compileShaders by tasks.registering {
