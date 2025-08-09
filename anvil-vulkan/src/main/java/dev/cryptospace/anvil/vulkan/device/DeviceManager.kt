@@ -51,9 +51,10 @@ class DeviceManager(
      * The logical device providing the main interface for interacting with the physical device.
      * Created with specific queue families and features enabled for the application's needs.
      */
-    val logicalDevice: LogicalDevice = LogicalDeviceFactory.create(selectedDeviceSurfaceInfo).also {
-        logger.info("Created logical device: $it")
-    }
+    val logicalDevice: LogicalDevice =
+        LogicalDeviceFactory.create(selectedDeviceSurfaceInfo).also {
+            logger.info("Created logical device: $it")
+        }
 
     /**
      * Destroys the logical device and cleans up physical device resources.

@@ -47,11 +47,11 @@ class VulkanRenderingSystem(
     glfw: Glfw,
 ) : RenderingSystem() {
 
-    private val vulkanContext: VulkanContext = VulkanContext(glfw.getRequiredVulkanExtensions())
+    private val context: VulkanContext = VulkanContext(glfw.getRequiredVulkanExtensions())
 
-    private val windowSurface: Surface = Surface(vulkanInstance = vulkanContext.handle, window = glfw.window)
+    private val windowSurface: Surface = Surface(vulkanInstance = context.handle, window = glfw.window)
 
-    private val deviceManager: DeviceManager = DeviceManager(vulkanContext, windowSurface)
+    private val deviceManager: DeviceManager = DeviceManager(context, windowSurface)
 
     /**
      * Command pool for allocating command buffers used to record and submit Vulkan commands.
@@ -64,7 +64,7 @@ class VulkanRenderingSystem(
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
-    private val bufferManager = BufferManager(deviceManager.logicalDevice, commandPool)
+    private val bufferManager = BufferManager(context, deviceManager.logicalDevice, commandPool)
 
     private val textureManager = TextureManager(deviceManager.logicalDevice, bufferManager)
 
@@ -254,7 +254,7 @@ class VulkanRenderingSystem(
         commandPool.close()
         deviceManager.close()
         windowSurface.close()
-        vulkanContext.close()
+        context.close()
     }
 
     override fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4 =
