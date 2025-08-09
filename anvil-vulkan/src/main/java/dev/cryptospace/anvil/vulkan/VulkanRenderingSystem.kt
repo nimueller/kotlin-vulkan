@@ -18,6 +18,7 @@ import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.surface.Surface
@@ -48,10 +49,17 @@ class VulkanRenderingSystem(
     private val deviceManager: DeviceManager = DeviceManager(vulkanContext, windowSurface)
 
     /**
+     * Command pool for allocating command buffers used to record and submit Vulkan commands.
+     * Created from the logical device and manages memory for command buffer allocation and deallocation.
+     * Command buffers from this pool are used for recording rendering and compute commands.
+     */
+    val commandPool: CommandPool = CommandPool(deviceManager.logicalDevice)
+
+    /**
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
-    private val bufferManager = BufferManager(deviceManager.logicalDevice)
+    private val bufferManager = BufferManager(deviceManager.logicalDevice, commandPool)
 
     private val textureManager = TextureManager(deviceManager.logicalDevice, bufferManager)
 
@@ -91,7 +99,13 @@ class VulkanRenderingSystem(
      */
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
         val descriptorSet = descriptorSets[index]
-        Frame(deviceManager.logicalDevice, bufferManager, textureManager, descriptorSet)
+        Frame(
+            deviceManager.logicalDevice,
+            bufferManager,
+            textureManager,
+            descriptorSet,
+            commandPool,
+        )
     }
 
     private var currentFrameIndex = 0
@@ -201,6 +215,7 @@ class VulkanRenderingSystem(
 
         textureManager.close()
         bufferManager.close()
+        commandPool.close()
         deviceManager.close()
         windowSurface.close()
         vulkanContext.close()

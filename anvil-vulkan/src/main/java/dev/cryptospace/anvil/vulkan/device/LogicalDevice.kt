@@ -3,7 +3,6 @@ package dev.cryptospace.anvil.vulkan.device
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
-import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
@@ -63,19 +62,11 @@ data class LogicalDevice(
      */
     var swapChain: SwapChain = SwapChain(this, renderPass)
 
-    /**
-     * Command pool for allocating command buffers used to record and submit Vulkan commands.
-     * Created from the logical device and manages memory for command buffer allocation and deallocation.
-     * Command buffers from this pool are used for recording rendering and compute commands.
-     */
-    val commandPool: CommandPool = CommandPool(this)
-
     fun recreateSwapChain() {
         swapChain = swapChain.recreate(renderPass)
     }
 
     override fun destroy() {
-        commandPool.close()
         swapChain.close()
         graphicsPipelineTextured3D.close()
         renderPass.close()

@@ -47,11 +47,11 @@ class Frame(
     private val bufferManager: BufferManager,
     private val textureManager: TextureManager,
     private val descriptorSet: VkDescriptorSet,
+    private val commandPool: CommandPool,
 ) : NativeResource() {
 
     private val renderPass: RenderPass = logicalDevice.renderPass
     private val imageCount: Int = logicalDevice.swapChain.images.size
-    private val commandPool: CommandPool = logicalDevice.commandPool
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
 
     /**

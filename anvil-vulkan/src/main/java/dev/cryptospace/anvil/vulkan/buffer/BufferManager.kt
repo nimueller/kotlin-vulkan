@@ -5,6 +5,7 @@ import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.image.Image
@@ -27,6 +28,7 @@ import java.util.*
  */
 class BufferManager(
     private val logicalDevice: LogicalDevice,
+    private val commandPool: CommandPool,
 ) : NativeResource() {
 
     private val buffers = mutableListOf<BufferAllocation>()
@@ -289,7 +291,7 @@ class BufferManager(
             sType(VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO)
             level(VK_COMMAND_BUFFER_LEVEL_PRIMARY)
             commandBufferCount(1)
-            commandPool(logicalDevice.commandPool.handle.value)
+            commandPool(commandPool.handle.value)
         }
 
         val pCommandBuffers = stack.mallocPointer(1)
@@ -320,7 +322,7 @@ class BufferManager(
             .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
         vkQueueWaitIdle(logicalDevice.graphicsQueue)
             .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
-        vkFreeCommandBuffers(logicalDevice.handle, logicalDevice.commandPool.handle.value, commandBuffer)
+        vkFreeCommandBuffers(logicalDevice.handle, commandPool.handle.value, commandBuffer)
     }
 
     /**
