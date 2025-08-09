@@ -210,7 +210,7 @@ class Frame(
         callback: (RenderingContext) -> Unit,
         meshes: List<VulkanMesh>,
     ) {
-        val renderingContext = VulkanRenderingContext(engine, logicalDevice, commandBuffer)
+        val renderingContext = VulkanRenderingContext(engine, logicalDevice)
         callback(renderingContext)
         for (mesh in meshes) {
             mesh.draw(stack, logicalDevice, commandBuffer)

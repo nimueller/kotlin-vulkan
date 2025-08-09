@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -10,15 +9,19 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 
 data class VulkanMesh(
-    override var modelMatrix: Mat4 = Mat4.identity,
+    val mesh: Mesh,
     val vertexBufferAllocation: BufferAllocation,
     val indexBufferAllocation: BufferAllocation,
     val indexCount: Int,
     val indexType: Int,
     val graphicsPipeline: GraphicsPipeline,
-) : Mesh {
+) {
 
     fun draw(stack: MemoryStack, logicalDevice: LogicalDevice, commandBuffer: CommandBuffer) {
+        if (!mesh.visible) {
+            return
+        }
+
         val vertexBuffers = stack.longs(vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
 
@@ -27,7 +30,7 @@ data class VulkanMesh(
             logicalDevice.graphicsPipelineTextured2D.pipelineLayoutHandle.value,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
-            modelMatrix.toByteBuffer(stack),
+            mesh.modelMatrix.toByteBuffer(stack),
         )
         vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
         vkCmdBindIndexBuffer(

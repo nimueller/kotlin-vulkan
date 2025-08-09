@@ -38,9 +38,8 @@ class RotatingQuad3D {
         VulkanEngine().use { engine ->
             val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
-            MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
+            MainLoop(engine).loop { deltaTime, glfw, _ ->
                 updateModelMatrix(deltaTime, mesh)
-                renderingContext.drawMesh(mesh)
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
                     glfw.window.requestClose()

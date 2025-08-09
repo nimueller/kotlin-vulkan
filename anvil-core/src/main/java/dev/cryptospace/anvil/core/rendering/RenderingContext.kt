@@ -5,6 +5,4 @@ interface RenderingContext {
     val width: Int
 
     val height: Int
-
-    fun drawMesh(mesh: Mesh)
 }

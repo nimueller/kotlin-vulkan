@@ -64,10 +64,7 @@ class DepthBuffering {
 
             MainLoop(engine).loop { _, glfw, renderingContext ->
                 firstMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -3f))
-                renderingContext.drawMesh(firstMesh)
-
                 secondMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -4f))
-                renderingContext.drawMesh(secondMesh)
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
                     glfw.window.requestClose()

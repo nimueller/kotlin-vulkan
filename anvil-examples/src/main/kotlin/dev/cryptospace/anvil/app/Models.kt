@@ -32,7 +32,7 @@ class Models {
             engine.camera.movementEnabled = false
             engine.camera.rotationEnabled = false
 
-            MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
+            MainLoop(engine).loop { deltaTime, glfw, _ ->
                 updateModelMatrix(deltaTime, mesh)
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {

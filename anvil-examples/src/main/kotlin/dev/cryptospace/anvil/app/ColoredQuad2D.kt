@@ -25,11 +25,9 @@ private val indices = arrayOf(
 
 fun main() {
     VulkanEngine().use { engine ->
-        val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
+        engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
-        MainLoop(engine).loop { _, glfw, renderingContext ->
-            renderingContext.drawMesh(mesh)
-
+        MainLoop(engine).loop { _, glfw, _ ->
             if (glfw.isKeyPressed(Key.ESCAPE)) {
                 glfw.window.requestClose()
             }
