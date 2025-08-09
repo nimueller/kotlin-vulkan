@@ -17,7 +17,6 @@ import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
@@ -218,23 +217,14 @@ class Frame(
         for (mesh in meshes) {
             mesh.draw(stack, commandBuffer)
         }
-//        updateUniformBuffer(renderingContext)
-        bufferManager.uploadData(uniformBuffer, renderingContext.engine.camera.toByteBuffer(stack))
+
+        val camera = renderingContext.engine.camera
+        bufferManager.uploadData(uniformBuffer, camera.toByteBuffer(stack))
     }
 
     private fun finishRecordCommands() {
         renderPass.end(commandBuffer)
         commandBuffer.endRecording()
-    }
-
-    private fun updateUniformBuffer(renderingContext: VulkanRenderingContext) {
-        val camera = renderingContext.engine.camera
-        MemoryStack.stackPush().use { stack ->
-            val data = camera.toByteBuffer(stack)
-            val dataAddress = MemoryUtil.memAddress(data)
-            // TODO
-//            MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
-        }
     }
 
     private fun presentFrame(swapChain: SwapChain, imageIndex: Int) = MemoryStack.stackPush().use { stack ->

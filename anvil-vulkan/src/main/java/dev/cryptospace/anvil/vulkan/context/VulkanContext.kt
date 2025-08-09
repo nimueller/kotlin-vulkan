@@ -12,23 +12,17 @@ import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.vulkan.EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
-import org.lwjgl.vulkan.VK10.VK_MAKE_VERSION
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreateInstance
-import org.lwjgl.vulkan.VK10.vkDestroyInstance
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkApplicationInfo
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkInstanceCreateInfo
 
 /**
- * Encapsulates the core Vulkan context including instance and validation layers.
+ * Encapsulates the core Vulkan context, including instance and validation layers.
  *
  * This class manages the lifecycle of the Vulkan instance and related resources,
  * providing a centralized point of access for these core Vulkan components.
  * It handles initialization and cleanup of the Vulkan instance and validation layers.
- *
- * @property glfw GLFW window system integration for instance creation
  */
 class VulkanContext(
     val handle: VkInstance,
@@ -56,10 +50,16 @@ class VulkanContext(
             validationLayerLogger.destroy()
         }
 
-        vkDestroyInstance(handle, null)
+        VK10.vkDestroyInstance(handle, null)
     }
 
     companion object {
+
+        /**
+         * The Vulkan API version to use for this application.
+         * Currently set to Vulkan 1.0 for maximum compatibility.
+         */
+        val API_VERSION = VK10.VK_API_VERSION_1_0
 
         @JvmStatic
         private val logger = logger<VulkanContext>()
@@ -82,7 +82,7 @@ class VulkanContext(
          * @param surfaceExtensions Surface extensions to use
          * @return Configured VkInstance ready for use
          */
-        fun createInstance(surfaceExtensions: List<String>): VkInstance = MemoryStack.stackPush().use { stack ->
+        private fun createInstance(surfaceExtensions: List<String>): VkInstance = MemoryStack.stackPush().use { stack ->
             val appInfo = createApplicationInfo(stack)
             val createInfo = createInstanceCreateInfo(stack, surfaceExtensions, appInfo)
             val instance = createVulkanInstance(stack, createInfo)
@@ -92,13 +92,13 @@ class VulkanContext(
 
         private fun createApplicationInfo(stack: MemoryStack): VkApplicationInfo =
             VkApplicationInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_APPLICATION_INFO)
+                sType(VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO)
                 pNext(NULL)
                 pApplicationName(stack.ASCII("Hello Vulkan Application"))
-                applicationVersion(VK_MAKE_VERSION(1, 0, 0))
+                applicationVersion(VK10.VK_MAKE_VERSION(1, 0, 0))
                 pEngineName(stack.ASCII("Vulkan"))
-                engineVersion(VK_MAKE_VERSION(1, 0, 0))
-                apiVersion(VK_MAKE_VERSION(1, 0, 0))
+                engineVersion(VK10.VK_MAKE_VERSION(1, 0, 0))
+                apiVersion(API_VERSION)
             }
 
         private fun createInstanceCreateInfo(
@@ -119,7 +119,7 @@ class VulkanContext(
             val layers = stack.pushStringList(layerNames)
 
             val createInfo = VkInstanceCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+                sType(VK10.VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
                 pApplicationInfo(appInfo)
                 ppEnabledLayerNames(layers)
                 ppEnabledExtensionNames(extensions)
@@ -138,7 +138,7 @@ class VulkanContext(
 
         private fun createVulkanInstance(stack: MemoryStack, createInfo: VkInstanceCreateInfo): PointerBuffer {
             val pInstance = stack.callocPointer(1)
-            vkCreateInstance(createInfo, null, pInstance).validateVulkanSuccess()
+            VK10.vkCreateInstance(createInfo, null, pInstance).validateVulkanSuccess()
             return pInstance
         }
     }

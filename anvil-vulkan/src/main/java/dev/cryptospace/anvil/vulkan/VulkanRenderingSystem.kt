@@ -11,6 +11,7 @@ import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
+import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
@@ -53,6 +54,8 @@ class VulkanRenderingSystem(
 
     private val deviceManager: DeviceManager = DeviceManager(context, windowSurface)
 
+    private val allocator: Allocator = Allocator(context, deviceManager.logicalDevice)
+
     /**
      * Command pool for allocating command buffers used to record and submit Vulkan commands.
      * Created from the logical device and manages memory for command buffer allocation and deallocation.
@@ -64,7 +67,7 @@ class VulkanRenderingSystem(
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
-    private val bufferManager = BufferManager(context, deviceManager.logicalDevice, commandPool)
+    private val bufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
 
     private val textureManager = TextureManager(deviceManager.logicalDevice, bufferManager)
 
@@ -252,6 +255,7 @@ class VulkanRenderingSystem(
         textureManager.close()
         bufferManager.close()
         commandPool.close()
+        allocator.close()
         deviceManager.close()
         windowSurface.close()
         context.close()

@@ -3,7 +3,6 @@ package dev.cryptospace.anvil.vulkan.buffer
 import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
@@ -13,8 +12,6 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.vma.Vma
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
-import org.lwjgl.util.vma.VmaAllocatorCreateInfo
-import org.lwjgl.util.vma.VmaVulkanFunctions
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
@@ -30,31 +27,10 @@ import java.util.*
  * @property logicalDevice The logical device used for buffer operations
  */
 class BufferManager(
-    private val context: VulkanContext,
+    private val allocator: Allocator,
     private val logicalDevice: LogicalDevice,
     private val commandPool: CommandPool,
 ) : NativeResource() {
-
-    private val allocatorHandle: VmaAllocator =
-        MemoryStack.stackPush().use { stack ->
-            val functions = VmaVulkanFunctions.calloc(stack).apply {
-                set(context.handle, logicalDevice.handle)
-            }
-
-            val createInfo = VmaAllocatorCreateInfo.calloc(stack).apply {
-                flags(0)
-                physicalDevice(logicalDevice.physicalDevice.handle)
-                device(logicalDevice.handle)
-                instance(context.handle)
-                vulkanApiVersion(VK10.VK_API_VERSION_1_0)
-                pVulkanFunctions(functions)
-                pAllocationCallbacks(null)
-            }
-
-            val pAllocator = stack.mallocPointer(1)
-            Vma.vmaCreateAllocator(createInfo, pAllocator)
-            VmaAllocator(pAllocator[0])
-        }
 
     private val buffers = mutableListOf<BufferAllocation>()
 
@@ -89,14 +65,14 @@ class BufferManager(
         val pBuffer = stack.mallocLong(1)
         val pAllocation = stack.mallocPointer(1)
 
-        Vma.vmaCreateBuffer(allocatorHandle.value, bufferInfo, allocationInfo, pBuffer, pAllocation, null)
+        Vma.vmaCreateBuffer(allocator.handle.value, bufferInfo, allocationInfo, pBuffer, pAllocation, null)
             .validateVulkanSuccess("Create vertex buffer", "Failed to create buffer for vertices")
 
         val buffer = VkBuffer(pBuffer[0])
         val memory = VmaAllocation(pAllocation[0])
 
         logger.info("Allocated buffer $buffer size $size with memory $memory")
-        BufferAllocation(allocatorHandle, buffer, memory, size)
+        BufferAllocation(allocator, buffer, memory, size)
     }
 
     fun allocateImageBuffer(image: Image): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
@@ -150,25 +126,10 @@ class BufferManager(
             val verticesBufferAddress = MemoryUtil.memAddress(data)
 
             val pMemory = stack.mallocPointer(1)
-            Vma.vmaMapMemory(allocatorHandle.value, allocation.memory.value, pMemory)
+            Vma.vmaMapMemory(allocator.handle.value, allocation.memory.value, pMemory)
                 .validateVulkanSuccess("Map buffer memory", "Failed to map memory for uploading data")
             MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], allocation.size)
-            Vma.vmaUnmapMemory(allocatorHandle.value, allocation.memory.value)
-        }
-    }
-
-    /**
-     * Maps the buffer memory and returns a pointer to the mapped memory region.
-     *
-     * @param allocation The buffer allocation to map memory from
-     * @return A native memory pointer to the mapped region
-     */
-    fun getPointer(allocation: BufferAllocation): Long {
-        MemoryStack.stackPush().use { stack ->
-            val pMemory = stack.mallocPointer(1)
-            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, allocation.size, 0, pMemory)
-            val pointer = pMemory[0]
-            return pointer
+            Vma.vmaUnmapMemory(allocator.handle.value, allocation.memory.value)
         }
     }
 
@@ -339,8 +300,6 @@ class BufferManager(
     override fun destroy() {
         buffers.forEach { buffer -> buffer.close() }
         buffers.clear()
-
-        Vma.vmaDestroyAllocator(allocatorHandle.value)
     }
 
     companion object {
