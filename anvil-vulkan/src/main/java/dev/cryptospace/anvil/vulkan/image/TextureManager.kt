@@ -4,8 +4,6 @@ import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanTexture
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
-import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
-import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkSampler
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
@@ -13,7 +11,6 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkSamplerCreateInfo
 import java.nio.ByteBuffer
-import java.util.*
 
 class TextureManager(
     private val logicalDevice: LogicalDevice,
@@ -61,12 +58,7 @@ class TextureManager(
     fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture =
         MemoryStack.stackPush().use { stack ->
             // copy pixel data into host visible memory
-            bufferManager.allocateBuffer(
-                imageSize.toLong(),
-                EnumSet.of(BufferUsage.TRANSFER_SRC),
-                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
-            ).use { stagingBuffer ->
-                bufferManager.uploadData(stagingBuffer, imageData)
+            bufferManager.withStagingBuffer(imageData) { stagingBuffer, fence ->
                 val format = VK_FORMAT_R8G8B8A8_SRGB
 
                 // creating the actual image based on this pixel data
@@ -92,7 +84,7 @@ class TextureManager(
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 )
                 // ... copying the data from the staging buffer to the device memory
-                bufferManager.copyBufferToImage(stagingBuffer.buffer, textureImage, width, height)
+                bufferManager.copyBufferToImage(fence, stagingBuffer.buffer, textureImage, width, height)
                 // ... converting to read only optimal layout
                 bufferManager.transitionImageLayout(
                     textureImage,
@@ -110,7 +102,11 @@ class TextureManager(
                     ),
                 )
 
-                return VulkanTexture(textureImage, textureImageMemory, textureImageView).also { image ->
+                return@withStagingBuffer VulkanTexture(
+                    textureImage,
+                    textureImageMemory,
+                    textureImageView,
+                ).also { image ->
                     textureImages += image
                 }
             }

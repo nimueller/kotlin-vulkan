@@ -6,6 +6,7 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
+import dev.cryptospace.anvil.vulkan.handle.VkFence
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -134,6 +135,54 @@ class BufferManager(
     }
 
     /**
+     * Creates a temporary staging buffer in host-visible memory for efficient data transfer to device-local memory.
+     *
+     * This method performs the following operations:
+     * 1. Allocates a staging buffer with TRANSFER_SRC usage in host-visible memory
+     * 2. Uploads provided data from the ByteBuffer to the staging buffer
+     * 3. Executes the provided block with the staging buffer and synchronization fence
+     * 4. Waits for the fence to signal operation completion
+     * 5. Automatically destroys the staging buffer and frees associated memory
+     *
+     * The staging buffer is optimized for host-to-device transfers and is allocated with
+     * HOST_VISIBLE and HOST_COHERENT properties for efficient memory mapping.
+     *
+     * @param bytes The ByteBuffer containing the data to be staged (must be direct for memory mapping)
+     * @param block Lambda that receives the staging buffer and fence for synchronization operations
+     * @return The result of type T from the block execution
+     * @throws IllegalArgumentException If the provided ByteBuffer is not direct
+     */
+    fun <T> withStagingBuffer(bytes: ByteBuffer, block: (stagingBuffer: BufferAllocation, fence: VkFence) -> T): T {
+        check(bytes.isDirect) { "ByteBuffer must be direct" }
+        val stagingBuffer = allocateBuffer(
+            size = bytes.remaining().toLong(),
+            usage = EnumSet.of(BufferUsage.TRANSFER_SRC),
+            preferredProperties = EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+        )
+
+        try {
+            uploadData(stagingBuffer, bytes)
+            val fence = VkFence(
+                MemoryStack.stackPush().use { stack ->
+                    val fenceCreateInfo = VkFenceCreateInfo.calloc(stack).apply {
+                        sType(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
+                        flags(0)
+                    }
+                    val pFence = stack.mallocLong(1)
+                    vkCreateFence(logicalDevice.handle, fenceCreateInfo, null, pFence)
+                    pFence[0]
+                },
+            )
+            val value = block(stagingBuffer, fence)
+            VK10.vkWaitForFences(logicalDevice.handle, fence.value, true, Long.MAX_VALUE)
+            return value
+        } finally {
+            stagingBuffer.close()
+            buffers.remove(stagingBuffer)
+        }
+    }
+
+    /**
      * Copies data from one buffer to another using a command buffer.
      *
      * @param source The source buffer allocation to copy from
@@ -210,8 +259,8 @@ class BufferManager(
         }
     }
 
-    fun copyBufferToImage(buffer: VkBuffer, image: Image, width: Int, height: Int) {
-        recordSingleTimeCommands { stack, commandBuffer ->
+    fun copyBufferToImage(fence: VkFence, buffer: VkBuffer, image: Image, width: Int, height: Int) {
+        recordSingleTimeCommands(fence) { stack, commandBuffer ->
             val region = VkBufferImageCopy.calloc(stack).apply {
                 bufferOffset(0)
                 bufferRowLength(0)
@@ -248,11 +297,11 @@ class BufferManager(
         }
     }
 
-    private fun recordSingleTimeCommands(callback: (MemoryStack, VkCommandBuffer) -> Unit) =
+    private fun recordSingleTimeCommands(fence: VkFence? = null, callback: (MemoryStack, VkCommandBuffer) -> Unit) =
         MemoryStack.stackPush().use { stack ->
             val commandBuffer = beginSingleTimeCommands(stack)
             callback(stack, commandBuffer)
-            endSingleTimeCommands(stack, commandBuffer)
+            endSingleTimeCommands(stack, commandBuffer, fence)
         }
 
     private fun beginSingleTimeCommands(stack: MemoryStack): VkCommandBuffer {
@@ -278,7 +327,7 @@ class BufferManager(
         return commandBuffer
     }
 
-    private fun endSingleTimeCommands(stack: MemoryStack, commandBuffer: VkCommandBuffer) {
+    private fun endSingleTimeCommands(stack: MemoryStack, commandBuffer: VkCommandBuffer, fence: VkFence?) {
         vkEndCommandBuffer(commandBuffer)
             .validateVulkanSuccess("End command buffer", "Failed to end command buffer for buffer copy")
 
@@ -287,7 +336,7 @@ class BufferManager(
             pCommandBuffers(stack.pointers(commandBuffer))
         }
 
-        vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, VK_NULL_HANDLE)
+        vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, fence?.value ?: VK10.VK_NULL_HANDLE)
             .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
         vkQueueWaitIdle(logicalDevice.graphicsQueue)
             .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
