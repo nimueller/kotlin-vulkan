@@ -4,7 +4,10 @@ import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.core.math.*
+import dev.cryptospace.anvil.core.math.Mat4
+import dev.cryptospace.anvil.core.math.TexturedVertex3
+import dev.cryptospace.anvil.core.math.Vertex
+import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.window.Glfw
@@ -150,7 +153,6 @@ class VulkanRenderingSystem(
             }
 
         val graphicsPipeline = when (vertexType) {
-            TexturedVertex2::class -> deviceManager.logicalDevice.graphicsPipelineTextured2D
             TexturedVertex3::class -> deviceManager.logicalDevice.graphicsPipelineTextured3D
             else -> error("Unsupported vertex type: $vertexType")
         }

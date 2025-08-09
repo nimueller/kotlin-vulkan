@@ -50,7 +50,6 @@ class Frame(
 ) : NativeResource() {
 
     private val renderPass: RenderPass = logicalDevice.renderPass
-    private val graphicsPipeline: GraphicsPipeline = logicalDevice.graphicsPipelineTextured2D
     private val imageCount: Int = logicalDevice.swapChain.images.size
     private val commandPool: CommandPool = logicalDevice.commandPool
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
@@ -192,7 +191,7 @@ class Frame(
         commandBuffer.startRecording()
         renderPass.start(commandBuffer, framebuffer)
 
-        val pipeline = graphicsPipeline.logicalDevice.graphicsPipelineTextured3D
+        val pipeline = logicalDevice.graphicsPipelineTextured3D
         logicalDevice.swapChain.preparePipeline(commandBuffer, pipeline)
         vkCmdBindDescriptorSets(
             commandBuffer.handle,
@@ -213,7 +212,7 @@ class Frame(
         val renderingContext = VulkanRenderingContext(engine, logicalDevice)
         callback(renderingContext)
         for (mesh in meshes) {
-            mesh.draw(stack, logicalDevice, commandBuffer)
+            mesh.draw(stack, commandBuffer)
         }
         updateUniformBuffer(renderingContext)
     }

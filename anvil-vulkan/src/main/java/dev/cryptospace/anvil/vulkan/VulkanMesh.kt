@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
-import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import org.lwjgl.system.MemoryStack
@@ -17,7 +16,7 @@ data class VulkanMesh(
     val graphicsPipeline: GraphicsPipeline,
 ) {
 
-    fun draw(stack: MemoryStack, logicalDevice: LogicalDevice, commandBuffer: CommandBuffer) {
+    fun draw(stack: MemoryStack, commandBuffer: CommandBuffer) {
         if (!mesh.visible) {
             return
         }
@@ -27,7 +26,7 @@ data class VulkanMesh(
 
         vkCmdPushConstants(
             commandBuffer.handle,
-            logicalDevice.graphicsPipelineTextured2D.pipelineLayoutHandle.value,
+            graphicsPipeline.pipelineLayoutHandle.value,
             VK_SHADER_STAGE_VERTEX_BIT,
             0,
             mesh.modelMatrix.toByteBuffer(stack),
