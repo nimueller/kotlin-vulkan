@@ -70,13 +70,14 @@ class Frame(
         bufferManager.allocateBuffer(
             size = UniformBufferObject.BYTE_SIZE.toLong(),
             usage = EnumSet.of(BufferUsage.UNIFORM_BUFFER),
-            properties = EnumSet.of(
+            preferredProperties = EnumSet.of(
                 BufferProperties.HOST_VISIBLE,
                 BufferProperties.HOST_COHERENT,
             ),
         )
 
-    private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
+    // TODO
+//    private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
 
     init {
         updateDescriptorSets()
@@ -217,7 +218,8 @@ class Frame(
         for (mesh in meshes) {
             mesh.draw(stack, commandBuffer)
         }
-        updateUniformBuffer(renderingContext)
+//        updateUniformBuffer(renderingContext)
+        bufferManager.uploadData(uniformBuffer, renderingContext.engine.camera.toByteBuffer(stack))
     }
 
     private fun finishRecordCommands() {
@@ -230,7 +232,8 @@ class Frame(
         MemoryStack.stackPush().use { stack ->
             val data = camera.toByteBuffer(stack)
             val dataAddress = MemoryUtil.memAddress(data)
-            MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
+            // TODO
+//            MemoryUtil.memCopy(dataAddress, uniformBufferPointer, data.remaining().toLong())
         }
     }
 

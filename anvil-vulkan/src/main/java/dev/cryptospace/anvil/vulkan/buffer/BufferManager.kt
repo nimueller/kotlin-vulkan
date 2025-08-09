@@ -1,19 +1,18 @@
 package dev.cryptospace.anvil.vulkan.buffer
 
 import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
-import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
-import dev.cryptospace.anvil.vulkan.handle.VkBuffer
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.vma.Vma
+import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo
 import org.lwjgl.util.vma.VmaVulkanFunctions
 import org.lwjgl.vulkan.*
@@ -36,7 +35,7 @@ class BufferManager(
     private val commandPool: CommandPool,
 ) : NativeResource() {
 
-    private val memoryAllocatorHandle: VmaAllocator =
+    private val allocatorHandle: VmaAllocator =
         MemoryStack.stackPush().use { stack ->
             val functions = VmaVulkanFunctions.calloc(stack).apply {
                 set(context.handle, logicalDevice.handle)
@@ -64,57 +63,40 @@ class BufferManager(
      *
      * @param size The size of the buffer in bytes
      * @param usage Set of buffer usage flags indicating how the buffer will be used
-     * @param properties Set of memory property flags specifying required memory characteristics
+     * @param preferredProperties Set of memory property flags specifying preferred memory characteristics
      * @return A BufferAllocation containing the created buffer and its associated memory
      */
     fun allocateBuffer(
         size: Long,
         usage: EnumSet<BufferUsage>,
-        properties: EnumSet<BufferProperties>,
-    ): BufferAllocation {
-        // Create the buffer
-        val buffer = MemoryStack.stackPush().use { stack ->
-            val bufferInfo = VkBufferCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
-                size(size)
-                usage(usage.toBitmask())
-                sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        preferredProperties: EnumSet<BufferProperties>? = null,
+    ): BufferAllocation = MemoryStack.stackPush().use { stack ->
+        val bufferInfo = VkBufferCreateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
+            size(size)
+            usage(usage.toBitmask())
+            sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+        }
+
+        val allocationInfo = VmaAllocationCreateInfo.calloc(stack).apply {
+            usage(Vma.VMA_MEMORY_USAGE_AUTO)
+
+            if (preferredProperties != null) {
+                preferredFlags(preferredProperties.toBitmask())
             }
-
-            val pBuffer = stack.mallocLong(1)
-            vkCreateBuffer(logicalDevice.handle, bufferInfo, null, pBuffer)
-                .validateVulkanSuccess("Create vertex buffer", "Failed to create buffer for vertices")
-            VkBuffer(pBuffer[0])
         }
 
-        // Allocate and bind memory
-        val memory = MemoryStack.stackPush().use { stack ->
-            val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
-            vkGetBufferMemoryRequirements(logicalDevice.handle, buffer.value, bufferMemoryRequirements)
+        val pBuffer = stack.mallocLong(1)
+        val pAllocation = stack.mallocPointer(1)
 
-            val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-                allocationSize(bufferMemoryRequirements.size())
-                memoryTypeIndex(
-                    findMemoryType(bufferMemoryRequirements.memoryTypeBits(), properties.toBitmask()),
-                )
-            }
+        Vma.vmaCreateBuffer(allocatorHandle.value, bufferInfo, allocationInfo, pBuffer, pAllocation, null)
+            .validateVulkanSuccess("Create vertex buffer", "Failed to create buffer for vertices")
 
-            val pDeviceMemory = stack.mallocLong(1)
-            vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pDeviceMemory)
-                .validateVulkanSuccess("Allocate buffer memory", "Failed to allocate memory for vertex buffer")
-            vkBindBufferMemory(logicalDevice.handle, buffer.value, pDeviceMemory[0], 0)
-                .validateVulkanSuccess("Bind buffer memory", "Failed to bind memory to vertex buffer")
+        val buffer = VkBuffer(pBuffer[0])
+        val memory = VmaAllocation(pAllocation[0])
 
-            VkDeviceMemory(pDeviceMemory[0])
-        }
-
-        val allocation = BufferAllocation(logicalDevice, buffer, memory, size)
-        buffers.add(allocation)
-        logger.debug {
-            "Allocated buffer: $buffer with memory: $memory (size: $size) for usage: $usage and properties: $properties"
-        }
-        return allocation
+        logger.info("Allocated buffer $buffer size $size with memory $memory")
+        BufferAllocation(allocatorHandle, buffer, memory, size)
     }
 
     fun allocateImageBuffer(image: Image): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
@@ -168,10 +150,10 @@ class BufferManager(
             val verticesBufferAddress = MemoryUtil.memAddress(data)
 
             val pMemory = stack.mallocPointer(1)
-            vkMapMemory(logicalDevice.handle, allocation.memory.value, 0, allocation.size, 0, pMemory)
-                .validateVulkanSuccess("Map vertex buffer memory", "Failed to map memory for uploading vertex data")
+            Vma.vmaMapMemory(allocatorHandle.value, allocation.memory.value, pMemory)
+                .validateVulkanSuccess("Map buffer memory", "Failed to map memory for uploading data")
             MemoryUtil.memCopy(verticesBufferAddress, pMemory[0], allocation.size)
-            vkUnmapMemory(logicalDevice.handle, allocation.memory.value)
+            Vma.vmaUnmapMemory(allocatorHandle.value, allocation.memory.value)
         }
     }
 
@@ -358,7 +340,7 @@ class BufferManager(
         buffers.forEach { buffer -> buffer.close() }
         buffers.clear()
 
-        Vma.vmaDestroyAllocator(memoryAllocatorHandle.value)
+        Vma.vmaDestroyAllocator(allocatorHandle.value)
     }
 
     companion object {
