@@ -93,6 +93,7 @@ class VulkanRenderingSystem(
 
     private var currentFrameIndex = 0
     private var framebufferResized = false
+    private val meshes = mutableListOf<VulkanMesh>()
 
     init {
         glfwSetFramebufferSizeCallback(glfw.window.handle.value) { _, width, height ->
@@ -210,7 +211,7 @@ class VulkanRenderingSystem(
             else -> error("Unsupported vertex type: $vertexType")
         }
 
-        return VulkanMesh(
+        val mesh = VulkanMesh(
             modelMatrix = Mat4.identity,
             vertexBufferAllocation = vertexBufferResource,
             indexBufferAllocation = indexBufferResource,
@@ -218,6 +219,8 @@ class VulkanRenderingSystem(
             indexType = VK_INDEX_TYPE_UINT32,
             graphicsPipeline = graphicsPipeline,
         )
+        meshes.add(mesh)
+        return mesh
     }
 
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) {
@@ -227,7 +230,7 @@ class VulkanRenderingSystem(
         }
 
         val frame = frames[currentFrameIndex]
-        val result = frame.draw(engine, callback)
+        val result = frame.draw(engine, callback, meshes)
 
         when (result) {
             FrameDrawResult.FRAMEBUFFER_RESIZED -> {

@@ -35,8 +35,6 @@ class Models {
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
                 updateModelMatrix(deltaTime, mesh)
 
-                renderingContext.drawMesh(mesh)
-
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
                     glfw.window.requestClose()
                 }
