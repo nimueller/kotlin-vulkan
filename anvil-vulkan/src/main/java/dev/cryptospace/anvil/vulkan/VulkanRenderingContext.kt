@@ -2,16 +2,16 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.rendering.RenderingContext
-import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 
 class VulkanRenderingContext(
     val engine: Engine,
-    private val logicalDevice: LogicalDevice,
+    private val swapChain: SwapChain,
 ) : RenderingContext {
 
     override val width: Int
-        get() = logicalDevice.swapChain.extent.width()
+        get() = swapChain.extent.width()
 
     override val height: Int
-        get() = logicalDevice.swapChain.extent.height()
+        get() = swapChain.extent.height()
 }

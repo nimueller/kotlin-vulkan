@@ -1,13 +1,6 @@
 package dev.cryptospace.anvil.vulkan.device
 
-import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
-import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
-import dev.cryptospace.anvil.vulkan.graphics.RenderPass
-import dev.cryptospace.anvil.vulkan.graphics.SwapChain
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.vkDestroyDevice
 import org.lwjgl.vulkan.VK10.vkGetDeviceQueue
@@ -45,34 +38,7 @@ data class LogicalDevice(
             VkQueue(buffer[0], handle)
         }
 
-    val descriptorPool: DescriptorPool = DescriptorPool(this, VulkanRenderingSystem.FRAMES_IN_FLIGHT)
-
-    val descriptorSetLayout: DescriptorSetLayout = DescriptorSetLayout(this)
-
-    val renderPass: RenderPass = RenderPass(this)
-
-    val graphicsPipelineTextured3D: GraphicsPipeline = GraphicsPipeline(this, renderPass, TexturedVertex3)
-
-    /**
-     * The swap chain managing presentation of rendered images to the surface.
-     * Created from the logical device and handles image acquisition, rendering synchronization,
-     * and presentation to the display using the selected surface format and present mode.
-     * The swap chain dimensions and properties are determined based on the physical device's
-     * surface capabilities and the window size.
-     */
-    var swapChain: SwapChain = SwapChain(this, renderPass)
-
-    fun recreateSwapChain() {
-        swapChain = swapChain.recreate(renderPass)
-    }
-
     override fun destroy() {
-        swapChain.close()
-        graphicsPipelineTextured3D.close()
-        renderPass.close()
-        descriptorSetLayout.close()
-        descriptorPool.close()
-
         vkDestroyDevice(handle, null)
     }
 }

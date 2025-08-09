@@ -19,6 +19,11 @@ import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.surface.Surface
@@ -63,16 +68,25 @@ class VulkanRenderingSystem(
 
     private val textureManager = TextureManager(deviceManager.logicalDevice, bufferManager)
 
+    val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT)
+
+    val descriptorSetLayout: DescriptorSetLayout = DescriptorSetLayout(deviceManager.logicalDevice)
+
+    val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
+
+    val graphicsPipelineTextured3D: GraphicsPipeline =
+        GraphicsPipeline(deviceManager.logicalDevice, renderPass, descriptorSetLayout, TexturedVertex3)
+
     private val descriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
         val logicalDevice = deviceManager.logicalDevice
 
         val pDescriptorPools = stack.mallocLong(1)
-        pDescriptorPools.put(0, logicalDevice.descriptorPool.handle.value)
+        pDescriptorPools.put(0, descriptorPool.handle.value)
 
         val setLayouts = stack.mallocLong(FRAMES_IN_FLIGHT)
 
         for (i in 0 until FRAMES_IN_FLIGHT) {
-            setLayouts.put(logicalDevice.descriptorSetLayout.handle.value)
+            setLayouts.put(descriptorSetLayout.handle.value)
         }
 
         setLayouts.flip()
@@ -92,6 +106,15 @@ class VulkanRenderingSystem(
     }
 
     /**
+     * The swap chain managing presentation of rendered images to the surface.
+     * Created from the logical device and handles image acquisition, rendering synchronization,
+     * and presentation to the display using the selected surface format and present mode.
+     * The swap chain dimensions and properties are determined based on the physical device's
+     * surface capabilities and the window size.
+     */
+    var swapChain: SwapChain = SwapChain(deviceManager.logicalDevice, renderPass)
+
+    /**
      * List of frames used for double buffering rendering operations.
      * Contains 2 frames that are used alternatively to allow concurrent CPU and GPU operations,
      * where one frame can be rendered while another is being prepared.
@@ -105,7 +128,14 @@ class VulkanRenderingSystem(
             textureManager,
             descriptorSet,
             commandPool,
+            renderPass,
+            this,
+            graphicsPipelineTextured3D,
         )
+    }
+
+    fun recreateSwapChain() {
+        swapChain = swapChain.recreate(renderPass)
     }
 
     private var currentFrameIndex = 0
@@ -167,7 +197,7 @@ class VulkanRenderingSystem(
             }
 
         val graphicsPipeline = when (vertexType) {
-            TexturedVertex3::class -> deviceManager.logicalDevice.graphicsPipelineTextured3D
+            TexturedVertex3::class -> graphicsPipelineTextured3D
             else -> error("Unsupported vertex type: $vertexType")
         }
 
@@ -187,7 +217,7 @@ class VulkanRenderingSystem(
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) {
         if (framebufferResized) {
             framebufferResized = false
-            deviceManager.logicalDevice.recreateSwapChain()
+            recreateSwapChain()
         }
 
         val frame = frames[currentFrameIndex]
@@ -196,7 +226,7 @@ class VulkanRenderingSystem(
         when (result) {
             FrameDrawResult.FRAMEBUFFER_RESIZED -> {
                 framebufferResized = false
-                deviceManager.logicalDevice.recreateSwapChain()
+                recreateSwapChain()
             }
 
             FrameDrawResult.SUCCESS -> {
@@ -212,6 +242,12 @@ class VulkanRenderingSystem(
         frames.forEach { frame ->
             frame.close()
         }
+
+        swapChain.close()
+        graphicsPipelineTextured3D.close()
+        renderPass.close()
+        descriptorSetLayout.close()
+        descriptorPool.close()
 
         textureManager.close()
         bufferManager.close()

@@ -6,6 +6,7 @@ import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanMesh
 import dev.cryptospace.anvil.vulkan.VulkanRenderingContext
+import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
@@ -48,10 +49,12 @@ class Frame(
     private val textureManager: TextureManager,
     private val descriptorSet: VkDescriptorSet,
     private val commandPool: CommandPool,
+    private val renderPass: RenderPass,
+    private val renderingSystem: VulkanRenderingSystem,
+    private val graphicsPipelineTextured3D: GraphicsPipeline,
 ) : NativeResource() {
 
-    private val renderPass: RenderPass = logicalDevice.renderPass
-    private val imageCount: Int = logicalDevice.swapChain.images.size
+    private val imageCount: Int = renderingSystem.swapChain.images.size
     private val commandBuffer: CommandBuffer = CommandBuffer.create(logicalDevice, commandPool)
 
     /**
@@ -148,13 +151,13 @@ class Frame(
         MemoryStack.stackPush().use { stack ->
             val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
 
-            val framebuffer = logicalDevice.swapChain.framebuffers[swapChainImageIndex]
+            val framebuffer = renderingSystem.swapChain.framebuffers[swapChainImageIndex]
 
             prepareRecordCommands(stack, framebuffer)
             recordCommands(stack, engine, callback, meshes)
             finishRecordCommands()
 
-            presentFrame(logicalDevice.swapChain, swapChainImageIndex)
+            presentFrame(renderingSystem.swapChain, swapChainImageIndex)
             return FrameDrawResult.SUCCESS
         }
 
@@ -166,7 +169,7 @@ class Frame(
 
             val result = vkAcquireNextImageKHR(
                 logicalDevice.handle,
-                logicalDevice.swapChain.handle.value,
+                renderingSystem.swapChain.handle.value,
                 Long.MAX_VALUE,
                 syncObjects.imageAvailableSemaphores.value,
                 VK_NULL_HANDLE,
@@ -191,8 +194,8 @@ class Frame(
         commandBuffer.startRecording()
         renderPass.start(commandBuffer, framebuffer)
 
-        val pipeline = logicalDevice.graphicsPipelineTextured3D
-        logicalDevice.swapChain.preparePipeline(commandBuffer, pipeline)
+        val pipeline = graphicsPipelineTextured3D
+        renderingSystem.swapChain.preparePipeline(commandBuffer, pipeline)
         vkCmdBindDescriptorSets(
             commandBuffer.handle,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -209,7 +212,7 @@ class Frame(
         callback: (RenderingContext) -> Unit,
         meshes: List<VulkanMesh>,
     ) {
-        val renderingContext = VulkanRenderingContext(engine, logicalDevice)
+        val renderingContext = VulkanRenderingContext(engine, renderingSystem.swapChain)
         callback(renderingContext)
         for (mesh in meshes) {
             mesh.draw(stack, commandBuffer)

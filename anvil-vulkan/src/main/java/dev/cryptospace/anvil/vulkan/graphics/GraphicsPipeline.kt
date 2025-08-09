@@ -6,16 +6,13 @@ import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
 import dev.cryptospace.anvil.vulkan.toBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
-import org.lwjgl.vulkan.VK10.vkDestroyPipeline
-import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
+import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo
 import org.lwjgl.vulkan.VkPushConstantRange
 
@@ -41,10 +38,15 @@ data class GraphicsPipeline(
      * @param renderPass The render pass this pipeline will be compatible with
      * @param vertexLayout The vertex layout describing the structure of vertex data
      */
-    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass, vertexLayout: VertexLayout<*>) : this(
+    constructor(
+        logicalDevice: LogicalDevice,
+        renderPass: RenderPass,
+        descriptorSetLayout: DescriptorSetLayout,
+        vertexLayout: VertexLayout<*>,
+    ) : this(
         logicalDevice,
         renderPass,
-        createGraphicsPipelineLayout(logicalDevice),
+        createGraphicsPipelineLayout(logicalDevice, descriptorSetLayout),
         vertexLayout,
     )
 
@@ -90,37 +92,39 @@ data class GraphicsPipeline(
          * @param logicalDevice The logical device to create the layout on
          * @return Handle to the created pipeline layout
          */
-        private fun createGraphicsPipelineLayout(logicalDevice: LogicalDevice): VkPipelineLayout =
-            MemoryStack.stackPush().use { stack ->
-                val setLayouts = stack.callocLong(1)
-                    .put(logicalDevice.descriptorSetLayout.handle.value)
-                    .flip()
+        private fun createGraphicsPipelineLayout(
+            logicalDevice: LogicalDevice,
+            descriptorSetLayout: DescriptorSetLayout,
+        ): VkPipelineLayout = MemoryStack.stackPush().use { stack ->
+            val setLayouts = stack.callocLong(1)
+                .put(descriptorSetLayout.handle.value)
+                .flip()
 
-                val pushConstantRanges = listOf(
-                    VkPushConstantRange.calloc(stack)
-                        .stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
-                        .offset(0)
-                        .size(Mat4.BYTE_SIZE),
-                ).toBuffer { size ->
-                    VkPushConstantRange.calloc(size, stack)
-                }
-
-                val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
-                    sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                    pSetLayouts(setLayouts)
-                    pPushConstantRanges(pushConstantRanges)
-                }
-
-                val pPipelineLayout = stack.mallocLong(1)
-
-                vkCreatePipelineLayout(
-                    logicalDevice.handle,
-                    pipelineLayoutCreateInfo,
-                    null,
-                    pPipelineLayout,
-                ).validateVulkanSuccess()
-
-                VkPipelineLayout(pPipelineLayout[0])
+            val pushConstantRanges = listOf(
+                VkPushConstantRange.calloc(stack)
+                    .stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+                    .offset(0)
+                    .size(Mat4.BYTE_SIZE),
+            ).toBuffer { size ->
+                VkPushConstantRange.calloc(size, stack)
             }
+
+            val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                pSetLayouts(setLayouts)
+                pPushConstantRanges(pushConstantRanges)
+            }
+
+            val pPipelineLayout = stack.mallocLong(1)
+
+            vkCreatePipelineLayout(
+                logicalDevice.handle,
+                pipelineLayoutCreateInfo,
+                null,
+                pPipelineLayout,
+            ).validateVulkanSuccess()
+
+            VkPipelineLayout(pPipelineLayout[0])
+        }
     }
 }
