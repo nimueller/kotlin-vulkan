@@ -4,8 +4,6 @@ import dev.cryptospace.anvil.core.DeltaTime
 import dev.cryptospace.anvil.core.MainLoop
 import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.TexturedVertex2
-import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.vulkan.VulkanEngine
@@ -18,41 +16,9 @@ fun main() {
 
 class Models {
 
-    private val vertices = arrayOf(
-        TexturedVertex2(
-            position = Vec2(-0.5f, -0.5f),
-            color = Vec3(1.0f, 0.0f, 0.0f),
-            texture = Vec2(0f, 1f),
-        ),
-        TexturedVertex2(
-            position = Vec2(0.5f, -0.5f),
-            color = Vec3(0.0f, 1.0f, 0.0f),
-            texture = Vec2(1f, 1f),
-        ),
-        TexturedVertex2(
-            position = Vec2(0.5f, 0.5f),
-            color = Vec3(0.0f, 0.0f, 1.0f),
-            texture = Vec2(1f, 0f),
-        ),
-        TexturedVertex2(
-            position = Vec2(-0.5f, 0.5f),
-            color = Vec3(1.0f, 1.0f, 1.0f),
-            texture = Vec2(0f, 0f),
-        ),
-    )
-
-    private val indices = arrayOf(
-        0U,
-        1U,
-        2U,
-        2U,
-        3U,
-        0U,
-    )
-
     init {
         VulkanEngine().use { engine ->
-            val imageName = "/images/texture.jpg"
+            val imageName = "/textures/viking-room.png"
             val imageResourceStream = TexturedQuad::class.java.getResourceAsStream(imageName)
                 ?: error("Image resource $imageName not found")
             engine.imageManager.loadImage(imageResourceStream)
@@ -65,8 +31,6 @@ class Models {
             engine.camera.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
             engine.camera.movementEnabled = false
             engine.camera.rotationEnabled = false
-
-//            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, renderingContext ->
                 updateModelMatrix(deltaTime, mesh)

@@ -25,6 +25,7 @@ class ModelManager(
                 Assimp.aiProcess_CalcTangentSpace or
                     Assimp.aiProcess_Triangulate or
                     Assimp.aiProcess_JoinIdenticalVertices or
+                    Assimp.aiProcess_FlipUVs or
                     Assimp.aiProcess_SortByPType,
                 null as CharSequence?,
             )
@@ -71,7 +72,8 @@ class ModelManager(
             val face = mesh.mFaces()[index / 3]
             val numIndices = face.mNumIndices()
             check(numIndices == 3) { "Expected 3 indices per face, got $numIndices" }
-            face.mIndices()[index % 3].toUInt()
+            val index = face.mIndices()[index % 3].toUInt()
+            index
         }
 
         return renderingSystem.uploadMesh(TexturedVertex3::class, vertices, indices)
