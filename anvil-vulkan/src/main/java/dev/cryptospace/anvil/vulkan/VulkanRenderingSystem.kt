@@ -108,7 +108,7 @@ class VulkanRenderingSystem(
             }
         }
 
-    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh {
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UShort>): Mesh {
         val verticesBytes = vertices.toByteBuffer()
         val indicesBytes = indices.toByteBuffer()
 
@@ -156,10 +156,67 @@ class VulkanRenderingSystem(
 
         return VulkanMesh(
             modelMatrix = Mat4.identity,
-            vertexBufferResource,
-            indexBufferResource,
-            indices.size,
-            graphicsPipeline,
+            vertexBufferAllocation = vertexBufferResource,
+            indexBufferAllocation = indexBufferResource,
+            indexCount = indices.size,
+            indexType = VK_INDEX_TYPE_UINT16,
+            graphicsPipeline = graphicsPipeline,
+        )
+    }
+
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): Mesh {
+        val verticesBytes = vertices.toByteBuffer()
+        val indicesBytes = indices.toByteBuffer()
+
+        val stagingVertexBufferResource =
+            bufferManager.allocateBuffer(
+                verticesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_SRC),
+                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            ).also { allocation ->
+                bufferManager.uploadData(allocation, verticesBytes)
+            }
+
+        val vertexBufferResource =
+            bufferManager.allocateBuffer(
+                verticesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
+                EnumSet.of(BufferProperties.DEVICE_LOCAL),
+            ).also { allocation ->
+                bufferManager.transferBuffer(stagingVertexBufferResource, allocation)
+            }
+
+        val stagingIndexBufferResource =
+            bufferManager.allocateBuffer(
+                indicesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_SRC),
+                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+            ).also { allocation ->
+                bufferManager.uploadData(allocation, indicesBytes)
+            }
+
+        val indexBufferResource =
+            bufferManager.allocateBuffer(
+                indicesBytes.remaining().toLong(),
+                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
+                EnumSet.of(BufferProperties.DEVICE_LOCAL),
+            ).also { allocation ->
+                bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
+            }
+
+        val graphicsPipeline = when (vertexType) {
+            TexturedVertex2::class -> deviceManager.logicalDevice.graphicsPipelineTextured2D
+            TexturedVertex3::class -> deviceManager.logicalDevice.graphicsPipelineTextured3D
+            else -> error("Unsupported vertex type: $vertexType")
+        }
+
+        return VulkanMesh(
+            modelMatrix = Mat4.identity,
+            vertexBufferAllocation = vertexBufferResource,
+            indexBufferAllocation = indexBufferResource,
+            indexCount = indices.size,
+            indexType = VK_INDEX_TYPE_UINT32,
+            graphicsPipeline = graphicsPipeline,
         )
     }
 

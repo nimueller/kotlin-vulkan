@@ -10,5 +10,6 @@ data class VulkanMesh(
     val vertexBufferAllocation: BufferAllocation,
     val indexBufferAllocation: BufferAllocation,
     val indexCount: Int,
+    val indexType: Int,
     val graphicsPipeline: GraphicsPipeline,
 ) : Mesh

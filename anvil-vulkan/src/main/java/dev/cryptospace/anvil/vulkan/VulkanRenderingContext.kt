@@ -6,12 +6,7 @@ import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT16
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
-import org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer
-import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
-import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
-import org.lwjgl.vulkan.VK10.vkCmdPushConstants
+import org.lwjgl.vulkan.VK10.*
 
 class VulkanRenderingContext(
     val engine: Engine,
@@ -44,7 +39,7 @@ class VulkanRenderingContext(
                 commandBuffer.handle,
                 mesh.indexBufferAllocation.buffer.value,
                 0L,
-                VK_INDEX_TYPE_UINT16,
+                mesh.indexType,
             )
 
             vkCmdDrawIndexed(commandBuffer.handle, mesh.indexCount, 1, 0, 0, 0)

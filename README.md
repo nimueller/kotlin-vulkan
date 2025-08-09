@@ -91,6 +91,10 @@ The following examples are currently supported:
       ```bash
       ./gradlew run -PmainClass=dev.cryptospace.anvil.app.RotatingQuad3DKt
       ```
+    - Rotating Textured Quad (3D)
+      ([anvil-examples/src/main/kotlin/dev/cryptospace/anvil/app/RotatingTexturedQuad3D.kt](./anvil-examples/src/main/kotlin/dev/cryptospace/anvil/app/RotatingTexturedQuad3D.kt)):
+      after following article
+      [Texture loading](https://vulkan-tutorial.com/Texture_loading/Texture_loading)
 
 Supports the following CLI properties (must be set in the file `build.gradle.kts` in the `anvil-examples` directory)
 

@@ -15,7 +15,9 @@ abstract class RenderingSystem : NativeResource() {
 
     abstract fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture
 
-    abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh
+    abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UShort>): Mesh
+
+    abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): Mesh
 
     abstract fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit)
 }

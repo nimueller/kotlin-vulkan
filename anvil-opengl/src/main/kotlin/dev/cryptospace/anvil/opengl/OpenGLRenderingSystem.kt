@@ -28,7 +28,11 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: List<V>, indices: List<Short>): Mesh {
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): Mesh {
+        TODO("Not yet implemented")
+    }
+
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UShort>): Mesh {
         TODO("Not yet implemented")
     }
 

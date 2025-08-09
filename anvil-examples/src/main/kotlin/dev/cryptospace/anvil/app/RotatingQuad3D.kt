@@ -18,20 +18,20 @@ fun main() {
 
 class RotatingQuad3D {
 
-    private val vertices = listOf(
+    private val vertices = arrayOf(
         TexturedVertex2(Vec2(-0.5f, -0.5f), Vec3(1.0f, 0.0f, 0.0f)),
         TexturedVertex2(Vec2(0.5f, -0.5f), Vec3(0.0f, 1.0f, 0.0f)),
         TexturedVertex2(Vec2(0.5f, 0.5f), Vec3(0.0f, 0.0f, 1.0f)),
         TexturedVertex2(Vec2(-0.5f, 0.5f), Vec3(1.0f, 1.0f, 1.0f)),
     )
 
-    private val indices = listOf(
-        0.toShort(),
-        1.toShort(),
-        2.toShort(),
-        2.toShort(),
-        3.toShort(),
-        0.toShort(),
+    private val indices = arrayOf(
+        0U,
+        1U,
+        2U,
+        2U,
+        3U,
+        0U,
     )
 
     init {

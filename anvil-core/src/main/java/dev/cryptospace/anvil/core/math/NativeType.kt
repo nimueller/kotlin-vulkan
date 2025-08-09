@@ -40,10 +40,58 @@ fun Collection<NativeType>.toByteBuffer(stack: MemoryStack): ByteBuffer {
     return buffer
 }
 
+@JvmName("toByteBufferArray")
+fun Array<out NativeType>.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(sumOf { it.byteSize })
+    forEach { it.toByteBuffer(buffer) }
+    buffer.flip()
+    return buffer
+}
+
 @JvmName("toByteBufferShortCollection")
 fun Collection<Short>.toByteBuffer(): ByteBuffer {
     val buffer = MemoryUtil.memAlloc(size * Short.SIZE_BYTES)
     forEach { buffer.putShort(it) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferUShortCollection")
+fun Collection<UShort>.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Short.SIZE_BYTES)
+    forEach { buffer.putShort(it.toShort()) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferShortArray")
+fun ShortArray.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Short.SIZE_BYTES)
+    forEach { buffer.putShort(it) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferUShortArray")
+fun Array<UShort>.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Short.SIZE_BYTES)
+    forEach { buffer.putShort(it.toShort()) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferIntArray")
+fun IntArray.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Int.SIZE_BYTES)
+    forEach { buffer.putInt(it) }
+    buffer.flip()
+    return buffer
+}
+
+@JvmName("toByteBufferUIntArray")
+fun Array<UInt>.toByteBuffer(): ByteBuffer {
+    val buffer = MemoryUtil.memAlloc(size * Int.SIZE_BYTES)
+    forEach { buffer.putInt(it.toInt()) }
     buffer.flip()
     return buffer
 }
