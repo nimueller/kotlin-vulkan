@@ -155,6 +155,7 @@ class BufferManager(
      * @return The result of type T from the block execution
      * @throws IllegalArgumentException If the provided ByteBuffer is not direct
      */
+    // TODO : use a pool of staging buffers to avoid excessive memory allocations
     fun <T> withStagingBuffer(bytes: ByteBuffer, block: (stagingBuffer: BufferAllocation, fence: Fence) -> T): T {
         check(bytes.isDirect) { "ByteBuffer must be direct" }
         val stagingBuffer = allocateBuffer(
@@ -183,12 +184,12 @@ class BufferManager(
      * @param destination The destination buffer allocation to copy to
      * @throws IllegalStateException If source and destination buffer sizes don't match
      */
-    fun transferBuffer(source: BufferAllocation, destination: BufferAllocation) {
+    fun transferBuffer(source: BufferAllocation, destination: BufferAllocation, fence: Fence) {
         check(source.size == destination.size) {
             error("Buffer size mismatch: expected ${source.size} but was ${destination.size}")
         }
 
-        recordSingleTimeCommands { stack, commandBuffer ->
+        recordSingleTimeCommands(fence) { stack, commandBuffer ->
             val bufferCopy = VkBufferCopy.calloc(stack).apply {
                 srcOffset(0)
                 dstOffset(0)

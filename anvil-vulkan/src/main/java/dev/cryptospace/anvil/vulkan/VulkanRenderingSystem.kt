@@ -174,41 +174,25 @@ class VulkanRenderingSystem(
         val verticesBytes = vertices.toByteBuffer()
         val indicesBytes = indices.toByteBuffer()
 
-        val stagingVertexBufferResource =
-            bufferManager.allocateBuffer(
-                verticesBytes.remaining().toLong(),
-                EnumSet.of(BufferUsage.TRANSFER_SRC),
-                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
-            ).also { allocation ->
-                bufferManager.uploadData(allocation, verticesBytes)
-            }
-
         val vertexBufferResource =
             bufferManager.allocateBuffer(
                 verticesBytes.remaining().toLong(),
                 EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
                 EnumSet.of(BufferProperties.DEVICE_LOCAL),
-            ).also { allocation ->
-                bufferManager.transferBuffer(stagingVertexBufferResource, allocation)
-            }
-
-        val stagingIndexBufferResource =
-            bufferManager.allocateBuffer(
-                indicesBytes.remaining().toLong(),
-                EnumSet.of(BufferUsage.TRANSFER_SRC),
-                EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
-            ).also { allocation ->
-                bufferManager.uploadData(allocation, indicesBytes)
-            }
-
+            )
         val indexBufferResource =
             bufferManager.allocateBuffer(
                 indicesBytes.remaining().toLong(),
                 EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
                 EnumSet.of(BufferProperties.DEVICE_LOCAL),
-            ).also { allocation ->
-                bufferManager.transferBuffer(stagingIndexBufferResource, allocation)
-            }
+            )
+
+        bufferManager.withStagingBuffer(verticesBytes) { stagingBuffer, fence ->
+            bufferManager.transferBuffer(stagingBuffer, vertexBufferResource, fence)
+        }
+        bufferManager.withStagingBuffer(indicesBytes) { stagingBuffer, fence ->
+            bufferManager.transferBuffer(stagingBuffer, indexBufferResource, fence)
+        }
 
         val graphicsPipeline = when (vertexType) {
             TexturedVertex3::class -> graphicsPipelineTextured3D
