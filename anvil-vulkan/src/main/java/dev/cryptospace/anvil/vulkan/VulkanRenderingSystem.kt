@@ -68,9 +68,9 @@ class VulkanRenderingSystem(
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
-    private val bufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
+    private val bufferManager: BufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
 
-    private val textureManager = TextureManager(allocator, deviceManager.logicalDevice, bufferManager)
+    private val textureManager: TextureManager = TextureManager(allocator, deviceManager.logicalDevice, bufferManager)
 
     val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT)
 
@@ -116,7 +116,7 @@ class VulkanRenderingSystem(
      * The swap chain dimensions and properties are determined based on the physical device's
      * surface capabilities and the window size.
      */
-    var swapChain: SwapChain = SwapChain(deviceManager.logicalDevice, renderPass)
+    var swapChain: SwapChain = SwapChain(deviceManager.logicalDevice, textureManager, renderPass)
 
     /**
      * List of frames used for double buffering rendering operations.

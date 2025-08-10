@@ -8,7 +8,9 @@ import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkSwapChain
 import dev.cryptospace.anvil.vulkan.image.Image
+import dev.cryptospace.anvil.vulkan.image.ImageAllocation
 import dev.cryptospace.anvil.vulkan.image.ImageView
+import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
@@ -17,10 +19,13 @@ import org.lwjgl.glfw.GLFW.glfwGetFramebufferSize
 import org.lwjgl.glfw.GLFW.glfwWaitEvents
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
-import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
 import org.lwjgl.vulkan.KHRSwapchain.*
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VkExtent2D
+import org.lwjgl.vulkan.VkRect2D
+import org.lwjgl.vulkan.VkSwapchainCreateInfoKHR
+import org.lwjgl.vulkan.VkViewport
 
 /**
  * Represents a Vulkan swap chain, which manages a collection of presentable images that can be
@@ -37,14 +42,16 @@ import org.lwjgl.vulkan.VK10.*
  * @param logicalDevice The logical device that owns this swap chain
  * @param handle Native handle to the Vulkan swap chain object
  */
-data class SwapChain(
+class SwapChain(
     val logicalDevice: LogicalDevice,
+    private val textureManager: TextureManager,
     val renderPass: RenderPass,
     val handle: VkSwapChain,
 ) : NativeResource() {
 
-    constructor(logicalDevice: LogicalDevice, renderPass: RenderPass) : this(
+    constructor(logicalDevice: LogicalDevice, textureManager: TextureManager, renderPass: RenderPass) : this(
         logicalDevice,
+        textureManager,
         renderPass,
         createSwapChain(logicalDevice),
     )
@@ -120,71 +127,31 @@ data class SwapChain(
             resultList
         }
 
-    val depthImage =
-        Image(
-            logicalDevice,
+    /**
+     * The depth buffer image used for depth testing during rendering.
+     * This image has the same dimensions as the swap chain images and uses a 32-bit floating-point format
+     * for storing depth values. The depth buffer is essential for proper 3D rendering as it helps determine
+     * which objects are visible and which are obscured by others.
+     */
+    private val depthImage: ImageAllocation =
+        textureManager.allocateImage(
             Image.CreateInfo(
                 width = extent.width(),
                 height = extent.height(),
                 format = VK_FORMAT_D32_SFLOAT,
                 usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             ),
-        ).also { image ->
-            // TODO this should not be this way but it works at the moment
-            // Maybe use Vulkan Memory Allocator here
-            // The allocated memory is also NOT cleaned up, this needs to be fixed
-            // (check validation layers for details)
-            MemoryStack.stackPush().use { stack ->
-                val bufferMemoryRequirements = VkMemoryRequirements.calloc(stack)
-                VK10.vkGetImageMemoryRequirements(
-                    logicalDevice.handle,
-                    image.handle.value,
-                    bufferMemoryRequirements,
-                )
+        )
 
-                val memoryAllocateInfo = VkMemoryAllocateInfo.calloc(stack).apply<VkMemoryAllocateInfo> {
-                    sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
-                    allocationSize(bufferMemoryRequirements.size())
-                    memoryTypeIndex(
-                        findMemoryType(
-                            bufferMemoryRequirements.memoryTypeBits(),
-                            VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        ),
-                    )
-                }
-
-                val pTextureImageMemory = stack.mallocLong(1)
-                VK10.vkAllocateMemory(logicalDevice.handle, memoryAllocateInfo, null, pTextureImageMemory)
-                    .validateVulkanSuccess("Allocate buffer memory", "Failed to allocate memory for vertex buffer")
-                VK10.vkBindImageMemory(
-                    logicalDevice.handle,
-                    image.handle.value,
-                    pTextureImageMemory[0],
-                    0,
-                )
-                    .validateVulkanSuccess("Bind buffer memory", "Failed to bind memory to vertex buffer")
-            }
-        }
-
-    private fun findMemoryType(typeFilter: Int, properties: Int): Int = MemoryStack.stackPush().use { stack ->
-        val memProperties = VkPhysicalDeviceMemoryProperties.calloc(stack)
-        vkGetPhysicalDeviceMemoryProperties(logicalDevice.physicalDevice.handle, memProperties)
-
-        for (i in 0 until memProperties.memoryTypeCount()) {
-            if ((typeFilter and (1 shl i)) != 0 &&
-                (memProperties.memoryTypes(i).propertyFlags() and properties) == properties
-            ) {
-                return i
-            }
-        }
-
-        error("Failed to find suitable memory type")
-    }
-
-    val depthImageView =
+    /**
+     * A view into the depth buffer image that defines how the depth image should be accessed.
+     * This view is configured specifically for depth testing with the appropriate format and aspect mask.
+     * It is used in conjunction with the depth image to enable depth testing in the rendering pipeline.
+     */
+    private val depthImageView: ImageView =
         ImageView(
             logicalDevice,
-            depthImage,
+            depthImage.image,
             ImageView.CreateInfo(
                 format = VK_FORMAT_D32_SFLOAT,
                 aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -245,11 +212,11 @@ data class SwapChain(
         }
         vkDeviceWaitIdle(logicalDevice.handle)
         close()
-        return SwapChain(logicalDevice, renderPass)
+        return SwapChain(logicalDevice, textureManager, renderPass)
     }
 
     override fun destroy() {
-        depthImage.close()
+        depthImageView.close()
 
         framebuffers.forEach { framebuffer ->
             framebuffer.close()
