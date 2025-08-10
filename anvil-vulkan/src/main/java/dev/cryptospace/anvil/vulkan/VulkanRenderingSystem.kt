@@ -49,12 +49,32 @@ class VulkanRenderingSystem(
     glfw: Glfw,
 ) : RenderingSystem() {
 
+    /**
+     * The Vulkan context managing the Vulkan instance and extensions.
+     * Handles initialization of the Vulkan API and maintains required instance-level functionality.
+     * Created with GLFW-required Vulkan extensions to enable window system integration.
+     */
     private val context: VulkanContext = VulkanContext(glfw.getRequiredVulkanExtensions())
 
+    /**
+     * Surface for presenting rendered images to the window.
+     * Creates and manages the Vulkan surface connected to the GLFW window,
+     * which is used as the target for rendering operations.
+     */
     private val windowSurface: Surface = Surface(vulkanInstance = context.handle, window = glfw.window)
 
+    /**
+     * Manager for Vulkan devices and queues.
+     * Handles selection of physical device (GPU) and creation of logical device.
+     * Manages queue families and provides access to graphics and presentation queues.
+     */
     private val deviceManager: DeviceManager = DeviceManager(context, windowSurface)
 
+    /**
+     * Memory allocator for Vulkan resources.
+     * Handles allocation and management of device memory for buffers, images, and other resources.
+     * Provides efficient memory management and tracks allocations to prevent memory leaks.
+     */
     private val allocator: Allocator = Allocator(context, deviceManager.logicalDevice)
 
     /**
@@ -62,7 +82,7 @@ class VulkanRenderingSystem(
      * Created from the logical device and manages memory for command buffer allocation and deallocation.
      * Command buffers from this pool are used for recording rendering and compute commands.
      */
-    val commandPool: CommandPool = CommandPool(deviceManager.logicalDevice)
+    private val commandPool: CommandPool = CommandPool(deviceManager.logicalDevice)
 
     /**
      * Buffer manager for creating and managing Vulkan buffers.
@@ -70,7 +90,14 @@ class VulkanRenderingSystem(
      */
     private val bufferManager: BufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
 
-    private val textureManager: TextureManager = TextureManager(allocator, deviceManager.logicalDevice, bufferManager)
+    /**
+     * Texture manager for creating and managing Vulkan textures and images.
+     * Handles texture loading, allocation, and image memory management.
+     * Supports uploading texture data from byte buffers and creating image views/samplers.
+     * Uses the allocator for device memory allocation and buffer manager for staging operations.
+     */
+    private val textureManager: TextureManager =
+        TextureManager(allocator, deviceManager.logicalDevice, bufferManager, commandPool)
 
     val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT)
 
