@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
-import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.Mesh
@@ -24,7 +23,7 @@ class OpenGLRenderingSystem(
         GL.createCapabilities()
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer) {
         TODO("Not yet implemented")
     }
 

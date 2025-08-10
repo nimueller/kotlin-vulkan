@@ -66,7 +66,7 @@ data class SwapChain(
      * Note: This buffer is allocated using native memory and must be freed
      * when the swap chain is destroyed.
      */
-    val images: List<Image> =
+    val images: List<VkImage> =
         MemoryStack.stackPush().use { stack ->
             val longBuffer = stack.queryVulkanBuffer(
                 bufferInitializer = { size -> MemoryUtil.memAllocLong(size) },
@@ -75,11 +75,13 @@ data class SwapChain(
                 },
             )
 
-            val images = mutableListOf<Image>()
+            val images = mutableListOf<VkImage>()
 
             for (i in 0 until longBuffer.remaining()) {
                 val handle = VkImage(longBuffer[i])
-                images.add(Image(logicalDevice, handle))
+                // TODO this is temporary
+//                images.add(Image(logicalDevice, handle))
+                images.add(handle)
             }
 
             images

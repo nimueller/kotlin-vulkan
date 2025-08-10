@@ -1,23 +1,31 @@
 package dev.cryptospace.anvil.vulkan.image
 
-import dev.cryptospace.anvil.core.image.Texture
+import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanTexture
+import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
+import dev.cryptospace.anvil.vulkan.buffer.VmaAllocation
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkSampler
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.util.vma.Vma
+import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VkImageCreateInfo
 import org.lwjgl.vulkan.VkSamplerCreateInfo
 import java.nio.ByteBuffer
 
 class TextureManager(
+    private val allocator: Allocator,
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
 ) : NativeResource() {
 
     val textureImages: MutableList<VulkanTexture> = mutableListOf()
+    private val images = mutableListOf<ImageAllocation>()
 
     val sampler = MemoryStack.stackPush().use { stack ->
         val samplerCreateInfo = VkSamplerCreateInfo.calloc(stack).apply {
@@ -55,60 +63,90 @@ class TextureManager(
         return properties.limits().maxSamplerAnisotropy()
     }
 
-    fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture =
+    fun allocateImage(createInfo: Image.CreateInfo): ImageAllocation {
         MemoryStack.stackPush().use { stack ->
-            // copy pixel data into host visible memory
-            bufferManager.withStagingBuffer(imageData) { stagingBuffer, fence ->
-                val format = VK_FORMAT_R8G8B8A8_SRGB
+            val width = createInfo.width
+            val height = createInfo.height
 
-                // creating the actual image based on this pixel data
-                // copy image data over to device visible memory...
-                val textureImage = Image(
-                    logicalDevice,
-                    Image.CreateInfo(
-                        width = width,
-                        height = height,
-                        format = format,
-                        usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
-                    ),
-                )
+            val imageInfo = VkImageCreateInfo.calloc(stack).apply {
+                sType(VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+                imageType(VK_IMAGE_TYPE_2D)
+                extent().width(width)
+                extent().height(height)
+                extent().depth(1)
+                mipLevels(1)
+                arrayLayers(1)
+                format(createInfo.format)
+                tiling(VK_IMAGE_TILING_OPTIMAL)
+                initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+                usage(createInfo.usage)
+                sharingMode(VK_SHARING_MODE_EXCLUSIVE)
+                samples(VK_SAMPLE_COUNT_1_BIT)
+                flags(0)
+            }
 
-                // ... allocating device memory first
-                val textureImageMemory = bufferManager.allocateImageBuffer(textureImage)
+            val allocationInfo = VmaAllocationCreateInfo.calloc(stack).apply {
+                usage(Vma.VMA_MEMORY_USAGE_AUTO)
+            }
 
-                // ... converting to optimal layout to transfer to this device memory
-                bufferManager.transitionImageLayout(
-                    textureImage,
-                    format,
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                )
-                // ... copying the data from the staging buffer to the device memory
-                bufferManager.copyBufferToImage(fence, stagingBuffer.buffer, textureImage, width, height)
-                // ... converting to read only optimal layout
-                bufferManager.transitionImageLayout(
-                    textureImage,
-                    format,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                )
+            val pImage = stack.mallocLong(1)
+            val pAllocation = stack.mallocPointer(1)
 
-                val textureImageView = ImageView(
-                    logicalDevice,
-                    textureImage,
-                    ImageView.CreateInfo(
-                        format = format,
-                        aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    ),
-                )
+            Vma.vmaCreateImage(allocator.handle.value, imageInfo, allocationInfo, pImage, pAllocation, null)
+                .validateVulkanSuccess("Create image", "Failed to create image")
 
-                return@withStagingBuffer VulkanTexture(
-                    textureImage,
-                    textureImageMemory,
-                    textureImageView,
-                ).also { image ->
-                    textureImages += image
-                }
+            val image = VkImage(pImage[0])
+            val memory = VmaAllocation(pAllocation[0])
+
+            return ImageAllocation(allocator, image, memory, width, height).also { imageAllocation ->
+                images.add(imageAllocation)
+                logger.info("Allocated image $image size ${width}x$height with memory $memory")
+            }
+        }
+    }
+
+    fun uploadImage(allocation: ImageAllocation, data: ByteBuffer) =
+        bufferManager.withStagingBuffer(data) { stagingBuffer, fence ->
+            val format = VK_FORMAT_R8G8B8A8_SRGB
+
+            // ... converting to optimal layout to transfer to this device memory
+            bufferManager.transitionImageLayout(
+                allocation.image,
+                format,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            )
+            // ... copying the data from the staging buffer to the device memory
+            bufferManager.copyBufferToImage(
+                fence,
+                stagingBuffer.buffer,
+                allocation.image,
+                allocation.width,
+                allocation.height,
+            )
+            // ... converting to read only optimal layout
+            bufferManager.transitionImageLayout(
+                allocation.image,
+                format,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            )
+
+            val textureImageView = ImageView(
+                logicalDevice,
+                allocation.image,
+                ImageView.CreateInfo(
+                    format = format,
+                    aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                ),
+            )
+
+            VulkanTexture(
+                allocation.image,
+                allocation.memory,
+                textureImageView,
+            ).also { image ->
+                textureImages += image
             }
         }
 
@@ -117,8 +155,16 @@ class TextureManager(
 
         for (image in textureImages) {
             image.textureImageView.close()
-            image.textureImage.close()
-            vkFreeMemory(logicalDevice.handle, image.textureImageMemory.value, null)
         }
+
+        images.forEach { image ->
+            image.close()
+        }
+    }
+
+    companion object {
+
+        @JvmStatic
+        private val logger = logger<TextureManager>()
     }
 }

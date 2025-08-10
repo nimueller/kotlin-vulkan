@@ -7,6 +7,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
 import dev.cryptospace.anvil.vulkan.handle.VkFence
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -72,8 +73,10 @@ class BufferManager(
         val buffer = VkBuffer(pBuffer[0])
         val memory = VmaAllocation(pAllocation[0])
 
-        logger.info("Allocated buffer $buffer size $size with memory $memory")
-        BufferAllocation(allocator, buffer, memory, size)
+        return BufferAllocation(allocator, buffer, memory, size).also { bufferAllocation ->
+            buffers.add(bufferAllocation)
+            logger.info("Allocated buffer $buffer size $size with memory $memory")
+        }
     }
 
     fun allocateImageBuffer(image: Image): VkDeviceMemory = MemoryStack.stackPush().use { stack ->
@@ -214,7 +217,7 @@ class BufferManager(
         }
     }
 
-    fun transitionImageLayout(image: Image, format: Int, oldLayout: Int, newLayout: Int) {
+    fun transitionImageLayout(image: VkImage, format: Int, oldLayout: Int, newLayout: Int) {
         recordSingleTimeCommands { stack, commandBuffer ->
             var sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
             var destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT
@@ -225,7 +228,7 @@ class BufferManager(
                 newLayout(newLayout)
                 srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
                 dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-                image(image.handle.value)
+                image(image.value)
                 subresourceRange { range ->
                     range.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                     range.baseMipLevel(0)
@@ -259,7 +262,7 @@ class BufferManager(
         }
     }
 
-    fun copyBufferToImage(fence: VkFence, buffer: VkBuffer, image: Image, width: Int, height: Int) {
+    fun copyBufferToImage(fence: VkFence, buffer: VkBuffer, image: VkImage, width: Int, height: Int) {
         recordSingleTimeCommands(fence) { stack, commandBuffer ->
             val region = VkBufferImageCopy.calloc(stack).apply {
                 bufferOffset(0)
@@ -290,7 +293,7 @@ class BufferManager(
             vkCmdCopyBufferToImage(
                 commandBuffer,
                 buffer.value,
-                image.handle.value,
+                image.value,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 regions,
             )

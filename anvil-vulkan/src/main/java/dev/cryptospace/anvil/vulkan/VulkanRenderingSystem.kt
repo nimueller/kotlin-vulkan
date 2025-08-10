@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
-import dev.cryptospace.anvil.core.image.Texture
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex3
@@ -26,10 +25,12 @@ import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
+import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.nio.ByteBuffer
@@ -69,7 +70,7 @@ class VulkanRenderingSystem(
      */
     private val bufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
 
-    private val textureManager = TextureManager(deviceManager.logicalDevice, bufferManager)
+    private val textureManager = TextureManager(allocator, deviceManager.logicalDevice, bufferManager)
 
     val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT)
 
@@ -152,12 +153,22 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): Texture =
-        textureManager.uploadImage(imageSize, width, height, imageData).also {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer) {
+        textureManager.allocateImage(
+            Image.CreateInfo(
+                width = width,
+                height = height,
+                format = VK10.VK_FORMAT_R8G8B8A8_SRGB,
+                usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
+            ),
+        ).also { image ->
+            textureManager.uploadImage(image, imageData)
+        }.also {
             frames.forEach { frame ->
                 frame.updateDescriptorSets()
             }
         }
+    }
 
     override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): Mesh {
         val verticesBytes = vertices.toByteBuffer()

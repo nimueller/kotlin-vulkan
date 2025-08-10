@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.vulkan.image
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkImageView
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -21,6 +22,12 @@ data class ImageView(
     val handle: VkImageView,
 ) : NativeResource() {
 
+    // TODO this constructor is temporary
+    constructor(device: LogicalDevice, image: VkImage, createInfo: CreateInfo) : this(
+        device,
+        createImageView(device, image, createInfo),
+    )
+
     /**
      * Creates a new image view with the specified configuration.
      *
@@ -30,7 +37,7 @@ data class ImageView(
      */
     constructor(device: LogicalDevice, image: Image, createInfo: CreateInfo) : this(
         device,
-        createImageView(device, image, createInfo),
+        createImageView(device, image.handle, createInfo),
     )
 
     override fun destroy() {
@@ -44,11 +51,11 @@ data class ImageView(
 
     companion object {
 
-        private fun createImageView(device: LogicalDevice, imageHandle: Image, createInfo: CreateInfo): VkImageView =
+        private fun createImageView(device: LogicalDevice, imageHandle: VkImage, createInfo: CreateInfo): VkImageView =
             MemoryStack.stackPush().use { stack ->
                 val viewCreateInfo = VkImageViewCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO)
-                    image(imageHandle.handle.value)
+                    image(imageHandle.value)
                     viewType(VK_IMAGE_TYPE_2D)
                     format(createInfo.format)
                     components { mapping ->
