@@ -3,10 +3,10 @@ package dev.cryptospace.anvil.vulkan.buffer
 import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.vulkan.Fence
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.handle.VkDeviceMemory
-import dev.cryptospace.anvil.vulkan.handle.VkFence
 import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
@@ -155,7 +155,7 @@ class BufferManager(
      * @return The result of type T from the block execution
      * @throws IllegalArgumentException If the provided ByteBuffer is not direct
      */
-    fun <T> withStagingBuffer(bytes: ByteBuffer, block: (stagingBuffer: BufferAllocation, fence: VkFence) -> T): T {
+    fun <T> withStagingBuffer(bytes: ByteBuffer, block: (stagingBuffer: BufferAllocation, fence: Fence) -> T): T {
         check(bytes.isDirect) { "ByteBuffer must be direct" }
         val stagingBuffer = allocateBuffer(
             size = bytes.remaining().toLong(),
@@ -163,25 +163,16 @@ class BufferManager(
             preferredProperties = EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
         )
 
-        try {
-            uploadData(stagingBuffer, bytes)
-            val fence = VkFence(
-                MemoryStack.stackPush().use { stack ->
-                    val fenceCreateInfo = VkFenceCreateInfo.calloc(stack).apply {
-                        sType(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
-                        flags(0)
-                    }
-                    val pFence = stack.mallocLong(1)
-                    vkCreateFence(logicalDevice.handle, fenceCreateInfo, null, pFence)
-                    pFence[0]
-                },
-            )
-            val value = block(stagingBuffer, fence)
-            VK10.vkWaitForFences(logicalDevice.handle, fence.value, true, Long.MAX_VALUE)
-            return value
-        } finally {
-            stagingBuffer.close()
-            buffers.remove(stagingBuffer)
+        Fence(logicalDevice).use { fence ->
+            try {
+                uploadData(stagingBuffer, bytes)
+                val value = block(stagingBuffer, fence)
+                VK10.vkWaitForFences(logicalDevice.handle, fence.handle.value, true, Long.MAX_VALUE)
+                return value
+            } finally {
+                stagingBuffer.close()
+                buffers.remove(stagingBuffer)
+            }
         }
     }
 
@@ -262,7 +253,7 @@ class BufferManager(
         }
     }
 
-    fun copyBufferToImage(fence: VkFence, buffer: VkBuffer, image: VkImage, width: Int, height: Int) {
+    fun copyBufferToImage(fence: Fence, buffer: VkBuffer, image: VkImage, width: Int, height: Int) {
         recordSingleTimeCommands(fence) { stack, commandBuffer ->
             val region = VkBufferImageCopy.calloc(stack).apply {
                 bufferOffset(0)
@@ -300,7 +291,7 @@ class BufferManager(
         }
     }
 
-    private fun recordSingleTimeCommands(fence: VkFence? = null, callback: (MemoryStack, VkCommandBuffer) -> Unit) =
+    private fun recordSingleTimeCommands(fence: Fence? = null, callback: (MemoryStack, VkCommandBuffer) -> Unit) =
         MemoryStack.stackPush().use { stack ->
             val commandBuffer = beginSingleTimeCommands(stack)
             callback(stack, commandBuffer)
@@ -330,7 +321,7 @@ class BufferManager(
         return commandBuffer
     }
 
-    private fun endSingleTimeCommands(stack: MemoryStack, commandBuffer: VkCommandBuffer, fence: VkFence?) {
+    private fun endSingleTimeCommands(stack: MemoryStack, commandBuffer: VkCommandBuffer, fence: Fence?) {
         vkEndCommandBuffer(commandBuffer)
             .validateVulkanSuccess("End command buffer", "Failed to end command buffer for buffer copy")
 
@@ -339,7 +330,7 @@ class BufferManager(
             pCommandBuffers(stack.pointers(commandBuffer))
         }
 
-        vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, fence?.value ?: VK10.VK_NULL_HANDLE)
+        vkQueueSubmit(logicalDevice.graphicsQueue, queueSubmitInfo, fence?.handle?.value ?: VK10.VK_NULL_HANDLE)
             .validateVulkanSuccess("Queue submit", "Failed to submit command buffer for buffer copy")
         vkQueueWaitIdle(logicalDevice.graphicsQueue)
             .validateVulkanSuccess("Queue wait idle", "Failed to wait for command buffer for buffer copy to finish")
