@@ -1,10 +1,8 @@
 package dev.cryptospace.anvil.vulkan.mesh
 
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.toByteBuffer
-import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MaterialId
@@ -57,9 +55,7 @@ class VulkanDrawLoop(
             else -> error("Unsupported vertex type: $vertexType")
         }
 
-        val meshReference = Mesh(visible = true, modelMatrix = Mat4.identity)
         val mesh = VulkanMesh(
-            mesh = meshReference,
             vertexBufferAllocation = vertexBufferResource,
             indexBufferAllocation = indexBufferResource,
             indexCount = indices.size,
