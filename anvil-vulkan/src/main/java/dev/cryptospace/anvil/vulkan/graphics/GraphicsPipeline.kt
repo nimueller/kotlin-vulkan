@@ -41,7 +41,7 @@ data class GraphicsPipeline(
     constructor(
         logicalDevice: LogicalDevice,
         renderPass: RenderPass,
-        descriptorSetLayout: DescriptorSetLayout,
+        descriptorSetLayout: List<DescriptorSetLayout>,
         vertexLayout: VertexLayout<*>,
     ) : this(
         logicalDevice,
@@ -94,11 +94,15 @@ data class GraphicsPipeline(
          */
         private fun createGraphicsPipelineLayout(
             logicalDevice: LogicalDevice,
-            descriptorSetLayout: DescriptorSetLayout,
+            descriptorSetLayout: List<DescriptorSetLayout>,
         ): VkPipelineLayout = MemoryStack.stackPush().use { stack ->
-            val setLayouts = stack.callocLong(1)
-                .put(descriptorSetLayout.handle.value)
-                .flip()
+            val setLayouts = stack.callocLong(descriptorSetLayout.size)
+
+            descriptorSetLayout.forEach { descriptorSetLayout ->
+                setLayouts.put(descriptorSetLayout.handle.value)
+            }
+
+            setLayouts.flip()
 
             val pushConstantRanges = listOf(
                 VkPushConstantRange.calloc(stack)

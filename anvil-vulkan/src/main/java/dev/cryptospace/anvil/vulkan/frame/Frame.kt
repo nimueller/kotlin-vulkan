@@ -45,7 +45,8 @@ class Frame(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
     private val textureManager: TextureManager,
-    private val descriptorSet: VkDescriptorSet,
+    private val frameDescriptorSet: VkDescriptorSet,
+    private val materialDescriptorSet: VkDescriptorSet,
     private val commandPool: CommandPool,
     private val renderPass: RenderPass,
     private val renderingSystem: VulkanRenderingSystem,
@@ -94,7 +95,7 @@ class Frame(
 
             val uniformBufferDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                .dstSet(descriptorSet.value)
+                .dstSet(frameDescriptorSet.value)
                 .dstBinding(0)
                 .dstArrayElement(0)
                 .descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -120,8 +121,8 @@ class Frame(
                     .flip()
                 val imageInfoDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstSet(descriptorSet.value)
-                    .dstBinding(1)
+                    .dstSet(materialDescriptorSet.value)
+                    .dstBinding(0)
                     .dstArrayElement(0)
                     .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                     .descriptorCount(1)
@@ -200,7 +201,7 @@ class Frame(
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipeline.pipelineLayoutHandle.value,
             0,
-            stack.longs(descriptorSet.value),
+            stack.longs(frameDescriptorSet.value, materialDescriptorSet.value),
             null,
         )
     }

@@ -1,3 +1,7 @@
 package dev.cryptospace.anvil.vulkan.mesh
 
-class VulkanMaterial
+import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
+
+data class VulkanMaterial(
+    val descriptorSet: VkDescriptorSet,
+)

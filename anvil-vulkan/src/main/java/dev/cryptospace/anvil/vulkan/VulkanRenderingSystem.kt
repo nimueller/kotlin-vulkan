@@ -21,6 +21,8 @@ import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.FrameDescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.MaterialDescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
@@ -96,16 +98,23 @@ class VulkanRenderingSystem(
     private val textureManager: TextureManager =
         TextureManager(allocator, deviceManager.logicalDevice, bufferManager, commandPool)
 
-    val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT)
+    val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT + 1)
 
-    val descriptorSetLayout: DescriptorSetLayout = DescriptorSetLayout(deviceManager.logicalDevice)
+    val frameDescriptorSetLayout: DescriptorSetLayout = FrameDescriptorSetLayout(deviceManager.logicalDevice)
+
+    val materialDescriptorSetLayout: DescriptorSetLayout = MaterialDescriptorSetLayout(deviceManager.logicalDevice)
 
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
     val graphicsPipelineTextured3D: GraphicsPipeline =
-        GraphicsPipeline(deviceManager.logicalDevice, renderPass, descriptorSetLayout, TexturedVertex3)
+        GraphicsPipeline(
+            deviceManager.logicalDevice,
+            renderPass,
+            listOf(frameDescriptorSetLayout, materialDescriptorSetLayout),
+            TexturedVertex3,
+        )
 
-    private val descriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
+    private val frameDescriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
         val logicalDevice = deviceManager.logicalDevice
 
         val pDescriptorPools = stack.mallocLong(1)
@@ -114,7 +123,7 @@ class VulkanRenderingSystem(
         val setLayouts = stack.mallocLong(FRAMES_IN_FLIGHT)
 
         for (i in 0 until FRAMES_IN_FLIGHT) {
-            setLayouts.put(descriptorSetLayout.handle.value)
+            setLayouts.put(frameDescriptorSetLayout.handle.value)
         }
 
         setLayouts.flip()
@@ -133,6 +142,28 @@ class VulkanRenderingSystem(
         }
     }
 
+    private val materialDescriptorSet: VkDescriptorSet = MemoryStack.stackPush().use { stack ->
+        val logicalDevice = deviceManager.logicalDevice
+
+        val pDescriptorPools = stack.mallocLong(1)
+        pDescriptorPools.put(0, descriptorPool.handle.value)
+
+        val setLayouts = stack.mallocLong(1)
+        setLayouts.put(materialDescriptorSetLayout.handle.value)
+        setLayouts.flip()
+
+        val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
+            sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
+            descriptorPool(pDescriptorPools[0])
+            pSetLayouts(setLayouts)
+        }
+
+        val pDescriptorSets = stack.mallocLong(1)
+        vkAllocateDescriptorSets(logicalDevice.handle, setAllocateInfo, pDescriptorSets)
+            .validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
+        VkDescriptorSet(pDescriptorSets[0])
+    }
+
     /**
      * The swap chain managing presentation of rendered images to the surface.
      * Created from the logical device and handles image acquisition, rendering synchronization,
@@ -149,12 +180,13 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
-        val descriptorSet = descriptorSets[index]
+        val descriptorSet = frameDescriptorSets[index]
         Frame(
             deviceManager.logicalDevice,
             bufferManager,
             textureManager,
             descriptorSet,
+            materialDescriptorSet,
             commandPool,
             renderPass,
             this,
@@ -170,7 +202,6 @@ class VulkanRenderingSystem(
 
     private var currentFrameIndex = 0
     private var framebufferResized = false
-    private val meshes = mutableListOf<VulkanMesh>()
 
     init {
         glfwSetFramebufferSizeCallback(glfw.window.handle.value) { _, width, height ->
@@ -238,7 +269,7 @@ class VulkanRenderingSystem(
         swapChain.close()
         graphicsPipelineTextured3D.close()
         renderPass.close()
-        descriptorSetLayout.close()
+        frameDescriptorSetLayout.close()
         descriptorPool.close()
 
         textureManager.close()
