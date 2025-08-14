@@ -4,7 +4,6 @@ import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
-import dev.cryptospace.anvil.vulkan.VulkanMesh
 import dev.cryptospace.anvil.vulkan.VulkanRenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
 import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
@@ -147,14 +146,14 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(engine: Engine, callback: (RenderingContext) -> Unit, meshes: List<VulkanMesh>): FrameDrawResult =
+    fun draw(engine: Engine, callback: (CommandBuffer, RenderingContext) -> Unit): FrameDrawResult =
         MemoryStack.stackPush().use { stack ->
             val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
 
             val framebuffer = renderingSystem.swapChain.framebuffers[swapChainImageIndex]
 
             prepareRecordCommands(stack, framebuffer)
-            recordCommands(stack, engine, callback, meshes)
+            recordCommands(stack, engine, callback)
             finishRecordCommands()
 
             presentFrame(renderingSystem.swapChain, swapChainImageIndex)
@@ -209,14 +208,10 @@ class Frame(
     private fun recordCommands(
         stack: MemoryStack,
         engine: Engine,
-        callback: (RenderingContext) -> Unit,
-        meshes: List<VulkanMesh>,
+        callback: (CommandBuffer, RenderingContext) -> Unit,
     ) {
         val renderingContext = VulkanRenderingContext(engine, renderingSystem.swapChain)
-        callback(renderingContext)
-        for (mesh in meshes) {
-            mesh.draw(stack, commandBuffer)
-        }
+        callback(commandBuffer, renderingContext)
 
         val camera = renderingContext.engine.camera
         bufferManager.uploadData(uniformBuffer, camera.toByteBuffer(stack))

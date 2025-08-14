@@ -6,14 +6,11 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
-import dev.cryptospace.anvil.core.math.toByteBuffer
-import dev.cryptospace.anvil.core.rendering.Mesh
 import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
-import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
-import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
@@ -27,6 +24,7 @@ import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
+import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
@@ -34,7 +32,6 @@ import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.nio.ByteBuffer
-import java.util.*
 import kotlin.reflect.KClass
 
 /**
@@ -165,6 +162,8 @@ class VulkanRenderingSystem(
         )
     }
 
+    private val drawLoop = VulkanDrawLoop(bufferManager, graphicsPipelineTextured3D)
+
     fun recreateSwapChain() {
         swapChain = swapChain.recreate(renderPass)
     }
@@ -197,68 +196,36 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): Mesh {
-        val verticesBytes = vertices.toByteBuffer()
-        val indicesBytes = indices.toByteBuffer()
+    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId =
+        drawLoop.addMesh(vertexType, vertices, indices)
 
-        val vertexBufferResource =
-            bufferManager.allocateBuffer(
-                verticesBytes.remaining().toLong(),
-                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.VERTEX_BUFFER),
-                EnumSet.of(BufferProperties.DEVICE_LOCAL),
-            )
-        val indexBufferResource =
-            bufferManager.allocateBuffer(
-                indicesBytes.remaining().toLong(),
-                EnumSet.of(BufferUsage.TRANSFER_DST, BufferUsage.INDEX_BUFFER),
-                EnumSet.of(BufferProperties.DEVICE_LOCAL),
-            )
-
-        bufferManager.withStagingBuffer(verticesBytes) { stagingBuffer, fence ->
-            bufferManager.transferBuffer(stagingBuffer, vertexBufferResource, fence)
-        }
-        bufferManager.withStagingBuffer(indicesBytes) { stagingBuffer, fence ->
-            bufferManager.transferBuffer(stagingBuffer, indexBufferResource, fence)
-        }
-
-        val graphicsPipeline = when (vertexType) {
-            TexturedVertex3::class -> graphicsPipelineTextured3D
-            else -> error("Unsupported vertex type: $vertexType")
-        }
-
-        val meshReference = Mesh(visible = true, modelMatrix = Mat4.identity)
-        val mesh = VulkanMesh(
-            mesh = meshReference,
-            vertexBufferAllocation = vertexBufferResource,
-            indexBufferAllocation = indexBufferResource,
-            indexCount = indices.size,
-            indexType = VK_INDEX_TYPE_UINT32,
-            graphicsPipeline = graphicsPipeline,
-        )
-        meshes.add(mesh)
-        return meshReference
-    }
-
-    override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) {
-        if (framebufferResized) {
-            framebufferResized = false
-            recreateSwapChain()
-        }
-
-        val frame = frames[currentFrameIndex]
-        val result = frame.draw(engine, callback, meshes)
-
-        when (result) {
-            FrameDrawResult.FRAMEBUFFER_RESIZED -> {
+    override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) =
+        MemoryStack.stackPush().use { stack ->
+            if (framebufferResized) {
                 framebufferResized = false
                 recreateSwapChain()
             }
 
-            FrameDrawResult.SUCCESS -> {
-                currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
+            val frame = frames[currentFrameIndex]
+            val result = frame.draw(engine) { commandBuffer, renderingContext ->
+                callback(renderingContext)
+
+                for (gameObject in engine.scene.gameObjects) {
+                    drawLoop.draw(stack, commandBuffer, gameObject)
+                }
+            }
+
+            when (result) {
+                FrameDrawResult.FRAMEBUFFER_RESIZED -> {
+                    framebufferResized = false
+                    recreateSwapChain()
+                }
+
+                FrameDrawResult.SUCCESS -> {
+                    currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
+                }
             }
         }
-    }
 
     override fun destroy() {
         vkDeviceWaitIdle(deviceManager.logicalDevice.handle)

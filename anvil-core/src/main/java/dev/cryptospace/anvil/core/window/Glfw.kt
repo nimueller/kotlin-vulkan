@@ -4,14 +4,13 @@ import dev.cryptospace.anvil.core.input.Key
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.native.NativeResource
 import org.lwjgl.glfw.GLFW
-import org.lwjgl.glfw.GLFW.glfwGetKey
-import org.lwjgl.glfw.GLFW.glfwPollEvents
-import org.lwjgl.glfw.GLFW.glfwTerminate
+import org.lwjgl.glfw.GLFW.*
 
 data class Glfw(
     val window: Window,
 ) : NativeResource() {
 
+    @Deprecated("Use window.isKeyPressed(key) instead")
     fun isKeyPressed(key: Key): Boolean = glfwGetKey(window.handle.value, key.code) == 1
 
     fun update() {

@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.app
 
 import dev.cryptospace.anvil.core.MainLoop
 import dev.cryptospace.anvil.core.input.Key
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
@@ -63,8 +62,8 @@ class DepthBuffering {
             val secondMesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { _, glfw, renderingContext ->
-                firstMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -3f))
-                secondMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -4f))
+//                firstMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -3f))
+//                secondMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -4f))
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
                     glfw.window.requestClose()

@@ -3,7 +3,7 @@ package dev.cryptospace.anvil.core
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.rendering.Mesh
+import dev.cryptospace.anvil.core.scene.MeshId
 import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AIVector3D
 import org.lwjgl.assimp.Assimp
@@ -14,7 +14,7 @@ class ModelManager(
     private val renderingSystem: RenderingSystem,
 ) {
 
-    fun loadModel(inputStream: InputStream): List<Mesh> {
+    fun loadModel(inputStream: InputStream): List<MeshId> {
         val size = inputStream.available()
         val byteBuffer = MemoryUtil.memAlloc(size)
             .put(inputStream.readNBytes(size))
@@ -35,7 +35,7 @@ class ModelManager(
 
             checkNotNull(meshes) { error("Failed to load model meshes") }
             val numMeshes = scene.mNumMeshes()
-            val result = mutableListOf<Mesh>()
+            val result = mutableListOf<MeshId>()
 
             for (i in 0 until numMeshes) {
                 val mesh = AIMesh.createSafe(meshes[i])
@@ -51,7 +51,7 @@ class ModelManager(
         }
     }
 
-    private fun loadMesh(mesh: AIMesh, renderingSystem: RenderingSystem): Mesh {
+    private fun loadMesh(mesh: AIMesh, renderingSystem: RenderingSystem): MeshId {
         val numFaces = mesh.mNumFaces()
         val numVertices = mesh.mNumVertices()
         val vertices = Array(numVertices) { index ->

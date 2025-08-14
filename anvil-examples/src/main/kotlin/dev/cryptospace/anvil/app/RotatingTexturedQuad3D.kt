@@ -63,7 +63,7 @@ class TexturedQuad {
             val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, _ ->
-                updateModelMatrix(deltaTime, mesh)
+//                updateModelMatrix(deltaTime, mesh)
 
                 if (glfw.isKeyPressed(Key.ESCAPE)) {
                     glfw.window.requestClose()

@@ -9,7 +9,7 @@ class MainLoop(
     private val engine: Engine,
 ) {
 
-    fun loop(logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
+    fun loop(logic: (DeltaTime, Glfw, RenderingContext) -> Unit = { _, _, _ -> }) {
         loop(engine.window, logic)
     }
 
