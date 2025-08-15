@@ -1,6 +1,7 @@
 package dev.cryptospace.anvil.core.image
 
 import dev.cryptospace.anvil.core.RenderingSystem
+import dev.cryptospace.anvil.core.scene.MaterialId
 import org.lwjgl.stb.STBImage
 import org.lwjgl.stb.STBImage.STBI_rgb_alpha
 import org.lwjgl.system.MemoryStack
@@ -13,20 +14,20 @@ class ImageManager(
     private val renderingSystem: RenderingSystem,
 ) {
 
-    fun loadImage(inputStream: InputStream) {
+    fun loadImage(inputStream: InputStream): MaterialId {
         val bytes = inputStream.readAllBytes()
         val textureByteBuffer = MemoryUtil.memAlloc(bytes.size)
             .put(bytes, 0, bytes.size)
             .flip()
 
         try {
-            loadImage(textureByteBuffer)
+            return loadImage(textureByteBuffer)
         } finally {
             MemoryUtil.memFree(textureByteBuffer)
         }
     }
 
-    private fun loadImage(imageBytes: ByteBuffer) = MemoryStack.stackPush().use { stack ->
+    private fun loadImage(imageBytes: ByteBuffer): MaterialId = MemoryStack.stackPush().use { stack ->
         val widthBuffer: IntBuffer = stack.ints(0)
         val heightBuffer: IntBuffer = stack.ints(0)
         val channelsInFileBuffer: IntBuffer = stack.ints(0)

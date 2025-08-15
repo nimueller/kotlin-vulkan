@@ -23,9 +23,6 @@ import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_INDEX_TYPE_UINT32
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-import org.lwjgl.vulkan.VK10.vkCmdBindIndexBuffer
-import org.lwjgl.vulkan.VK10.vkCmdBindVertexBuffers
-import org.lwjgl.vulkan.VK10.vkCmdDrawIndexed
 import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
 import org.lwjgl.vulkan.VkDescriptorImageInfo
 import org.lwjgl.vulkan.VkWriteDescriptorSet
@@ -42,7 +39,9 @@ class VulkanDrawLoop(
 ) {
 
     private val vulkanMeshCache: Registry<VulkanMesh> = Registry()
-    private val vulkanMaterialCache: Registry<VulkanMaterial> = Registry()
+
+    //    private val vulkanMaterialCache: Registry<VulkanMaterial> = Registry()
+    private var materialCount: Int = 1
 
     fun <V : Vertex> addMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId {
         val verticesBytes = vertices.toByteBuffer()
@@ -84,9 +83,8 @@ class VulkanDrawLoop(
     }
 
     fun addMaterial(texture: VulkanTexture): MaterialId = MemoryStack.stackPush().use { stack ->
-        check(vulkanMaterialCache.size < maxMaterialCount) { "Too many materials" }
-        val vulkanMaterial = VulkanMaterial()
-        val textureIndex = vulkanMaterialCache.add(vulkanMaterial)
+        check(materialCount < maxMaterialCount) { "Too many materials" }
+        val textureIndex = materialCount++
         val materialId = MaterialId(textureIndex)
 
         val imageInfo = VkDescriptorImageInfo.calloc(stack)
@@ -135,14 +133,14 @@ class VulkanDrawLoop(
             Mat4.BYTE_SIZE,
             stack.ints(renderComponent.materialId?.value ?: 0),
         )
-        vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
-        vkCmdBindIndexBuffer(
+        VK10.vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
+        VK10.vkCmdBindIndexBuffer(
             commandBuffer.handle,
             mesh.indexBufferAllocation.buffer.value,
             0L,
             mesh.indexType,
         )
 
-        vkCmdDrawIndexed(commandBuffer.handle, mesh.indexCount, 1, 0, 0, 0)
+        VK10.vkCmdDrawIndexed(commandBuffer.handle, mesh.indexCount, 1, 0, 0, 0)
     }
 }

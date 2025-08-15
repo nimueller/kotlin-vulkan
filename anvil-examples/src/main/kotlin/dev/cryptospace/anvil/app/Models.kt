@@ -13,8 +13,6 @@ private fun resource(resourcePath: String): InputStream =
     TexturedQuad::class.java.getResourceAsStream(resourcePath) ?: error("Image resource $resourcePath not found")
 
 fun main() = vulkan {
-    val vikingRoomTexture = material(resource("/textures/viking-room.png"))
-
     camera.lookAt(Vec3(2f, 2f, 2f), Vec3(0f, 0f, 0f), Vec3(0f, 0f, 1f))
     camera.movementEnabled = false
     camera.rotationEnabled = false
@@ -23,6 +21,7 @@ fun main() = vulkan {
         gameObject {
             renderComponent {
                 meshId = mesh(resource("/models/viking-room.obj")).first()
+                materialId = material(resource("/textures/viking-room.png"))
             }
 
             var rotationInDegrees = 0.0

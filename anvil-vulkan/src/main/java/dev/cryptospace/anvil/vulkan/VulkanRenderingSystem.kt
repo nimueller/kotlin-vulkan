@@ -7,6 +7,7 @@ import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.Allocator
@@ -197,7 +198,7 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer) {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): MaterialId {
         textureManager.allocateImage(
             Image.CreateInfo(
                 width = width,
@@ -206,11 +207,8 @@ class VulkanRenderingSystem(
                 usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
             ),
         ).also { image ->
-            textureManager.uploadImage(image, imageData)
-        }.also {
-            frames.forEach { frame ->
-                frame.updateDescriptorSets()
-            }
+            val texture = textureManager.uploadImage(image, imageData)
+            return drawLoop.addMaterial(texture)
         }
     }
 
