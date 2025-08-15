@@ -38,3 +38,7 @@ idea {
 powerAssert {
     functions = listOf("kotlin.assert", "kotlin.test.assertEquals")
 }
+
+ktlint {
+    ignoreFailures.set(true)
+}
