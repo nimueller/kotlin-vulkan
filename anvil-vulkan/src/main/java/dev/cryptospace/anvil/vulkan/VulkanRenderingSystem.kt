@@ -19,11 +19,7 @@ import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.FrameDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.MaterialDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.*
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
@@ -32,7 +28,6 @@ import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
 import java.nio.ByteBuffer
 import kotlin.reflect.KClass
 
@@ -114,55 +109,19 @@ class VulkanRenderingSystem(
             TexturedVertex3,
         )
 
-    private val frameDescriptorSets: List<VkDescriptorSet> = MemoryStack.stackPush().use { stack ->
-        val logicalDevice = deviceManager.logicalDevice
+    private val frameDescriptorSet: DescriptorSet = DescriptorSet(
+        logicalDevice = deviceManager.logicalDevice,
+        pool = descriptorPool,
+        layout = frameDescriptorSetLayout,
+        count = FRAMES_IN_FLIGHT,
+    )
 
-        val pDescriptorPools = stack.mallocLong(1)
-        pDescriptorPools.put(0, descriptorPool.handle.value)
-
-        val setLayouts = stack.mallocLong(FRAMES_IN_FLIGHT)
-
-        for (i in 0 until FRAMES_IN_FLIGHT) {
-            setLayouts.put(frameDescriptorSetLayout.handle.value)
-        }
-
-        setLayouts.flip()
-
-        val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-            descriptorPool(pDescriptorPools[0])
-            pSetLayouts(setLayouts)
-        }
-
-        val pDescriptorSets = stack.mallocLong(FRAMES_IN_FLIGHT)
-        vkAllocateDescriptorSets(logicalDevice.handle, setAllocateInfo, pDescriptorSets)
-            .validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
-        List(FRAMES_IN_FLIGHT) {
-            VkDescriptorSet(pDescriptorSets[it])
-        }
-    }
-
-    private val materialDescriptorSet: VkDescriptorSet = MemoryStack.stackPush().use { stack ->
-        val logicalDevice = deviceManager.logicalDevice
-
-        val pDescriptorPools = stack.mallocLong(1)
-        pDescriptorPools.put(0, descriptorPool.handle.value)
-
-        val setLayouts = stack.mallocLong(1)
-        setLayouts.put(materialDescriptorSetLayout.handle.value)
-        setLayouts.flip()
-
-        val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
-            descriptorPool(pDescriptorPools[0])
-            pSetLayouts(setLayouts)
-        }
-
-        val pDescriptorSets = stack.mallocLong(1)
-        vkAllocateDescriptorSets(logicalDevice.handle, setAllocateInfo, pDescriptorSets)
-            .validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
-        VkDescriptorSet(pDescriptorSets[0])
-    }
+    private val materialDescriptorSet: DescriptorSet = DescriptorSet(
+        logicalDevice = deviceManager.logicalDevice,
+        pool = descriptorPool,
+        layout = materialDescriptorSetLayout,
+        count = 1,
+    )
 
     /**
      * The swap chain managing presentation of rendered images to the surface.
@@ -180,13 +139,13 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
-        val descriptorSet = frameDescriptorSets[index]
+        val descriptorSet = frameDescriptorSet[index]
         Frame(
             deviceManager.logicalDevice,
             bufferManager,
             textureManager,
             descriptorSet,
-            materialDescriptorSet,
+            materialDescriptorSet[0],
             commandPool,
             renderPass,
             this,
@@ -270,6 +229,7 @@ class VulkanRenderingSystem(
         graphicsPipelineTextured3D.close()
         renderPass.close()
         frameDescriptorSetLayout.close()
+        materialDescriptorSetLayout.close()
         descriptorPool.close()
 
         textureManager.close()
