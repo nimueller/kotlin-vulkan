@@ -3,15 +3,15 @@ package dev.cryptospace.anvil.vulkan.device
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.vulkan.device.suitable.SupportsRequiredExtensionsCriteria
+import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_SUCCESS
-import org.lwjgl.vulkan.VK10.vkCreateDevice
+import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK12
 import org.lwjgl.vulkan.VkDevice
 import org.lwjgl.vulkan.VkDeviceCreateInfo
 import org.lwjgl.vulkan.VkDeviceQueueCreateInfo
+import org.lwjgl.vulkan.VkPhysicalDeviceDescriptorIndexingFeatures
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures
 
 object LogicalDeviceFactory {
@@ -55,7 +55,7 @@ object LogicalDeviceFactory {
 
         for (queueFamilyIndex in uniqueIndices) {
             val queueCreateInfo = VkDeviceQueueCreateInfo.calloc(stack)
-                .sType(VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
+                .sType(VK10.VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO)
                 .queueFamilyIndex(queueFamilyIndex)
                 .pQueuePriorities(stack.floats(0.0f))
                 .flags(0)
@@ -73,9 +73,11 @@ object LogicalDeviceFactory {
         features: VkPhysicalDeviceFeatures,
     ): VkDeviceCreateInfo {
         val enabledExtensions = stack.pushStringList(SupportsRequiredExtensionsCriteria.requiredExtensionNames)
+        val indexingFeatures = buildIndexingFeatures(stack)
 
         val deviceCreateInfo = VkDeviceCreateInfo.calloc(stack)
-            .sType(VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
+            .sType(VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
+            .pNext(indexingFeatures)
             .pQueueCreateInfos(queueCreateInfoBuffer)
             .ppEnabledLayerNames(stack.mallocPointer(0))
             .ppEnabledExtensionNames(enabledExtensions)
@@ -83,14 +85,24 @@ object LogicalDeviceFactory {
         return deviceCreateInfo
     }
 
+    private fun buildIndexingFeatures(stack: MemoryStack) =
+        VkPhysicalDeviceDescriptorIndexingFeatures.calloc(stack).apply {
+            sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES)
+            runtimeDescriptorArray(true)
+            shaderInputAttachmentArrayDynamicIndexing(true)
+            descriptorBindingVariableDescriptorCount(true)
+            descriptorBindingPartiallyBound(true)
+            descriptorBindingSampledImageUpdateAfterBind(true)
+        }
+
     private fun buildDevice(
         stack: MemoryStack,
         device: PhysicalDevice,
         deviceCreateInfo: VkDeviceCreateInfo,
     ): PointerBuffer {
         val devicePointer = stack.mallocPointer(1)
-        val result = vkCreateDevice(device.handle, deviceCreateInfo, null, devicePointer)
-        check(result == VK_SUCCESS) { "Failed to create logical device: $result" }
+        VK10.vkCreateDevice(device.handle, deviceCreateInfo, null, devicePointer)
+            .validateVulkanSuccess("Create logical device", "Failed to create logical device")
         logger.info("Created logical device for ${device.name}")
         return devicePointer
     }

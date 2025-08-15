@@ -29,6 +29,9 @@ class FrameDescriptorSetLayout(
     },
 ) {
 
+    override fun createDescriptorSet(descriptorPool: DescriptorPool, count: Int): DescriptorSet =
+        DescriptorSet(logicalDevice, descriptorPool, this, count)
+
     companion object {
 
         private fun createVertexShaderDescriptor(stack: MemoryStack): VkDescriptorSetLayoutBinding =

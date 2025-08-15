@@ -19,7 +19,11 @@ import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.*
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.FrameDescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.MaterialDescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
@@ -27,7 +31,9 @@ import dev.cryptospace.anvil.vulkan.surface.Surface
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
+import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import java.nio.ByteBuffer
 import kotlin.reflect.KClass
 
@@ -93,7 +99,18 @@ class VulkanRenderingSystem(
     private val textureManager: TextureManager =
         TextureManager(allocator, deviceManager.logicalDevice, bufferManager, commandPool)
 
-    val descriptorPool: DescriptorPool = DescriptorPool(deviceManager.logicalDevice, FRAMES_IN_FLIGHT + 1)
+    /**
+     * Descriptor pool for allocating descriptor sets used in the rendering pipeline.
+     * This pool manages the allocation of descriptor sets for both per-frame uniforms and material textures.
+     * Configured with capacity for frame-in-flight buffers plus maximum allowed texture descriptors.
+     * Supports dynamic updating of descriptors after binding for texture updates during runtime.
+     */
+    val descriptorPool: DescriptorPool =
+        DescriptorPool(
+            logicalDevice = deviceManager.logicalDevice,
+            frameInFlights = FRAMES_IN_FLIGHT,
+            maxTextureCount = MaterialDescriptorSetLayout.MAX_TEXTURE_COUNT,
+        )
 
     val frameDescriptorSetLayout: DescriptorSetLayout = FrameDescriptorSetLayout(deviceManager.logicalDevice)
 
@@ -115,12 +132,8 @@ class VulkanRenderingSystem(
      * managing per-frame uniform buffer bindings used for view/projection matrices
      * and other frame-specific data.
      */
-    private val frameDescriptorSet: DescriptorSet = DescriptorSet(
-        logicalDevice = deviceManager.logicalDevice,
-        pool = descriptorPool,
-        layout = frameDescriptorSetLayout,
-        count = FRAMES_IN_FLIGHT,
-    )
+    private val frameDescriptorSet: DescriptorSet =
+        frameDescriptorSetLayout.createDescriptorSet(descriptorPool, FRAMES_IN_FLIGHT)
 
     /**
      * Descriptor set for material textures and samplers.
@@ -128,12 +141,8 @@ class VulkanRenderingSystem(
      * used across all materials in the rendering pipeline.
      * Used to bind texture samplers to the fragment shader.
      */
-    private val materialDescriptorSet: DescriptorSet = DescriptorSet(
-        logicalDevice = deviceManager.logicalDevice,
-        pool = descriptorPool,
-        layout = materialDescriptorSetLayout,
-        count = 1,
-    )
+    private val materialDescriptorSet: DescriptorSet =
+        materialDescriptorSetLayout.createDescriptorSet(descriptorPool, 1)
 
     /**
      * The swap chain managing presentation of rendered images to the surface.

@@ -17,7 +17,6 @@ import org.lwjgl.vulkan.VkDescriptorSetAllocateInfo
  * @property handles List of native Vulkan descriptor set handles
  */
 class DescriptorSet(
-    private val logicalDevice: LogicalDevice,
     val handles: List<VkDescriptorSet>,
 ) {
 
@@ -30,7 +29,6 @@ class DescriptorSet(
      * @param count Number of descriptor sets to create
      */
     constructor(logicalDevice: LogicalDevice, pool: DescriptorPool, layout: DescriptorSetLayout, count: Int) : this(
-        logicalDevice,
         createDescriptorSet(logicalDevice, pool, layout, count),
     )
 
@@ -63,14 +61,14 @@ class DescriptorSet(
 
             setLayouts.flip()
 
-            val setAllocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
+            val allocateInfo = VkDescriptorSetAllocateInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO)
                 descriptorPool(pool.handle.value)
                 pSetLayouts(setLayouts)
             }
 
             val pDescriptorSets = stack.mallocLong(count)
-            vkAllocateDescriptorSets(logicalDevice.handle, setAllocateInfo, pDescriptorSets)
+            vkAllocateDescriptorSets(logicalDevice.handle, allocateInfo, pDescriptorSets)
                 .validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
             List(count) {
                 VkDescriptorSet(pDescriptorSets[it])

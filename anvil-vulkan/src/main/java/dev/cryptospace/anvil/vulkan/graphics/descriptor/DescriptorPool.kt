@@ -11,6 +11,7 @@ import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateDescriptorPool
 import org.lwjgl.vulkan.VK10.vkDestroyDescriptorPool
+import org.lwjgl.vulkan.VK12
 import org.lwjgl.vulkan.VkDescriptorPoolCreateInfo
 import org.lwjgl.vulkan.VkDescriptorPoolSize
 
@@ -30,10 +31,14 @@ data class DescriptorPool(
     /**
      * Creates a new descriptor pool with specified capacity.
      *
-     * @param device The logical device to create the descriptor pool for
-     * @param maxSets The maximum number of descriptor sets that can be allocated from this pool
+     * @param logicalDevice The logical device to create the descriptor pool for
+     * @param frameInFlights The maximum number of descriptor sets that can be allocated from this pool
+     * @param maxTextureCount The maximum number of texture descriptors that can be allocated from this pool
      */
-    constructor(device: LogicalDevice, maxSets: Int) : this(device, createDescriptorPool(device, maxSets))
+    constructor(logicalDevice: LogicalDevice, frameInFlights: Int, maxTextureCount: Int) : this(
+        logicalDevice,
+        createDescriptorPool(logicalDevice, frameInFlights, maxTextureCount),
+    )
 
     override fun destroy() {
         vkDestroyDescriptorPool(logicalDevice.handle, handle.value, null)
@@ -41,16 +46,20 @@ data class DescriptorPool(
 
     companion object {
 
-        private fun createDescriptorPool(device: LogicalDevice, maxSets: Int): VkDescriptorPool {
+        private fun createDescriptorPool(
+            device: LogicalDevice,
+            frameInFlights: Int,
+            maxTextureCount: Int,
+        ): VkDescriptorPool {
             MemoryStack.stackPush().use { stack ->
                 val poolSizes = listOf(
                     VkDescriptorPoolSize.calloc(stack).apply {
                         type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-                        descriptorCount(maxSets)
+                        descriptorCount(frameInFlights)
                     },
                     VkDescriptorPoolSize.calloc(stack).apply {
                         type(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                        descriptorCount(maxSets)
+                        descriptorCount(maxTextureCount)
                     },
                 ).toBuffer { size ->
                     VkDescriptorPoolSize.calloc(size, stack)
@@ -59,8 +68,8 @@ data class DescriptorPool(
                 val createInfo = VkDescriptorPoolCreateInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO)
                     pPoolSizes(poolSizes)
-                    maxSets(maxSets)
-                    flags(0)
+                    maxSets(frameInFlights + 1)
+                    flags(VK12.VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)
                 }
 
                 val pDescriptorPool = stack.mallocLong(1)

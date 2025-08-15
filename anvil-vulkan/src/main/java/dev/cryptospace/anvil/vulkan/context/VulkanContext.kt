@@ -13,6 +13,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.NULL
 import org.lwjgl.vulkan.EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK12
 import org.lwjgl.vulkan.VkApplicationInfo
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkInstanceCreateInfo
@@ -57,9 +58,9 @@ class VulkanContext(
 
         /**
          * The Vulkan API version to use for this application.
-         * Currently set to Vulkan 1.0 for maximum compatibility.
+         * Currently set to Vulkan 1.2 for enhanced features and performance.
          */
-        val API_VERSION = VK10.VK_API_VERSION_1_0
+        val API_VERSION = VK12.VK_API_VERSION_1_2
 
         @JvmStatic
         private val logger = logger<VulkanContext>()
