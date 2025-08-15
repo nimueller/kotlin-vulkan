@@ -17,6 +17,9 @@ class Registry<T>(
     private var items = arrayOfNulls<Slot<T>>(initial)
     private val free = ArrayDeque<Int>()
 
+    val size: Int
+        get() = items.count { it != null }
+
     private data class Slot<T>(
         var slotValue: T,
     )

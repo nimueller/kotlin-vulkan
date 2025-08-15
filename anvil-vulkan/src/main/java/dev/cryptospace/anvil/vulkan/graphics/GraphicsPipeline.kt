@@ -12,7 +12,11 @@ import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
 import dev.cryptospace.anvil.vulkan.toBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
+import org.lwjgl.vulkan.VK10.vkDestroyPipeline
+import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo
 import org.lwjgl.vulkan.VkPushConstantRange
 
@@ -106,9 +110,13 @@ data class GraphicsPipeline(
 
             val pushConstantRanges = listOf(
                 VkPushConstantRange.calloc(stack)
-                    .stageFlags(VK_SHADER_STAGE_VERTEX_BIT)
+                    .stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
                     .offset(0)
                     .size(Mat4.BYTE_SIZE),
+                VkPushConstantRange.calloc(stack)
+                    .stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .offset(Mat4.BYTE_SIZE)
+                    .size(Int.SIZE_BYTES),
             ).toBuffer { size ->
                 VkPushConstantRange.calloc(size, stack)
             }

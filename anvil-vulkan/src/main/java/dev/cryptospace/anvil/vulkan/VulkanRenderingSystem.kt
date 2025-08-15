@@ -174,7 +174,14 @@ class VulkanRenderingSystem(
         )
     }
 
-    private val drawLoop = VulkanDrawLoop(bufferManager, graphicsPipelineTextured3D)
+    private val drawLoop = VulkanDrawLoop(
+        deviceManager.logicalDevice,
+        bufferManager,
+        textureManager,
+        graphicsPipelineTextured3D,
+        materialDescriptorSet[0],
+        MaterialDescriptorSetLayout.MAX_TEXTURE_COUNT,
+    )
 
     fun recreateSwapChain() {
         swapChain = swapChain.recreate(renderPass)
