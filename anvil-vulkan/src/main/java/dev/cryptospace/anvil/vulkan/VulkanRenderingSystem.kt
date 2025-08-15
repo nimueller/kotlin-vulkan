@@ -109,6 +109,12 @@ class VulkanRenderingSystem(
             TexturedVertex3,
         )
 
+    /**
+     * Descriptor set for frame-specific uniform buffers.
+     * Contains descriptor sets allocated for each frame in flight,
+     * managing per-frame uniform buffer bindings used for view/projection matrices
+     * and other frame-specific data.
+     */
     private val frameDescriptorSet: DescriptorSet = DescriptorSet(
         logicalDevice = deviceManager.logicalDevice,
         pool = descriptorPool,
@@ -116,6 +122,12 @@ class VulkanRenderingSystem(
         count = FRAMES_IN_FLIGHT,
     )
 
+    /**
+     * Descriptor set for material textures and samplers.
+     * Contains a single descriptor set that manages texture bindings
+     * used across all materials in the rendering pipeline.
+     * Used to bind texture samplers to the fragment shader.
+     */
     private val materialDescriptorSet: DescriptorSet = DescriptorSet(
         logicalDevice = deviceManager.logicalDevice,
         pool = descriptorPool,

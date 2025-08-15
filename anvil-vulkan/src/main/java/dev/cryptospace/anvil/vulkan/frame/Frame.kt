@@ -75,9 +75,6 @@ class Frame(
             ),
         )
 
-    // TODO
-//    private val uniformBufferPointer: Long = bufferManager.getPointer(uniformBuffer)
-
     init {
         updateDescriptorSets()
     }
