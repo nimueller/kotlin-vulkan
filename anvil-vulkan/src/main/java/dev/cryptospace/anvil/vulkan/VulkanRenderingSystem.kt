@@ -12,7 +12,6 @@ import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
-import dev.cryptospace.anvil.vulkan.context.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
@@ -24,7 +23,7 @@ import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.FrameDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.MaterialDescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.graphics.descriptor.TextureDescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
@@ -55,7 +54,7 @@ class VulkanRenderingSystem(
      * Handles initialization of the Vulkan API and maintains required instance-level functionality.
      * Created with GLFW-required Vulkan extensions to enable window system integration.
      */
-    private val context: VulkanContext = VulkanContext(glfw.getRequiredVulkanExtensions())
+    private val context: VulkanContext = VulkanContext(extensions = glfw.getRequiredVulkanExtensions())
 
     /**
      * Surface for presenting rendered images to the window.
@@ -69,27 +68,32 @@ class VulkanRenderingSystem(
      * Handles selection of physical device (GPU) and creation of logical device.
      * Manages queue families and provides access to graphics and presentation queues.
      */
-    private val deviceManager: DeviceManager = DeviceManager(context, windowSurface)
+    private val deviceManager: DeviceManager = DeviceManager(vulkanContext = context, surface = windowSurface)
 
     /**
      * Memory allocator for Vulkan resources.
      * Handles allocation and management of device memory for buffers, images, and other resources.
      * Provides efficient memory management and tracks allocations to prevent memory leaks.
      */
-    private val allocator: Allocator = Allocator(context, deviceManager.logicalDevice)
+    private val allocator: Allocator = Allocator(context = context, logicalDevice = deviceManager.logicalDevice)
 
     /**
      * Command pool for allocating command buffers used to record and submit Vulkan commands.
      * Created from the logical device and manages memory for command buffer allocation and deallocation.
      * Command buffers from this pool are used for recording rendering and compute commands.
      */
-    private val commandPool: CommandPool = CommandPool(deviceManager.logicalDevice)
+    private val commandPool: CommandPool = CommandPool(logicalDevice = deviceManager.logicalDevice)
 
     /**
      * Buffer manager for creating and managing Vulkan buffers.
      * Handles vertex buffer creation and memory management.
      */
-    private val bufferManager: BufferManager = BufferManager(allocator, deviceManager.logicalDevice, commandPool)
+    private val bufferManager: BufferManager =
+        BufferManager(
+            allocator = allocator,
+            logicalDevice = deviceManager.logicalDevice,
+            commandPool = commandPool,
+        )
 
     /**
      * Texture manager for creating and managing Vulkan textures and images.
@@ -98,7 +102,12 @@ class VulkanRenderingSystem(
      * Uses the allocator for device memory allocation and buffer manager for staging operations.
      */
     private val textureManager: TextureManager =
-        TextureManager(allocator, deviceManager.logicalDevice, bufferManager, commandPool)
+        TextureManager(
+            allocator = allocator,
+            logicalDevice = deviceManager.logicalDevice,
+            bufferManager = bufferManager,
+            commandPool = commandPool,
+        )
 
     /**
      * Descriptor pool for allocating descriptor sets used in the rendering pipeline.
@@ -110,12 +119,32 @@ class VulkanRenderingSystem(
         DescriptorPool(
             logicalDevice = deviceManager.logicalDevice,
             frameInFlights = FRAMES_IN_FLIGHT,
-            maxTextureCount = MaterialDescriptorSetLayout.MAX_TEXTURE_COUNT,
+            maxTextureCount = TextureDescriptorSetLayout.MAX_TEXTURE_COUNT,
         )
 
-    val frameDescriptorSetLayout: DescriptorSetLayout = FrameDescriptorSetLayout(deviceManager.logicalDevice)
+    /**
+     * Layout for frame-specific uniform buffer descriptors.
+     * Defines the structure and bindings of uniform buffers used for per-frame data
+     * such as view and projection matrices. This layout is used when creating
+     * descriptor sets for each frame in flight and specifies how shader uniforms
+     * are mapped to memory.
+     */
+    val frameDescriptorSetLayout: DescriptorSetLayout =
+        FrameDescriptorSetLayout(
+            logicalDevice = deviceManager.logicalDevice,
+        )
 
-    val materialDescriptorSetLayout: DescriptorSetLayout = MaterialDescriptorSetLayout(deviceManager.logicalDevice)
+    /**
+     * Layout for texture descriptor bindings used in shaders.
+     * Defines the structure for combined image samplers that allow textures
+     * to be accessed in fragment shaders. This layout supports dynamic texture
+     * updates and variable descriptor counts up to MAX_TEXTURE_COUNT.
+     * Created with an update-after-bind flag to allow runtime texture updates.
+     */
+    val textureDescriptorSetLayout: DescriptorSetLayout =
+        TextureDescriptorSetLayout(
+            deviceManager.logicalDevice,
+        )
 
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
@@ -123,7 +152,7 @@ class VulkanRenderingSystem(
         GraphicsPipeline(
             deviceManager.logicalDevice,
             renderPass,
-            listOf(frameDescriptorSetLayout, materialDescriptorSetLayout),
+            listOf(frameDescriptorSetLayout, textureDescriptorSetLayout),
             TexturedVertex3,
         )
 
@@ -143,7 +172,7 @@ class VulkanRenderingSystem(
      * Used to bind texture samplers to the fragment shader.
      */
     private val materialDescriptorSet: DescriptorSet =
-        materialDescriptorSetLayout.createDescriptorSet(descriptorPool, 1)
+        textureDescriptorSetLayout.createDescriptorSet(descriptorPool, 1)
 
     /**
      * The swap chain managing presentation of rendered images to the surface.
@@ -181,7 +210,7 @@ class VulkanRenderingSystem(
         textureManager,
         graphicsPipelineTextured3D,
         materialDescriptorSet[0],
-        MaterialDescriptorSetLayout.MAX_TEXTURE_COUNT,
+        TextureDescriptorSetLayout.MAX_TEXTURE_COUNT,
     )
 
     fun recreateSwapChain() {
@@ -255,7 +284,7 @@ class VulkanRenderingSystem(
         graphicsPipelineTextured3D.close()
         renderPass.close()
         frameDescriptorSetLayout.close()
-        materialDescriptorSetLayout.close()
+        textureDescriptorSetLayout.close()
         descriptorPool.close()
 
         textureManager.close()

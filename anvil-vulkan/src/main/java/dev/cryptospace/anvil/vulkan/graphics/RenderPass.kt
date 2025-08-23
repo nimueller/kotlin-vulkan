@@ -8,9 +8,38 @@ import dev.cryptospace.anvil.vulkan.handle.VkRenderPass
 import dev.cryptospace.anvil.vulkan.toBuffer
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+import org.lwjgl.vulkan.VK10.VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_CLEAR
+import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_LOAD_OP_DONT_CARE
+import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_DONT_CARE
+import org.lwjgl.vulkan.VK10.VK_ATTACHMENT_STORE_OP_STORE
+import org.lwjgl.vulkan.VK10.VK_FORMAT_D32_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO
+import org.lwjgl.vulkan.VK10.VK_SUBPASS_CONTENTS_INLINE
+import org.lwjgl.vulkan.VK10.VK_SUBPASS_EXTERNAL
+import org.lwjgl.vulkan.VK10.vkCmdBeginRenderPass
+import org.lwjgl.vulkan.VK10.vkCmdEndRenderPass
+import org.lwjgl.vulkan.VK10.vkCreateRenderPass
+import org.lwjgl.vulkan.VK10.vkDestroyRenderPass
+import org.lwjgl.vulkan.VkAttachmentDescription
+import org.lwjgl.vulkan.VkAttachmentReference
+import org.lwjgl.vulkan.VkClearColorValue
+import org.lwjgl.vulkan.VkClearValue
+import org.lwjgl.vulkan.VkRenderPassBeginInfo
+import org.lwjgl.vulkan.VkRenderPassCreateInfo
+import org.lwjgl.vulkan.VkSubpassDependency
+import org.lwjgl.vulkan.VkSubpassDescription
 
 /**
  * Represents a Vulkan render pass that defines the structure and dependencies of rendering operations.
@@ -24,6 +53,16 @@ data class RenderPass(
 
     constructor(logicalDevice: LogicalDevice) : this(logicalDevice, createRenderPass(logicalDevice))
 
+    /**
+     * Begins a render pass operation on the specified command buffer using the provided framebuffer.
+     *
+     * This method initializes the render pass with clear values for both color and depth/stencil attachments.
+     * The color attachment is cleared to black with full opacity (0,0,0,1), and the depth attachment is cleared
+     * to 1.0f. The render area is set to the full extent of the swap chain.
+     *
+     * @param commandBuffer The command buffer to record the render pass commands into
+     * @param framebuffer The framebuffer to be used for this render pass instance
+     */
     fun start(commandBuffer: CommandBuffer, framebuffer: Framebuffer) = MemoryStack.stackPush().use { stack ->
         val clearValues = listOf(
             VkClearValue.calloc(stack).color(
@@ -57,6 +96,14 @@ data class RenderPass(
         vkCmdBeginRenderPass(commandBuffer.handle, beginInfo, VK_SUBPASS_CONTENTS_INLINE)
     }
 
+    /**
+     * Ends the current render pass operation on the specified command buffer.
+     *
+     * This method must be called after all rendering commands within the render pass
+     * have been recorded. It signals the end of the render pass instance.
+     *
+     * @param commandBuffer The command buffer in which to record the end render pass command
+     */
     fun end(commandBuffer: CommandBuffer) {
         vkCmdEndRenderPass(commandBuffer.handle)
     }
@@ -135,8 +182,8 @@ data class RenderPass(
                 samples(VK_SAMPLE_COUNT_1_BIT)
                 loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                 storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
-                stencilLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
-                stencilStoreOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+                stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+                stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
                 initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
                 finalLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 flags(0)

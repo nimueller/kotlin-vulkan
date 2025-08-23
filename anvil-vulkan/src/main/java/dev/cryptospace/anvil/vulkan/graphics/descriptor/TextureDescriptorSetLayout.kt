@@ -28,7 +28,7 @@ import org.lwjgl.vulkan.VkDescriptorSetVariableDescriptorCountAllocateInfo
  *
  * @property handle The native Vulkan handle to the descriptor set layout
  */
-class MaterialDescriptorSetLayout(
+class TextureDescriptorSetLayout(
     logicalDevice: LogicalDevice,
 ) : DescriptorSetLayout(
     logicalDevice = logicalDevice,

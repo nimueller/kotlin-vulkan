@@ -1,17 +1,16 @@
-package dev.cryptospace.anvil.vulkan.context
+package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.AppConfig
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.core.putAllStrings
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
 import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil.NULL
-import org.lwjgl.vulkan.EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.EXTDebugUtils
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK12
 import org.lwjgl.vulkan.VkApplicationInfo
@@ -94,7 +93,7 @@ class VulkanContext(
         private fun createApplicationInfo(stack: MemoryStack): VkApplicationInfo =
             VkApplicationInfo.calloc(stack).apply {
                 sType(VK10.VK_STRUCTURE_TYPE_APPLICATION_INFO)
-                pNext(NULL)
+                pNext(MemoryUtil.NULL)
                 pApplicationName(stack.ASCII("Hello Vulkan Application"))
                 applicationVersion(VK10.VK_MAKE_VERSION(1, 0, 0))
                 pEngineName(stack.ASCII("Vulkan"))
@@ -134,7 +133,7 @@ class VulkanContext(
                 return emptyList()
             }
 
-            return listOf(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+            return listOf(EXTDebugUtils.VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
         }
 
         private fun createVulkanInstance(stack: MemoryStack, createInfo: VkInstanceCreateInfo): PointerBuffer {

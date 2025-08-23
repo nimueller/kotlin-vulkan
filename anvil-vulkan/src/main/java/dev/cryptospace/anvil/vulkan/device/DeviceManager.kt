@@ -2,7 +2,7 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.context.VulkanContext
+import dev.cryptospace.anvil.vulkan.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo.Companion.pickBestDeviceSurfaceInfo
 import dev.cryptospace.anvil.vulkan.surface.Surface
 

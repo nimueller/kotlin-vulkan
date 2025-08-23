@@ -3,7 +3,7 @@ package dev.cryptospace.anvil.vulkan.buffer
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.context.VulkanContext
+import dev.cryptospace.anvil.vulkan.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
