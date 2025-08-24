@@ -1,10 +1,10 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
 import dev.cryptospace.anvil.core.math.VertexLayout
-import dev.cryptospace.anvil.core.native.Handle
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
+import dev.cryptospace.anvil.vulkan.pipeline.ShaderModule
 import dev.cryptospace.anvil.vulkan.utils.getVertexBindingDescription
 import dev.cryptospace.anvil.vulkan.utils.toAttributeDescriptions
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
@@ -39,10 +39,7 @@ import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREA
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateGraphicsPipelines
-import org.lwjgl.vulkan.VK10.vkCreateShaderModule
-import org.lwjgl.vulkan.VK10.vkDestroyShaderModule
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo
@@ -54,7 +51,6 @@ import org.lwjgl.vulkan.VkPipelineRasterizationStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineShaderStageCreateInfo
 import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo
-import org.lwjgl.vulkan.VkShaderModuleCreateInfo
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 /**
@@ -92,25 +88,24 @@ object GraphicsPipelineFactory {
         pipelineLayoutHandle: VkPipelineLayout,
         vertexLayout: VertexLayout<*>,
     ): VkPipeline = MemoryStack.stackPush().use { stack ->
-        val vertexShaderHandle = loadShader(logicalDevice, "/shaders/vert.spv")
-        val fragmentShaderHandle = loadShader(logicalDevice, "/shaders/frag.spv")
-        val shaderStages = createShaderStageCreateInfo(stack, vertexShaderHandle, fragmentShaderHandle)
-        val pipelineCreateInfos =
-            createPipelineCreateInfoBuffer(stack, shaderStages, pipelineLayoutHandle, renderPass, vertexLayout)
+        ShaderModule(logicalDevice, "/shaders/vert.spv").use { vertexShaderModule ->
+            ShaderModule(logicalDevice, "/shaders/frag.spv").use { fragmentShaderModule ->
+                val shaderStages = createShaderStageCreateInfo(stack, vertexShaderModule, fragmentShaderModule)
+                val pipelineCreateInfos =
+                    createPipelineCreateInfoBuffer(stack, shaderStages, pipelineLayoutHandle, renderPass, vertexLayout)
 
-        val pPipelines = stack.mallocLong(1)
-        vkCreateGraphicsPipelines(
-            logicalDevice.handle,
-            VK_NULL_HANDLE,
-            pipelineCreateInfos,
-            null,
-            pPipelines,
-        ).validateVulkanSuccess("Create graphics pipeline", "Failed to create graphics pipeline")
+                val pPipelines = stack.mallocLong(1)
+                vkCreateGraphicsPipelines(
+                    logicalDevice.handle,
+                    VK_NULL_HANDLE,
+                    pipelineCreateInfos,
+                    null,
+                    pPipelines,
+                ).validateVulkanSuccess("Create graphics pipeline", "Failed to create graphics pipeline")
 
-        vkDestroyShaderModule(logicalDevice.handle, vertexShaderHandle.value, null)
-        vkDestroyShaderModule(logicalDevice.handle, fragmentShaderHandle.value, null)
-
-        VkPipeline(pPipelines[0])
+                VkPipeline(pPipelines[0])
+            }
+        }
     }
 
     /**
@@ -330,61 +325,31 @@ object GraphicsPipelineFactory {
     }
 
     /**
-     * Loads and creates a shader module from the specified resource path.
-     *
-     * Reads the compiled SPIR-V shader code from resources and creates
-     * a Vulkan shader module. The shader code must be pre-compiled to SPIR-V
-     * format (typically using glslc compiler).
-     *
-     * @param logicalDevice The logical device to create the shader module on
-     * @param path Resource path to the compiled SPIR-V shader file
-     * @return Handle to the created shader module
-     * @throws IllegalStateException if shader file cannot be found or shader creation fails
-     */
-    private fun loadShader(logicalDevice: LogicalDevice, path: String): Handle = MemoryStack.stackPush().use { stack ->
-        val shaderCode = GraphicsPipelineFactory::class.java.getResourceAsStream(path)?.readAllBytes()
-            ?: error("Shader not found at classpath: $path")
-        val shaderCodeBuffer = stack.malloc(shaderCode.size)
-        shaderCodeBuffer.put(shaderCode)
-        shaderCodeBuffer.flip()
-
-        val createInfo = VkShaderModuleCreateInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO)
-            pCode(shaderCodeBuffer)
-        }
-
-        val shaderModule = stack.mallocLong(1)
-        vkCreateShaderModule(logicalDevice.handle, createInfo, null, shaderModule).validateVulkanSuccess()
-
-        Handle(shaderModule[0])
-    }
-
-    /**
      * Creates shader stage configuration for vertex and fragment shaders.
      *
      * Configures the pipeline stages for both vertex and fragment shaders,
      * setting up their entry points and shader module references.
      *
      * @param stack Memory stack for allocating Vulkan structures
-     * @param vertexShaderHandle Handle to the compiled vertex shader module
-     * @param fragmentShaderHandle Handle to the compiled fragment shader module
+     * @param vertexShader Handle to the compiled vertex shader module
+     * @param fragmentShader Handle to the compiled fragment shader module
      * @return Buffer containing shader stage configurations for both shaders
      */
     private fun createShaderStageCreateInfo(
         stack: MemoryStack,
-        vertexShaderHandle: Handle,
-        fragmentShaderHandle: Handle,
+        vertexShader: ShaderModule,
+        fragmentShader: ShaderModule,
     ): VkPipelineShaderStageCreateInfo.Buffer {
         val vertexShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
             stage(VK_SHADER_STAGE_VERTEX_BIT)
-            module(vertexShaderHandle.value)
+            module(vertexShader.handle.value)
             pName(stack.UTF8("main"))
         }
         val fragmentShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
             sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
             stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-            module(fragmentShaderHandle.value)
+            module(fragmentShader.handle.value)
             pName(stack.UTF8("main"))
         }
 
