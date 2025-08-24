@@ -1,4 +1,4 @@
-# Kotlin Vulkan [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=nimueller_kotlin-vulkan&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=nimueller_kotlin-vulkan)
+# Kotlin Vulkan [![Build](https://github.com/nimueller/kotlin-vulkan/actions/workflows/build.yml/badge.svg)](https://github.com/nimueller/kotlin-vulkan/actions/workflows/build.yml) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=nimueller_kotlin-vulkan&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=nimueller_kotlin-vulkan)
 
 Just some simple Vulkan examples in Kotlin with LWJGL3.
 Don't expect anything fancy, just some basic examples to get started as a private project for learning Vulkan.
