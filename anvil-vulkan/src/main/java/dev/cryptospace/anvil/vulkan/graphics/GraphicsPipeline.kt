@@ -1,14 +1,12 @@
 package dev.cryptospace.anvil.vulkan.graphics
 
-import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.handle.VkPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
+import dev.cryptospace.anvil.vulkan.pipeline.VkPipeline
 import dev.cryptospace.anvil.vulkan.utils.toBuffer
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -36,47 +34,6 @@ data class GraphicsPipeline(
 ) : NativeResource() {
 
     /**
-     * Creates a graphics pipeline with an automatically generated pipeline layout.
-     *
-     * @param logicalDevice The logical device to create the pipeline on
-     * @param renderPass The render pass this pipeline will be compatible with
-     * @param vertexLayout The vertex layout describing the structure of vertex data
-     */
-    constructor(
-        logicalDevice: LogicalDevice,
-        renderPass: RenderPass,
-        descriptorSetLayout: List<DescriptorSetLayout>,
-        vertexLayout: VertexLayout<*>,
-    ) : this(
-        logicalDevice,
-        renderPass,
-        createGraphicsPipelineLayout(logicalDevice, descriptorSetLayout),
-        vertexLayout,
-    )
-
-    /**
-     * Creates a graphics pipeline with a provided pipeline layout and vertex layout.
-     *
-     * @param logicalDevice The logical device to create the pipeline on
-     * @param renderPass The render pass this pipeline will be compatible with
-     * @param pipelineLayoutHandle The pipeline layout to use for this pipeline
-     * @param vertexLayout The vertex layout describing the structure and attributes of vertex data
-     */
-    constructor(
-        logicalDevice: LogicalDevice,
-        renderPass: RenderPass,
-        pipelineLayoutHandle: VkPipelineLayout,
-        vertexLayout: VertexLayout<*>,
-    ) : this(
-        logicalDevice,
-        pipelineLayoutHandle,
-        GraphicsPipelineFactory.createGraphicsPipeline(logicalDevice, renderPass, pipelineLayoutHandle, vertexLayout)
-            .also { graphicsPipeline ->
-                logger.debug { "Created graphics pipeline: $graphicsPipeline" }
-            },
-    )
-
-    /**
      * Destroys the graphics pipeline and its associated pipeline layout.
      * This releases all Vulkan resources associated with this pipeline.
      */
@@ -96,7 +53,7 @@ data class GraphicsPipeline(
          * @param logicalDevice The logical device to create the layout on
          * @return Handle to the created pipeline layout
          */
-        private fun createGraphicsPipelineLayout(
+        fun createGraphicsPipelineLayout(
             logicalDevice: LogicalDevice,
             descriptorSetLayout: List<DescriptorSetLayout>,
         ): VkPipelineLayout = MemoryStack.stackPush().use { stack ->

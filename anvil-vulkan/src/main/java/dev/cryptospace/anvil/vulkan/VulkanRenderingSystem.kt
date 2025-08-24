@@ -27,6 +27,9 @@ import dev.cryptospace.anvil.vulkan.graphics.descriptor.TextureDescriptorSetLayo
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
+import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
+import dev.cryptospace.anvil.vulkan.pipeline.ShaderModule
+import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.utils.getRequiredVulkanExtensions
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
@@ -150,12 +153,25 @@ class VulkanRenderingSystem(
 
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
+    val graphicsPipelineTextured3DLayout =
+        GraphicsPipeline.createGraphicsPipelineLayout(
+            deviceManager.logicalDevice,
+            listOf(frameDescriptorSetLayout, textureDescriptorSetLayout),
+        )
+
     val graphicsPipelineTextured3D: GraphicsPipeline =
         GraphicsPipeline(
             deviceManager.logicalDevice,
-            renderPass,
-            listOf(frameDescriptorSetLayout, textureDescriptorSetLayout),
-            TexturedVertex3,
+            graphicsPipelineTextured3DLayout,
+            PipelineBuilder(
+                logicalDevice = deviceManager.logicalDevice,
+                renderPass = renderPass,
+                pipelineLayout = graphicsPipelineTextured3DLayout,
+            ).apply {
+                vertexLayout = TexturedVertex3
+                shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
+                shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
+            }.build(),
         )
 
     /**

@@ -1,14 +1,10 @@
-package dev.cryptospace.anvil.vulkan.graphics
+package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.VertexLayout
-import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.handle.VkPipeline
-import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
-import dev.cryptospace.anvil.vulkan.pipeline.ShaderModule
 import dev.cryptospace.anvil.vulkan.utils.getVertexBindingDescription
 import dev.cryptospace.anvil.vulkan.utils.toAttributeDescriptions
-import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ZERO
 import org.lwjgl.vulkan.VK10.VK_BLEND_OP_ADD
@@ -27,8 +23,6 @@ import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_POLYGON_MODE_FILL
 import org.lwjgl.vulkan.VK10.VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
 import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_FRAGMENT_BIT
-import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
@@ -36,10 +30,8 @@ import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INF
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreateGraphicsPipelines
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo
 import org.lwjgl.vulkan.VkPipelineColorBlendAttachmentState
 import org.lwjgl.vulkan.VkPipelineColorBlendStateCreateInfo
@@ -53,78 +45,13 @@ import org.lwjgl.vulkan.VkPipelineVertexInputStateCreateInfo
 import org.lwjgl.vulkan.VkPipelineViewportStateCreateInfo
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
-/**
- * Factory responsible for creating and configuring Vulkan graphics pipelines.
- *
- * This factory handles the complete pipeline creation process including:
- * - Loading and configuring vertex and fragment shaders
- * - Setting up vertex input and attribute descriptions
- * - Configuring fixed-function pipeline states (rasterization, blending, etc.)
- * - Managing pipeline resources and memory
- *
- * The created pipelines are optimized for 2D rendering with basic texture mapping
- * and use dynamic viewport/scissor states for flexibility.
- */
-object GraphicsPipelineFactory {
+private const val SHADER_MAIN_FUNCTION_NAME = "main"
 
-    /**
-     * Creates a new Vulkan graphics pipeline with the specified configuration.
-     *
-     * This method performs the following steps:
-     * 1. Loads and creates shader modules for vertex and fragment shaders
-     * 2. Sets up all pipeline states (vertex input, assembly, rasterization, etc.)
-     * 3. Creates the pipeline using the configured settings
-     * 4. Cleans up temporary resources (shader modules)
-     *
-     * @param logicalDevice The logical device to create the pipeline on
-     * @param renderPass The render pass that this pipeline will be compatible with
-     * @param pipelineLayoutHandle The pipeline layout defining descriptor set layouts and push constants
-     * @param vertexLayout The vertex attribute layout describing vertex buffer structure
-     * @return A new VkPipeline instance ready for rendering
-     */
-    fun createGraphicsPipeline(
-        logicalDevice: LogicalDevice,
-        renderPass: RenderPass,
-        pipelineLayoutHandle: VkPipelineLayout,
-        vertexLayout: VertexLayout<*>,
-    ): VkPipeline = MemoryStack.stackPush().use { stack ->
-        ShaderModule(logicalDevice, "/shaders/vert.spv").use { vertexShaderModule ->
-            ShaderModule(logicalDevice, "/shaders/frag.spv").use { fragmentShaderModule ->
-                val shaderStages = createShaderStageCreateInfo(stack, vertexShaderModule, fragmentShaderModule)
-                val pipelineCreateInfos =
-                    createPipelineCreateInfoBuffer(stack, shaderStages, pipelineLayoutHandle, renderPass, vertexLayout)
+object PipelineFactory {
 
-                val pPipelines = stack.mallocLong(1)
-                vkCreateGraphicsPipelines(
-                    logicalDevice.handle,
-                    VK_NULL_HANDLE,
-                    pipelineCreateInfos,
-                    null,
-                    pPipelines,
-                ).validateVulkanSuccess("Create graphics pipeline", "Failed to create graphics pipeline")
-
-                VkPipeline(pPipelines[0])
-            }
-        }
-    }
-
-    /**
-     * Creates the pipeline configuration buffer with all necessary state information.
-     *
-     * @param stack Memory stack for allocating Vulkan structures
-     * @param shaderStages Shader stages to be used in the pipeline
-     * @param pipelineLayoutHandle Pipeline layout handle
-     * @param renderPass Render pass configuration
-     * @return Buffer containing pipeline creation information
-     */
-    private fun createPipelineCreateInfoBuffer(
-        stack: MemoryStack,
-        shaderStages: VkPipelineShaderStageCreateInfo.Buffer,
-        pipelineLayoutHandle: VkPipelineLayout,
-        renderPass: RenderPass,
-        vertexLayout: VertexLayout<*>,
-    ): VkGraphicsPipelineCreateInfo.Buffer {
-        val vertexInputInfo = setupVertexShaderInputInfo(stack, vertexLayout)
+    fun createPipeline(pipelineBuilder: PipelineBuilder): VkPipeline = MemoryStack.stackPush().use { stack ->
+        val shaderStages = createShaderStageCreateInfo(stack, pipelineBuilder)
+        val vertexInputInfo = setupVertexShaderInputInfo(stack, pipelineBuilder.vertexLayout)
         val dynamicState = setupDynamicState(stack)
         val inputAssembly = setupVertexInputAssembly(stack)
         val viewportState = setupViewport(stack)
@@ -145,8 +72,8 @@ object GraphicsPipelineFactory {
             pDepthStencilState(depthStencilState)
             pColorBlendState(colorBlending)
             pDynamicState(dynamicState)
-            layout(pipelineLayoutHandle.value)
-            renderPass(renderPass.handle.value)
+            layout(pipelineBuilder.pipelineLayout.value)
+            renderPass(pipelineBuilder.renderPass.handle.value)
             subpass(0)
             basePipelineHandle(VK_NULL_HANDLE)
             basePipelineIndex(-1)
@@ -154,7 +81,16 @@ object GraphicsPipelineFactory {
         val pipelineCreateInfos = VkGraphicsPipelineCreateInfo.calloc(1, stack)
             .put(pipelineCreateInfo)
             .flip()
-        return pipelineCreateInfos
+
+        val pPipelines = stack.mallocLong(1)
+        VK10.vkCreateGraphicsPipelines(
+            pipelineBuilder.logicalDevice.handle,
+            VK10.VK_NULL_HANDLE,
+            pipelineCreateInfos,
+            null,
+            pPipelines,
+        )
+        VkPipeline(pPipelines[0])
     }
 
     /**
@@ -337,26 +273,22 @@ object GraphicsPipelineFactory {
      */
     private fun createShaderStageCreateInfo(
         stack: MemoryStack,
-        vertexShader: ShaderModule,
-        fragmentShader: ShaderModule,
+        pipelineBuilder: PipelineBuilder,
     ): VkPipelineShaderStageCreateInfo.Buffer {
-        val vertexShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-            stage(VK_SHADER_STAGE_VERTEX_BIT)
-            module(vertexShader.handle.value)
-            pName(stack.UTF8("main"))
-        }
-        val fragmentShaderCreateInfo = VkPipelineShaderStageCreateInfo.calloc(stack).apply {
-            sType(VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-            stage(VK_SHADER_STAGE_FRAGMENT_BIT)
-            module(fragmentShader.handle.value)
-            pName(stack.UTF8("main"))
+        val buffer = VkPipelineShaderStageCreateInfo.malloc(pipelineBuilder.shaderModules.size, stack)
+        val shaderMainFunctionName = stack.UTF8(SHADER_MAIN_FUNCTION_NAME)
+
+        for ((shaderStage, shaderModule) in pipelineBuilder.shaderModules) {
+            buffer.put(
+                VkPipelineShaderStageCreateInfo.calloc(stack)
+                    .sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
+                    .stage(shaderStage.value)
+                    .module(shaderModule.handle.value)
+                    .pName(shaderMainFunctionName),
+            )
         }
 
-        val shaderStages = VkPipelineShaderStageCreateInfo.calloc(2, stack)
-            .put(vertexShaderCreateInfo)
-            .put(fragmentShaderCreateInfo)
-            .flip()
-        return shaderStages
+        buffer.flip()
+        return buffer
     }
 }

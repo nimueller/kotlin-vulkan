@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.handle
+package dev.cryptospace.anvil.vulkan.pipeline
 
 @JvmInline
 value class VkPipeline(
