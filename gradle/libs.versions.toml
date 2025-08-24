@@ -4,7 +4,7 @@ slf4j = "2.0.+"
 logback = "1.5.+"
 mockito = "5.4.+"
 ktlint = "12.3.+"
-sonarlint = "2.0.+"
+sonarlint = "2.2.+"
 junit = "5.13.+"
 
 [libraries]
