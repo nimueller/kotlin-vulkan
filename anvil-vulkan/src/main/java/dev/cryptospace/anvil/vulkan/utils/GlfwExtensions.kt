@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan
+package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.toStringList
 import dev.cryptospace.anvil.core.window.Glfw

@@ -3,8 +3,8 @@ package dev.cryptospace.anvil.vulkan.graphics.descriptor
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorPool
-import dev.cryptospace.anvil.vulkan.toBuffer
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.toBuffer
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER

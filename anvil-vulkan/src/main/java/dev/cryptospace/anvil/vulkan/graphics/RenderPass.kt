@@ -5,8 +5,8 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkRenderPass
-import dev.cryptospace.anvil.vulkan.toBuffer
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.toBuffer
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 import org.lwjgl.vulkan.VK10.VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT

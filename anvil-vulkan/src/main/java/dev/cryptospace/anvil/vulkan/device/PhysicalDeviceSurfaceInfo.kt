@@ -4,7 +4,7 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.suitable.PhysicalDeviceSuitableCriteria
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceSupportKHR
 import org.lwjgl.vulkan.VK10.VK_FALSE

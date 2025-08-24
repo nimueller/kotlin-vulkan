@@ -3,7 +3,7 @@ package dev.cryptospace.anvil.vulkan.device
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.vulkan.device.suitable.SupportsRequiredExtensionsCriteria
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
@@ -14,11 +14,23 @@ import org.lwjgl.vulkan.VkDeviceQueueCreateInfo
 import org.lwjgl.vulkan.VkPhysicalDeviceDescriptorIndexingFeatures
 import org.lwjgl.vulkan.VkPhysicalDeviceFeatures
 
+/**
+ * Factory object responsible for creating Vulkan logical devices.
+ * Handles the creation of logical devices with appropriate queue families,
+ * features, and extensions based on the provided physical device information.
+ */
 object LogicalDeviceFactory {
 
     @JvmStatic
-    private val logger = logger<LogicalDevice>()
+    private val log = logger<LogicalDevice>()
 
+    /**
+     * Creates a new logical device based on the provided physical device surface information.
+     *
+     * @param deviceSurfaceInfo Information about the physical device and its surface capabilities
+     * @return A new [LogicalDevice] instance configured with appropriate queues and features
+     * @throws IllegalStateException if queue family indices are invalid
+     */
     fun create(deviceSurfaceInfo: PhysicalDeviceSurfaceInfo): LogicalDevice = MemoryStack.stackPush().use { stack ->
         val device = deviceSurfaceInfo.physicalDevice
         val graphicsQueueFamily = device.graphicsQueueFamilyIndex
@@ -51,7 +63,7 @@ object LogicalDeviceFactory {
         val uniqueIndices = setOf(graphicsQueueFamily, presentQueueFamily)
         val queueCreateInfoPointer = VkDeviceQueueCreateInfo.malloc(uniqueIndices.size, stack)
 
-        logger.info("Found unique queue family indices: $uniqueIndices")
+        log.info("Found unique queue family indices: $uniqueIndices")
 
         for (queueFamilyIndex in uniqueIndices) {
             val queueCreateInfo = VkDeviceQueueCreateInfo.calloc(stack)
@@ -103,7 +115,7 @@ object LogicalDeviceFactory {
         val devicePointer = stack.mallocPointer(1)
         VK10.vkCreateDevice(device.handle, deviceCreateInfo, null, devicePointer)
             .validateVulkanSuccess("Create logical device", "Failed to create logical device")
-        logger.info("Created logical device for ${device.name}")
+        log.info("Created logical device for ${device.name}")
         return devicePointer
     }
 }

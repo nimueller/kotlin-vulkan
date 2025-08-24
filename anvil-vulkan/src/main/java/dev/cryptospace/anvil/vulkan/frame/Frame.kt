@@ -11,16 +11,41 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.*
+import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
+import dev.cryptospace.anvil.vulkan.graphics.CommandPool
+import dev.cryptospace.anvil.vulkan.graphics.Framebuffer
+import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
+import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.graphics.SwapChain
+import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.KHRSwapchain.*
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
+import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
+import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
+import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
+import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
+import org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets
+import org.lwjgl.vulkan.VK10.vkQueueSubmit
+import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
+import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
+import org.lwjgl.vulkan.VkDescriptorBufferInfo
+import org.lwjgl.vulkan.VkDescriptorImageInfo
+import org.lwjgl.vulkan.VkPresentInfoKHR
+import org.lwjgl.vulkan.VkSubmitInfo
+import org.lwjgl.vulkan.VkWriteDescriptorSet
 import java.nio.LongBuffer
-import java.util.*
+import java.util.EnumSet
 
 /**
  * Represents a single frame in the rendering pipeline, managing command buffers and synchronization objects.

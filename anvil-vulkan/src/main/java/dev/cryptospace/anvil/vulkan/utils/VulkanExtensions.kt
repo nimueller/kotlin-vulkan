@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan
+package dev.cryptospace.anvil.vulkan.utils
 
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
@@ -83,7 +83,7 @@ val vulkanResultDisplayNameMap =
  */
 fun Int.validateVulkanSuccess(operation: String? = null, message: String? = null) {
     if (this != VK_SUCCESS) {
-        throw dev.cryptospace.anvil.vulkan.exception.createVulkanException(this, operation, message)
+        throw createVulkanException(this, operation, message)
     }
 }
 

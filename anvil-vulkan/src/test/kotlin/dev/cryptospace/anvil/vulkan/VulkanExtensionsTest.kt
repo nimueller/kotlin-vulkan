@@ -1,6 +1,9 @@
 package dev.cryptospace.anvil.vulkan
 
-import dev.cryptospace.anvil.vulkan.exception.VulkanUnknownException
+import dev.cryptospace.anvil.vulkan.utils.VulkanUnknownException
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanIntBuffer
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanPointerBuffer
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertThrows
 import org.lwjgl.system.MemoryStack

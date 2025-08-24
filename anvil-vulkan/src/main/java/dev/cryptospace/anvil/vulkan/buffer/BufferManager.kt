@@ -3,20 +3,22 @@ package dev.cryptospace.anvil.vulkan.buffer
 import dev.cryptospace.anvil.core.BitmaskEnum.Companion.toBitmask
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.Fence
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.Fence
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.util.vma.Vma
 import org.lwjgl.util.vma.VmaAllocationCreateInfo
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCmdCopyBuffer
 import org.lwjgl.vulkan.VkBufferCopy
 import org.lwjgl.vulkan.VkBufferCreateInfo
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.EnumSet
 
 /**
  * Manages Vulkan buffer resources and memory allocation.
@@ -74,7 +76,7 @@ class BufferManager(
 
         return BufferAllocation(allocator, buffer, memory, size).also { bufferAllocation ->
             buffers.add(bufferAllocation)
-            logger.info("Allocated buffer $buffer size $size with memory $memory")
+            log.info("Allocated buffer $buffer size $size with memory $memory")
         }
     }
 
@@ -185,6 +187,6 @@ class BufferManager(
     companion object {
 
         @JvmStatic
-        private val logger = logger<BufferManager>()
+        private val log = logger<BufferManager>()
     }
 }

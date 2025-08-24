@@ -4,9 +4,11 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.image.ImageView
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCreateFramebuffer
+import org.lwjgl.vulkan.VK10.vkDestroyFramebuffer
 import org.lwjgl.vulkan.VkFramebufferCreateInfo
 
 data class Framebuffer(

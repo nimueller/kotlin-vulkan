@@ -1,7 +1,6 @@
-package dev.cryptospace.anvil.vulkan.validation
+package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.logger
-import dev.cryptospace.anvil.vulkan.queryAndTransformVulkanStructBuffer
 import org.lwjgl.vulkan.VK10.vkEnumerateInstanceLayerProperties
 import org.lwjgl.vulkan.VkLayerProperties
 
@@ -12,7 +11,9 @@ import org.lwjgl.vulkan.VkLayerProperties
  * and verify various Vulkan operations. This class ensures that requested validation layers
  * are available in the current Vulkan installation before enabling them.
  */
-class VulkanValidationLayers(val requestedLayerNames: List<String> = listOf(KHRONOS_VALIDATION)) {
+class VulkanValidationLayers(
+    val requestedLayerNames: List<String> = listOf(KHRONOS_VALIDATION),
+) {
 
     companion object {
 

@@ -2,17 +2,12 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
-import dev.cryptospace.anvil.vulkan.queryVulkanBufferWithoutSuccessValidation
-import dev.cryptospace.anvil.vulkan.queryVulkanPointerBuffer
-import dev.cryptospace.anvil.vulkan.transform
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanBufferWithoutSuccessValidation
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanPointerBuffer
+import dev.cryptospace.anvil.vulkan.utils.transform
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.VK_QUEUE_GRAPHICS_BIT
-import org.lwjgl.vulkan.VK10.vkEnumerateDeviceExtensionProperties
-import org.lwjgl.vulkan.VK10.vkEnumeratePhysicalDevices
-import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceFeatures
-import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceProperties
-import org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceQueueFamilyProperties
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkExtensionProperties
 import org.lwjgl.vulkan.VkInstance
 import org.lwjgl.vulkan.VkPhysicalDevice
@@ -42,7 +37,7 @@ data class PhysicalDevice(
      */
     val properties: VkPhysicalDeviceProperties =
         VkPhysicalDeviceProperties.malloc().apply {
-            vkGetPhysicalDeviceProperties(handle, this)
+            VK10.vkGetPhysicalDeviceProperties(handle, this)
         }
 
     /**
@@ -57,7 +52,7 @@ data class PhysicalDevice(
      */
     val features: VkPhysicalDeviceFeatures =
         VkPhysicalDeviceFeatures.malloc().apply {
-            vkGetPhysicalDeviceFeatures(handle, this)
+            VK10.vkGetPhysicalDeviceFeatures(handle, this)
         }
 
     /**
@@ -74,7 +69,7 @@ data class PhysicalDevice(
             stack.queryVulkanBufferWithoutSuccessValidation(
                 bufferInitializer = { VkQueueFamilyProperties.malloc(it) },
                 bufferQuery = { countBuffer, resultBuffer ->
-                    vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, resultBuffer)
+                    VK10.vkGetPhysicalDeviceQueueFamilyProperties(handle, countBuffer, resultBuffer)
                 },
             )
         }
@@ -88,7 +83,7 @@ data class PhysicalDevice(
      * - Managing graphics pipeline operations
      */
     val graphicsQueueFamilyIndex =
-        queueFamilies.indexOfFirst { it.queueFlags() and VK_QUEUE_GRAPHICS_BIT != 0 }
+        queueFamilies.indexOfFirst { it.queueFlags() and VK10.VK_QUEUE_GRAPHICS_BIT != 0 }
 
     /**
      * List of supported device extensions.
@@ -103,7 +98,7 @@ data class PhysicalDevice(
             stack.queryVulkanBuffer(
                 bufferInitializer = { VkExtensionProperties.malloc(it) },
                 bufferQuery = { countBuffer, resultBuffer ->
-                    vkEnumerateDeviceExtensionProperties(handle, null as ByteBuffer?, countBuffer, resultBuffer)
+                    VK10.vkEnumerateDeviceExtensionProperties(handle, null as ByteBuffer?, countBuffer, resultBuffer)
                 },
             ).transform { extensionProperties ->
                 DeviceExtension(extensionProperties.extensionNameString())
@@ -131,7 +126,7 @@ data class PhysicalDevice(
     companion object {
 
         @JvmStatic
-        private val logger = logger<PhysicalDevice>()
+        private val log = logger<PhysicalDevice>()
 
         /**
          * Lists all available physical devices (GPUs) in the system.
@@ -141,12 +136,12 @@ data class PhysicalDevice(
         fun listPhysicalDevices(vulkanInstance: VkInstance): List<PhysicalDevice> =
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanPointerBuffer { countBuffer, pointerBuffer ->
-                    vkEnumeratePhysicalDevices(vulkanInstance, countBuffer, pointerBuffer)
+                    VK10.vkEnumeratePhysicalDevices(vulkanInstance, countBuffer, pointerBuffer)
                 }.transform { address ->
                     val handle = VkPhysicalDevice(address, vulkanInstance)
                     PhysicalDevice(handle)
                 }.also { physicalDevices ->
-                    logger.info("Found physical devices: $physicalDevices")
+                    log.info("Found physical devices: $physicalDevices")
                 }
             }
     }

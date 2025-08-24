@@ -3,9 +3,16 @@ package dev.cryptospace.anvil.vulkan.image
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkImage
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_UNDEFINED
+import org.lwjgl.vulkan.VK10.VK_IMAGE_TILING_OPTIMAL
+import org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_SAMPLE_COUNT_1_BIT
+import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCreateImage
+import org.lwjgl.vulkan.VK10.vkDestroyImage
 import org.lwjgl.vulkan.VkImageCreateInfo
 
 data class Image(

@@ -1,10 +1,9 @@
-package dev.cryptospace.anvil.vulkan
+package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.handle.VkFence
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkFenceCreateInfo
 
 /**
@@ -30,18 +29,18 @@ class Fence(
     constructor(logicalDevice: LogicalDevice) : this(logicalDevice, createFence(logicalDevice))
 
     override fun destroy() {
-        vkDestroyFence(logicalDevice.handle, handle.value, null)
+        VK10.vkDestroyFence(logicalDevice.handle, handle.value, null)
     }
 
     companion object {
 
         private fun createFence(logicalDevice: LogicalDevice): VkFence = MemoryStack.stackPush().use { stack ->
             val fenceCreateInfo = VkFenceCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
+                sType(VK10.VK_STRUCTURE_TYPE_FENCE_CREATE_INFO)
                 flags(0)
             }
             val pFence = stack.mallocLong(1)
-            vkCreateFence(logicalDevice.handle, fenceCreateInfo, null, pFence)
+            VK10.vkCreateFence(logicalDevice.handle, fenceCreateInfo, null, pFence)
             VkFence(pFence[0])
         }
     }

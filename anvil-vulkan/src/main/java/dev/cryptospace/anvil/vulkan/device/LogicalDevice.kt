@@ -2,8 +2,7 @@ package dev.cryptospace.anvil.vulkan.device
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.vkDestroyDevice
-import org.lwjgl.vulkan.VK10.vkGetDeviceQueue
+import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkDevice
 import org.lwjgl.vulkan.VkQueue
 
@@ -23,22 +22,22 @@ data class LogicalDevice(
     val physicalDevice: PhysicalDevice = physicalDeviceSurfaceInfo.physicalDevice
 
     /** Queue used for submitting graphics commands to the GPU */
-    val graphicsQueue =
+    val graphicsQueue: VkQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
-            vkGetDeviceQueue(handle, physicalDeviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex, 0, buffer)
+            VK10.vkGetDeviceQueue(handle, physicalDeviceSurfaceInfo.physicalDevice.graphicsQueueFamilyIndex, 0, buffer)
             VkQueue(buffer[0], handle)
         }
 
     /** Queue used for presenting rendered images to the surface */
-    val presentQueue =
+    val presentQueue: VkQueue =
         MemoryStack.stackPush().use { stack ->
             val buffer = stack.mallocPointer(1)
-            vkGetDeviceQueue(handle, physicalDeviceSurfaceInfo.presentQueueFamilyIndex, 0, buffer)
+            VK10.vkGetDeviceQueue(handle, physicalDeviceSurfaceInfo.presentQueueFamilyIndex, 0, buffer)
             VkQueue(buffer[0], handle)
         }
 
     override fun destroy() {
-        vkDestroyDevice(handle, null)
+        VK10.vkDestroyDevice(handle, null)
     }
 }

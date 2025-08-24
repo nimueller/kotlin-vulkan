@@ -26,7 +26,7 @@ class DeviceManager(
      */
     private val physicalDevices: List<PhysicalDevice> =
         PhysicalDevice.listPhysicalDevices(vulkanContext.handle).also {
-            logger.info("Found ${it.size} physical devices")
+            log.info("Found ${it.size} physical devices")
         }
 
     /**
@@ -44,7 +44,7 @@ class DeviceManager(
      */
     private val selectedDeviceSurfaceInfo: PhysicalDeviceSurfaceInfo =
         physicalDeviceSurfaceInfos.pickBestDeviceSurfaceInfo().also { deviceSurfaceInfo ->
-            logger.info("Selected best physical device: $deviceSurfaceInfo")
+            log.info("Selected best physical device: $deviceSurfaceInfo")
         }
 
     /**
@@ -53,7 +53,7 @@ class DeviceManager(
      */
     val logicalDevice: LogicalDevice =
         LogicalDeviceFactory.create(selectedDeviceSurfaceInfo).also {
-            logger.info("Created logical device: $it")
+            log.info("Created logical device: $it")
         }
 
     /**
@@ -69,6 +69,6 @@ class DeviceManager(
     companion object {
 
         @JvmStatic
-        private val logger = logger<DeviceManager>()
+        private val log = logger<DeviceManager>()
     }
 }

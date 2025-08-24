@@ -4,9 +4,13 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkImage
 import dev.cryptospace.anvil.vulkan.handle.VkImageView
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10.*
+import org.lwjgl.vulkan.VK10.VK_COMPONENT_SWIZZLE_IDENTITY
+import org.lwjgl.vulkan.VK10.VK_IMAGE_TYPE_2D
+import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO
+import org.lwjgl.vulkan.VK10.vkCreateImageView
+import org.lwjgl.vulkan.VK10.vkDestroyImageView
 import org.lwjgl.vulkan.VkImageViewCreateInfo
 
 /**

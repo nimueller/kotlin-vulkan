@@ -4,11 +4,11 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.warn
 import dev.cryptospace.anvil.vulkan.device.PhysicalDeviceSurfaceInfo
-import dev.cryptospace.anvil.vulkan.getFramebufferSize
-import dev.cryptospace.anvil.vulkan.queryVulkanBuffer
-import dev.cryptospace.anvil.vulkan.queryVulkanIntBuffer
-import dev.cryptospace.anvil.vulkan.transform
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.getFramebufferSize
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
+import dev.cryptospace.anvil.vulkan.utils.queryVulkanIntBuffer
+import dev.cryptospace.anvil.vulkan.utils.transform
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface.VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
 import org.lwjgl.vulkan.KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR

@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.validation
+package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.logger
 import org.lwjgl.system.MemoryStack

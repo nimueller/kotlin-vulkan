@@ -5,8 +5,9 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.pushStringList
 import dev.cryptospace.anvil.core.putAllStrings
-import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayerLogger
-import dev.cryptospace.anvil.vulkan.validation.VulkanValidationLayers
+import dev.cryptospace.anvil.vulkan.utils.VulkanValidationLayerLogger
+import dev.cryptospace.anvil.vulkan.utils.VulkanValidationLayers
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil

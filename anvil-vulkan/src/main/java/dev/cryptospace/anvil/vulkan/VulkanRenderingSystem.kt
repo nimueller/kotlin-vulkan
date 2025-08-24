@@ -28,6 +28,8 @@ import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
 import dev.cryptospace.anvil.vulkan.surface.Surface
+import dev.cryptospace.anvil.vulkan.utils.getRequiredVulkanExtensions
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10

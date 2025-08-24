@@ -5,7 +5,7 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.VulkanContext
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.validateVulkanSuccess
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.util.vma.Vma
 import org.lwjgl.util.vma.VmaAllocatorCreateInfo
@@ -35,7 +35,7 @@ class Allocator(
 
     companion object {
 
-        private val logger = logger<Allocator>()
+        private val log = logger<Allocator>()
 
         private fun create(context: VulkanContext, logicalDevice: LogicalDevice) =
             MemoryStack.stackPush().use { stack ->
@@ -57,7 +57,7 @@ class Allocator(
                 Vma.vmaCreateAllocator(createInfo, pAllocator)
                     .validateVulkanSuccess("Create allocator", "Failed to create allocator")
                 VmaAllocator(pAllocator[0]).also { allocator ->
-                    logger.debug { "Created allocator: $allocator" }
+                    log.debug { "Created allocator: $allocator" }
                 }
             }
     }

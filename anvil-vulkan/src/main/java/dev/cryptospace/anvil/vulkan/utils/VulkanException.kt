@@ -1,6 +1,5 @@
-package dev.cryptospace.anvil.vulkan.exception
+package dev.cryptospace.anvil.vulkan.utils
 
-import dev.cryptospace.anvil.vulkan.vulkanResultDisplayNameMap
 import org.lwjgl.vulkan.EXTDebugReport.VK_ERROR_VALIDATION_FAILED_EXT
 import org.lwjgl.vulkan.VK10.VK_ERROR_DEVICE_LOST
 import org.lwjgl.vulkan.VK10.VK_ERROR_EXTENSION_NOT_PRESENT

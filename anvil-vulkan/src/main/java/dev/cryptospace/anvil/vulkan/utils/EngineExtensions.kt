@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan
+package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.math.AttributeFormat
 import dev.cryptospace.anvil.core.math.VertexLayout
