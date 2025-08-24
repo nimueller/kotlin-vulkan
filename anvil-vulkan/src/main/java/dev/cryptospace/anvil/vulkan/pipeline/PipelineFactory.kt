@@ -47,8 +47,24 @@ import org.lwjgl.vulkan.VkVertexInputBindingDescription
 
 private const val SHADER_MAIN_FUNCTION_NAME = "main"
 
+/**
+ * Factory object for creating Vulkan graphics pipelines.
+ *
+ * This factory handles the creation and configuration of Vulkan graphics pipelines,
+ * including setup of all pipeline states like vertex input, rasterization,
+ * color blending, and depth testing.
+ */
 object PipelineFactory {
 
+    /**
+     * Creates a new Vulkan graphics pipeline using the provided configuration.
+     *
+     * Sets up all pipeline states and creates a new graphics pipeline object using
+     * the specifications provided in the pipeline builder.
+     *
+     * @param pipelineBuilder Builder object containing pipeline configuration
+     * @return Configured Pipeline object
+     */
     fun createPipeline(pipelineBuilder: PipelineBuilder): Pipeline = MemoryStack.stackPush().use { stack ->
         val shaderStages = createShaderStageCreateInfo(stack, pipelineBuilder)
         val vertexInputInfo = setupVertexShaderInputInfo(stack, pipelineBuilder.vertexLayout)
@@ -248,6 +264,17 @@ object PipelineFactory {
             alphaToOneEnable(false)
         }
 
+    /**
+     * Configures depth and stencil testing settings for the pipeline.
+     *
+     * Sets up depth testing, writing, and comparison operations as well as stencil testing parameters.
+     *
+     * @param stack Memory stack for allocating Vulkan structures
+     * @param depthTest Whether depth testing should be enabled
+     * @param depthWrite Whether depth writing should be enabled
+     * @param depthCompareOpOnDepthTest Depth comparison operation to use when depth testing is enabled
+     * @return Depth stencil state configuration
+     */
     private fun setupDepthStencilState(
         stack: MemoryStack,
         depthTest: Boolean = true,

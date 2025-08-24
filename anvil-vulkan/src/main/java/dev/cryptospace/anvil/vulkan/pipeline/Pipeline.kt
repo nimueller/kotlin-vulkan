@@ -1,22 +1,14 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
-import dev.cryptospace.anvil.vulkan.utils.toBuffer
-import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
-import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo
-import org.lwjgl.vulkan.VkPushConstantRange
 
 /**
  * Represents a Vulkan graphics pipeline that defines the rendering state and shader stages.
  *
  * The graphics pipeline encapsulates the complete state needed for rendering operations,
- * including shaders, vertex layouts, and other fixed-function state.
+ * including shaders, vertex layouts, and another fixed-function state.
  */
 class Pipeline(
     /** The logical device that this pipeline is associated with */
@@ -34,57 +26,5 @@ class Pipeline(
     override fun destroy() {
         VK10.vkDestroyPipeline(logicalDevice.handle, handle.value, null)
         VK10.vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayoutHandle.value, null)
-    }
-
-    companion object {
-
-        /**
-         * Creates a basic pipeline layout without descriptor sets or push constants.
-         *
-         * @param logicalDevice The logical device to create the layout on
-         * @return Handle to the created pipeline layout
-         */
-        fun createGraphicsPipelineLayout(
-            logicalDevice: LogicalDevice,
-            descriptorSetLayout: List<DescriptorSetLayout>,
-        ): VkPipelineLayout = MemoryStack.stackPush().use { stack ->
-            val setLayouts = stack.callocLong(descriptorSetLayout.size)
-
-            descriptorSetLayout.forEach { descriptorSetLayout ->
-                setLayouts.put(descriptorSetLayout.handle.value)
-            }
-
-            setLayouts.flip()
-
-            val pushConstantRanges = listOf(
-                VkPushConstantRange.calloc(stack)
-                    .stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
-                    .offset(0)
-                    .size(Mat4.Companion.BYTE_SIZE),
-                VkPushConstantRange.calloc(stack)
-                    .stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .offset(Mat4.Companion.BYTE_SIZE)
-                    .size(Int.SIZE_BYTES),
-            ).toBuffer { size ->
-                VkPushConstantRange.calloc(size, stack)
-            }
-
-            val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
-                sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
-                pSetLayouts(setLayouts)
-                pPushConstantRanges(pushConstantRanges)
-            }
-
-            val pPipelineLayout = stack.mallocLong(1)
-
-            VK10.vkCreatePipelineLayout(
-                logicalDevice.handle,
-                pipelineLayoutCreateInfo,
-                null,
-                pPipelineLayout,
-            ).validateVulkanSuccess()
-
-            VkPipelineLayout(pPipelineLayout[0])
-        }
     }
 }

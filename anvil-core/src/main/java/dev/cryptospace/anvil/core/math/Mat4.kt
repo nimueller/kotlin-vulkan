@@ -127,9 +127,11 @@ data class Mat4(
         else -> throw IndexOutOfBoundsException("row must be in range [0, 3]")
     }
 
-    companion object {
+    companion object : NativeTypeLayout {
 
         const val BYTE_SIZE = 4 * Vec4.BYTE_SIZE
+
+        override val byteSize: Int = BYTE_SIZE
 
         val identity = Mat4(
             row0 = Vec4(1f, 0f, 0f, 0f),

@@ -4,6 +4,7 @@ import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
+import dev.cryptospace.anvil.core.math.NativeTypeLayout
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
@@ -28,6 +29,7 @@ import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
 import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
+import dev.cryptospace.anvil.vulkan.pipeline.PipelineLayoutBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.ShaderModule
 import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage
 import dev.cryptospace.anvil.vulkan.surface.Surface
@@ -40,6 +42,7 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import java.nio.ByteBuffer
+import java.util.EnumSet
 import kotlin.reflect.KClass
 
 /**
@@ -154,10 +157,12 @@ class VulkanRenderingSystem(
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
     val pipelineTextured3DLayout =
-        Pipeline.createGraphicsPipelineLayout(
-            deviceManager.logicalDevice,
-            listOf(frameDescriptorSetLayout, textureDescriptorSetLayout),
-        )
+        PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
+            pushConstant(EnumSet.of(ShaderStage.VERTEX), Mat4)
+            pushConstant(EnumSet.of(ShaderStage.FRAGMENT), NativeTypeLayout.FLOAT)
+            descriptorSetLayouts.add(frameDescriptorSetLayout)
+            descriptorSetLayouts.add(textureDescriptorSetLayout)
+        }.build()
 
     val pipelineTextured3D: Pipeline =
         PipelineBuilder(
