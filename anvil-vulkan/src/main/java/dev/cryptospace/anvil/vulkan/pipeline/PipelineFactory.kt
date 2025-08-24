@@ -49,7 +49,7 @@ private const val SHADER_MAIN_FUNCTION_NAME = "main"
 
 object PipelineFactory {
 
-    fun createPipeline(pipelineBuilder: PipelineBuilder): VkPipeline = MemoryStack.stackPush().use { stack ->
+    fun createPipeline(pipelineBuilder: PipelineBuilder): Pipeline = MemoryStack.stackPush().use { stack ->
         val shaderStages = createShaderStageCreateInfo(stack, pipelineBuilder)
         val vertexInputInfo = setupVertexShaderInputInfo(stack, pipelineBuilder.vertexLayout)
         val dynamicState = setupDynamicState(stack)
@@ -90,7 +90,11 @@ object PipelineFactory {
             null,
             pPipelines,
         )
-        VkPipeline(pPipelines[0])
+        return Pipeline(
+            logicalDevice = pipelineBuilder.logicalDevice,
+            pipelineLayoutHandle = pipelineBuilder.pipelineLayout,
+            handle = VkPipeline(pPipelines[0]),
+        )
     }
 
     /**

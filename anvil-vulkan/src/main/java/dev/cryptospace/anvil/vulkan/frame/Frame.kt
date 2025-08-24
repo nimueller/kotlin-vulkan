@@ -14,12 +14,12 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.Framebuffer
-import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
+import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR
@@ -75,7 +75,7 @@ class Frame(
     private val commandPool: CommandPool,
     private val renderPass: RenderPass,
     private val renderingSystem: VulkanRenderingSystem,
-    private val graphicsPipelineTextured3D: GraphicsPipeline,
+    private val pipelineTextured3D: Pipeline,
 ) : NativeResource() {
 
     private val imageCount: Int = renderingSystem.swapChain.images.size
@@ -216,7 +216,7 @@ class Frame(
         commandBuffer.startRecording()
         renderPass.start(commandBuffer, framebuffer)
 
-        val pipeline = graphicsPipelineTextured3D
+        val pipeline = pipelineTextured3D
         renderingSystem.swapChain.preparePipeline(commandBuffer, pipeline)
         vkCmdBindDescriptorSets(
             commandBuffer.handle,

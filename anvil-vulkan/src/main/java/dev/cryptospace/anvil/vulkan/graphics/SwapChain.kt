@@ -11,6 +11,7 @@ import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.ImageAllocation
 import dev.cryptospace.anvil.vulkan.image.ImageView
 import dev.cryptospace.anvil.vulkan.image.TextureManager
+import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
 import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
@@ -179,30 +180,29 @@ class SwapChain(
                 logger.debug { "Created ${framebuffers.size} framebuffers: $framebuffers" }
             }
 
-    fun preparePipeline(commandBuffer: CommandBuffer, graphicsPipeline: GraphicsPipeline) =
-        MemoryStack.stackPush().use { stack ->
-            vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.handle.value)
+    fun preparePipeline(commandBuffer: CommandBuffer, pipeline: Pipeline) = MemoryStack.stackPush().use { stack ->
+        vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle.value)
 
-            val viewport = VkViewport.calloc(stack).apply {
-                x(0.0f)
-                y(0.0f)
-                width(extent.width().toFloat())
-                height(extent.height().toFloat())
-                minDepth(0.0f)
-                maxDepth(1.0f)
-            }
-            val pViewports = VkViewport.calloc(1, stack)
-                .put(viewport)
-                .flip()
-            vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
-
-            val scissor = VkRect2D.calloc(stack).apply {
-                offset { it.x(0).y(0) }
-                extent { it.width(extent.width()).height(extent.height()) }
-            }
-            val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
-            vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
+        val viewport = VkViewport.calloc(stack).apply {
+            x(0.0f)
+            y(0.0f)
+            width(extent.width().toFloat())
+            height(extent.height().toFloat())
+            minDepth(0.0f)
+            maxDepth(1.0f)
         }
+        val pViewports = VkViewport.calloc(1, stack)
+            .put(viewport)
+            .flip()
+        vkCmdSetViewport(commandBuffer.handle, 0, pViewports)
+
+        val scissor = VkRect2D.calloc(stack).apply {
+            offset { it.x(0).y(0) }
+            extent { it.width(extent.width()).height(extent.height()) }
+        }
+        val pScissors = VkRect2D.calloc(1, stack).put(scissor).flip()
+        vkCmdSetScissor(commandBuffer.handle, 0, pScissors)
+    }
 
     /**
      * Recreates the swap chain with new dimensions when the window is resized.

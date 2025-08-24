@@ -14,9 +14,9 @@ import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
 import dev.cryptospace.anvil.vulkan.buffer.BufferUsage
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
-import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.image.TextureManager
+import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
@@ -33,7 +33,7 @@ class VulkanDrawLoop(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
     private val textureManager: TextureManager,
-    private val graphicsPipelineTextured3D: GraphicsPipeline,
+    private val pipelineTextured3D: Pipeline,
     private val materialDescriptorSet: VkDescriptorSet,
     private val maxMaterialCount: Int,
 ) {
@@ -68,7 +68,7 @@ class VulkanDrawLoop(
         }
 
         val graphicsPipeline = when (vertexType) {
-            TexturedVertex3::class -> graphicsPipelineTextured3D
+            TexturedVertex3::class -> pipelineTextured3D
             else -> error("Unsupported vertex type: $vertexType")
         }
 
@@ -77,7 +77,7 @@ class VulkanDrawLoop(
             indexBufferAllocation = indexBufferResource,
             indexCount = indices.size,
             indexType = VK_INDEX_TYPE_UINT32,
-            graphicsPipeline = graphicsPipeline,
+            pipeline = graphicsPipeline,
         )
         return MeshId(vulkanMeshCache.add(mesh))
     }
@@ -121,14 +121,14 @@ class VulkanDrawLoop(
 
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
-            mesh.graphicsPipeline.pipelineLayoutHandle.value,
+            mesh.pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_VERTEX_BIT,
             0,
             gameObject.transform.toByteBuffer(stack),
         )
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
-            mesh.graphicsPipeline.pipelineLayoutHandle.value,
+            mesh.pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
             stack.ints(renderComponent.materialId?.value ?: 0),

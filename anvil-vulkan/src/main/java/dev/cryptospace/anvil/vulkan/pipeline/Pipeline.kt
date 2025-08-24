@@ -1,20 +1,14 @@
-package dev.cryptospace.anvil.vulkan.graphics
+package dev.cryptospace.anvil.vulkan.pipeline
 
-import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkPipelineLayout
-import dev.cryptospace.anvil.vulkan.pipeline.VkPipeline
 import dev.cryptospace.anvil.vulkan.utils.toBuffer
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-import org.lwjgl.vulkan.VK10.vkCreatePipelineLayout
-import org.lwjgl.vulkan.VK10.vkDestroyPipeline
-import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import org.lwjgl.vulkan.VkPipelineLayoutCreateInfo
 import org.lwjgl.vulkan.VkPushConstantRange
 
@@ -24,7 +18,7 @@ import org.lwjgl.vulkan.VkPushConstantRange
  * The graphics pipeline encapsulates the complete state needed for rendering operations,
  * including shaders, vertex layouts, and other fixed-function state.
  */
-data class GraphicsPipeline(
+class Pipeline(
     /** The logical device that this pipeline is associated with */
     val logicalDevice: LogicalDevice,
     /** Handle to the pipeline layout defining descriptor set layouts and push constants */
@@ -38,14 +32,11 @@ data class GraphicsPipeline(
      * This releases all Vulkan resources associated with this pipeline.
      */
     override fun destroy() {
-        vkDestroyPipeline(logicalDevice.handle, handle.value, null)
-        vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayoutHandle.value, null)
+        VK10.vkDestroyPipeline(logicalDevice.handle, handle.value, null)
+        VK10.vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayoutHandle.value, null)
     }
 
     companion object {
-
-        @JvmStatic
-        private val logger = logger<GraphicsPipeline>()
 
         /**
          * Creates a basic pipeline layout without descriptor sets or push constants.
@@ -69,24 +60,24 @@ data class GraphicsPipeline(
                 VkPushConstantRange.calloc(stack)
                     .stageFlags(VK10.VK_SHADER_STAGE_VERTEX_BIT)
                     .offset(0)
-                    .size(Mat4.BYTE_SIZE),
+                    .size(Mat4.Companion.BYTE_SIZE),
                 VkPushConstantRange.calloc(stack)
                     .stageFlags(VK10.VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .offset(Mat4.BYTE_SIZE)
+                    .offset(Mat4.Companion.BYTE_SIZE)
                     .size(Int.SIZE_BYTES),
             ).toBuffer { size ->
                 VkPushConstantRange.calloc(size, stack)
             }
 
             val pipelineLayoutCreateInfo = VkPipelineLayoutCreateInfo.calloc(stack).apply {
-                sType(VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
+                sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO)
                 pSetLayouts(setLayouts)
                 pPushConstantRanges(pushConstantRanges)
             }
 
             val pPipelineLayout = stack.mallocLong(1)
 
-            vkCreatePipelineLayout(
+            VK10.vkCreatePipelineLayout(
                 logicalDevice.handle,
                 pipelineLayoutCreateInfo,
                 null,

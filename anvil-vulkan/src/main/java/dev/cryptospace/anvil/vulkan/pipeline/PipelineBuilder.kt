@@ -15,5 +15,5 @@ class PipelineBuilder(
     var shaderModules: MutableMap<ShaderStage, ShaderModule> = mutableMapOf()
     var vertexLayout: VertexLayout<*> = TexturedVertex3
 
-    fun build(): VkPipeline = PipelineFactory.createPipeline(this)
+    fun build(): Pipeline = PipelineFactory.createPipeline(this)
 }

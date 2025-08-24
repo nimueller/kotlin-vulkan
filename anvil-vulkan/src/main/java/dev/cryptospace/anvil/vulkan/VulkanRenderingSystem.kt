@@ -16,7 +16,6 @@ import dev.cryptospace.anvil.vulkan.device.DeviceManager
 import dev.cryptospace.anvil.vulkan.frame.Frame
 import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
-import dev.cryptospace.anvil.vulkan.graphics.GraphicsPipeline
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
@@ -27,6 +26,7 @@ import dev.cryptospace.anvil.vulkan.graphics.descriptor.TextureDescriptorSetLayo
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
+import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.ShaderModule
 import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage
@@ -153,26 +153,22 @@ class VulkanRenderingSystem(
 
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
-    val graphicsPipelineTextured3DLayout =
-        GraphicsPipeline.createGraphicsPipelineLayout(
+    val pipelineTextured3DLayout =
+        Pipeline.createGraphicsPipelineLayout(
             deviceManager.logicalDevice,
             listOf(frameDescriptorSetLayout, textureDescriptorSetLayout),
         )
 
-    val graphicsPipelineTextured3D: GraphicsPipeline =
-        GraphicsPipeline(
-            deviceManager.logicalDevice,
-            graphicsPipelineTextured3DLayout,
-            PipelineBuilder(
-                logicalDevice = deviceManager.logicalDevice,
-                renderPass = renderPass,
-                pipelineLayout = graphicsPipelineTextured3DLayout,
-            ).apply {
-                vertexLayout = TexturedVertex3
-                shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
-                shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
-            }.build(),
-        )
+    val pipelineTextured3D: Pipeline =
+        PipelineBuilder(
+            logicalDevice = deviceManager.logicalDevice,
+            renderPass = renderPass,
+            pipelineLayout = pipelineTextured3DLayout,
+        ).apply {
+            vertexLayout = TexturedVertex3
+            shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
+            shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
+        }.build()
 
     /**
      * Descriptor set for frame-specific uniform buffers.
@@ -218,7 +214,7 @@ class VulkanRenderingSystem(
             commandPool,
             renderPass,
             this,
-            graphicsPipelineTextured3D,
+            pipelineTextured3D,
         )
     }
 
@@ -226,7 +222,7 @@ class VulkanRenderingSystem(
         deviceManager.logicalDevice,
         bufferManager,
         textureManager,
-        graphicsPipelineTextured3D,
+        pipelineTextured3D,
         materialDescriptorSet[0],
         TextureDescriptorSetLayout.MAX_TEXTURE_COUNT,
     )
@@ -299,7 +295,7 @@ class VulkanRenderingSystem(
         }
 
         swapChain.close()
-        graphicsPipelineTextured3D.close()
+        pipelineTextured3D.close()
         renderPass.close()
         frameDescriptorSetLayout.close()
         textureDescriptorSetLayout.close()
