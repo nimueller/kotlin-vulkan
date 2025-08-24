@@ -43,10 +43,11 @@ val pipelineTextured3D: Pipeline =
     }.build()
 ```
 
-Have you ever created such a simple Vulkan pipeline before?
+Have you ever seen such a simple Vulkan pipeline creation?
 It is just awesome.
 
-> **Disclaimer**: This is a hobby project. Expect bugs. Expect weird design decisions.
+> [!WARNING]
+> This is a hobby project. Expect bugs. Expect weird design decisions.
 > Also expect random refactors at 3AM.
 
 ## Checklist
