@@ -18,6 +18,34 @@ Plus, there's something magical about the moment when your first triangle finall
 of wrestling with Vulkan boilerplate code.
 No existing engine can give you that kind of satisfaction (or frustration).
 
+**Why Kotlin?**
+
+Just have a look at this:
+
+```kotlin
+val pipelineTextured3DLayout =
+    PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
+        pushConstant(EnumSet.of(ShaderStage.VERTEX), Mat4)
+        pushConstant(EnumSet.of(ShaderStage.FRAGMENT), NativeTypeLayout.FLOAT)
+        descriptorSetLayouts.add(frameDescriptorSetLayout)
+        descriptorSetLayouts.add(textureDescriptorSetLayout)
+    }.build()
+
+val pipelineTextured3D: Pipeline =
+    PipelineBuilder(
+        logicalDevice = deviceManager.logicalDevice,
+        renderPass = renderPass,
+        pipelineLayout = pipelineTextured3DLayout,
+    ).apply {
+        vertexLayout = TexturedVertex3
+        shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
+        shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
+    }.build()
+```
+
+Have you ever created such a simple Vulkan pipeline before?
+It is just awesome.
+
 > **Disclaimer**: This is a hobby project. Expect bugs. Expect weird design decisions.
 > Also expect random refactors at 3AM.
 
