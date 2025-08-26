@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
+import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
@@ -24,6 +25,7 @@ object DescriptorSetFactory {
     /**
      * Creates a new descriptor set based on the provided configuration.
      *
+     * @param logicalDevice The logical device used to create the descriptor set
      * @param descriptorSetBuilder The builder containing the descriptor set configuration
      * @param descriptorPool The descriptor pool from which to allocate the descriptor set
      * @param descriptorSetLayout The layout defining the structure of the descriptor set
@@ -32,6 +34,7 @@ object DescriptorSetFactory {
      * @throws IllegalStateException if setCount is less than or equal to 0
      */
     fun createDescriptorSet(
+        logicalDevice: LogicalDevice,
         descriptorSetBuilder: DescriptorSetBuilder,
         descriptorPool: DescriptorPool,
         descriptorSetLayout: DescriptorSetLayout,
@@ -51,7 +54,7 @@ object DescriptorSetFactory {
 
         val pDescriptorSets = stack.mallocLong(setCount)
         VK10.vkAllocateDescriptorSets(
-            descriptorSetBuilder.logicalDevice.handle,
+            logicalDevice.handle,
             allocateInfo,
             pDescriptorSets,
         ).validateVulkanSuccess("Allocate descriptor sets", "Failed to allocate descriptor sets")
@@ -69,7 +72,7 @@ object DescriptorSetFactory {
      * @param stack The memory stack used for allocation
      * @param descriptorPool The descriptor pool to allocate from
      * @param setLayouts Buffer containing the descriptor set layouts
-     * @param descriptorSetBuilder The builder containing descriptor set configuration
+     * @param descriptorSetBuilder The builder containing a descriptor set configuration
      * @param setCount The number of descriptor sets to allocate
      * @return Configured [VkDescriptorSetAllocateInfo] structure
      */

@@ -10,14 +10,10 @@ import java.util.EnumSet
 /**
  * Builder class for creating descriptor sets and their layouts in Vulkan.
  * Provides a fluent interface for configuring descriptor set bindings and creating descriptor sets.
- *
- * @property logicalDevice The logical device used for creating Vulkan resources
- * @property descriptorPool The descriptor pool from which descriptor sets will be allocated
  */
-class DescriptorSetBuilder(
-    val logicalDevice: LogicalDevice,
-    val descriptorPool: DescriptorPool,
-) {
+class DescriptorSetBuilder {
+
+    private var mutableBindings: MutableMap<Int, Binding> = mutableMapOf()
 
     /**
      * Stores the mapping of binding indices to their corresponding Binding configurations.
@@ -25,7 +21,8 @@ class DescriptorSetBuilder(
      * and the associated Binding configuration defines the type, count, and shader stage
      * accessibility of that resource.
      */
-    var bindings: MutableMap<Int, Binding> = mutableMapOf()
+    val bindings: MutableMap<Int, Binding>
+        get() = mutableBindings
 
     /**
      * Controls whether the final binding in the descriptor set allows for a variable
@@ -35,20 +32,59 @@ class DescriptorSetBuilder(
      * layout creation time.
      */
     var lastBindingHasVariableDescriptorCount: Boolean = false
+        private set
 
-    fun binding(descriptorType: DescriptorType, descriptorCount: Int, stages: EnumSet<ShaderStage>) {
+    /**
+     * Adds a new descriptor binding to the descriptor set layout.
+     *
+     * @param descriptorType The type of descriptor (uniform buffer, sampler, etc.)
+     * @param descriptorCount Number of descriptors in this binding
+     * @param stages Set of shader stages where this binding will be accessible
+     * @throws IllegalStateException if attempting to add a binding after a variable descriptor count binding
+     */
+    fun binding(
+        descriptorType: DescriptorType,
+        descriptorCount: Int,
+        stages: EnumSet<ShaderStage>,
+    ): DescriptorSetBuilder {
+        check(lastBindingHasVariableDescriptorCount.not()) {
+            "Last binding already has variable descriptor count." +
+                " More bindings are not allowed, check the Vulkan spec for details."
+        }
         bindings[bindings.size] = Binding(descriptorType, descriptorCount, stages)
+        return this
+    }
+
+    /**
+     * Adds a new descriptor binding with variable descriptor count to the descriptor set layout.
+     * This must be the last binding added to the descriptor set.
+     *
+     * @param descriptorType The type of descriptor (uniform buffer, sampler, etc.)
+     * @param descriptorCount Maximum number of descriptors in this binding
+     * @param stages Set of shader stages where this binding will be accessible
+     */
+    fun variableBinding(
+        descriptorType: DescriptorType,
+        descriptorCount: Int,
+        stages: EnumSet<ShaderStage>,
+    ): DescriptorSetBuilder {
+        binding(descriptorType, descriptorCount, stages)
+        lastBindingHasVariableDescriptorCount = true
+        return this
     }
 
     /**
      * Creates a descriptor set layout and allocates descriptor sets based on the configured bindings.
      *
+     * @param logicalDevice The logical device used to create the descriptor set layout and descriptor sets
+     * @param descriptorPool The descriptor pool from which to allocate the descriptor sets
      * @param setCount Number of descriptor sets to allocate
      * @return A pair of the created descriptor set layout and descriptor set
      */
-    fun build(setCount: Int = 1): Result {
-        val descriptorSetLayout = DescriptorSetLayoutFactory.createDescriptorSetLayout(this)
+    fun build(logicalDevice: LogicalDevice, descriptorPool: DescriptorPool, setCount: Int = 1): Result {
+        val descriptorSetLayout = DescriptorSetLayoutFactory.createDescriptorSetLayout(logicalDevice, this)
         val descriptorSet = DescriptorSetFactory.createDescriptorSet(
+            logicalDevice = logicalDevice,
             descriptorSetBuilder = this,
             descriptorPool = descriptorPool,
             descriptorSetLayout = descriptorSetLayout,

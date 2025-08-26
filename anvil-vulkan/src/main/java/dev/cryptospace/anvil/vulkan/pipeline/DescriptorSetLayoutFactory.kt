@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
+import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage.Companion.toBitmask
@@ -23,36 +24,39 @@ object DescriptorSetLayoutFactory {
     /**
      * Creates a new descriptor set layout based on the provided builder configuration.
      *
+     * @param logicalDevice The logical device used to create the descriptor set layout
      * @param descriptorSetBuilder The builder containing the descriptor set specifications
      * @return A new [DescriptorSetLayout] instance configured according to the builder
      */
-    fun createDescriptorSetLayout(descriptorSetBuilder: DescriptorSetBuilder): DescriptorSetLayout =
-        MemoryStack.stackPush().use { stack ->
-            val bindings = createBindings(stack, descriptorSetBuilder)
+    fun createDescriptorSetLayout(
+        logicalDevice: LogicalDevice,
+        descriptorSetBuilder: DescriptorSetBuilder,
+    ): DescriptorSetLayout = MemoryStack.stackPush().use { stack ->
+        val bindings = createBindings(stack, descriptorSetBuilder)
 
-            val createInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack).apply {
-                sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-                pBindings(bindings)
+        val createInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack).apply {
+            sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
+            pBindings(bindings)
 
-                if (descriptorSetBuilder.lastBindingHasVariableDescriptorCount) {
-                    pNext(createFlagsInfo(stack))
-                    flags(VK12.VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
-                }
+            if (descriptorSetBuilder.lastBindingHasVariableDescriptorCount) {
+                pNext(createFlagsInfo(stack))
+                flags(VK12.VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT)
             }
-
-            val pSetLayout = stack.mallocLong(1)
-            VK10.vkCreateDescriptorSetLayout(
-                descriptorSetBuilder.logicalDevice.handle,
-                createInfo,
-                null,
-                pSetLayout,
-            ).validateVulkanSuccess("Create descriptor set layout", "Failed to create descriptor set layout")
-
-            return DescriptorSetLayout(
-                logicalDevice = descriptorSetBuilder.logicalDevice,
-                handle = VkDescriptorSetLayout(pSetLayout[0]),
-            )
         }
+
+        val pSetLayout = stack.mallocLong(1)
+        VK10.vkCreateDescriptorSetLayout(
+            logicalDevice.handle,
+            createInfo,
+            null,
+            pSetLayout,
+        ).validateVulkanSuccess("Create descriptor set layout", "Failed to create descriptor set layout")
+
+        return DescriptorSetLayout(
+            logicalDevice = logicalDevice,
+            handle = VkDescriptorSetLayout(pSetLayout[0]),
+        )
+    }
 
     /**
      * Creates descriptor set layout bindings from the builder configuration.

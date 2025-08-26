@@ -138,16 +138,17 @@ class VulkanRenderingSystem(
      * and other frame-specific data.
      */
     private val frameDescriptorSet: DescriptorSetBuilder.Result =
-        DescriptorSetBuilder(
-            logicalDevice = deviceManager.logicalDevice,
-            descriptorPool = descriptorPool,
-        ).apply {
-            binding(
+        DescriptorSetBuilder()
+            .binding(
                 descriptorType = DescriptorSetBuilder.DescriptorType.UNIFORM_BUFFER,
                 descriptorCount = 1,
                 stages = EnumSet.of(ShaderStage.VERTEX),
             )
-        }.build(setCount = FRAMES_IN_FLIGHT)
+            .build(
+                logicalDevice = deviceManager.logicalDevice,
+                descriptorPool = descriptorPool,
+                setCount = FRAMES_IN_FLIGHT,
+            )
 
     /**
      * Layout for texture descriptor bindings used in shaders.
@@ -157,16 +158,17 @@ class VulkanRenderingSystem(
      * Created with an update-after-bind flag to allow runtime texture updates.
      */
     private val textureDescriptorSet: DescriptorSetBuilder.Result =
-        DescriptorSetBuilder(
-            logicalDevice = deviceManager.logicalDevice,
-            descriptorPool = descriptorPool,
-        ).apply {
-            binding(
+        DescriptorSetBuilder()
+            .variableBinding(
                 descriptorType = DescriptorSetBuilder.DescriptorType.COMBINED_IMAGE_SAMPLER,
                 descriptorCount = MAX_TEXTURE_COUNT,
                 stages = EnumSet.of(ShaderStage.FRAGMENT),
             )
-        }.build(setCount = 1)
+            .build(
+                logicalDevice = deviceManager.logicalDevice,
+                descriptorPool = descriptorPool,
+                setCount = 1,
+            )
 
     val pipelineTextured3DLayout =
         PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
