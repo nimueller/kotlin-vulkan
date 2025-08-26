@@ -3,12 +3,7 @@ package dev.cryptospace.anvil.vulkan.graphics.descriptor
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.utils.toBuffer
-import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
-import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
-import org.lwjgl.vulkan.VkDescriptorSetLayoutBinding
-import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo
 
 /**
  * Represents a Vulkan descriptor set layout that defines the interface between shader stages and resources.
@@ -18,37 +13,12 @@ import org.lwjgl.vulkan.VkDescriptorSetLayoutCreateInfo
  *
  * @property handle The native Vulkan handle to the descriptor set layout
  */
-abstract class DescriptorSetLayout(
-    protected val logicalDevice: LogicalDevice,
+class DescriptorSetLayout(
+    private val logicalDevice: LogicalDevice,
     val handle: VkDescriptorSetLayout,
 ) : NativeResource() {
 
     override fun destroy() {
         VK10.vkDestroyDescriptorSetLayout(logicalDevice.handle, handle.value, null)
-    }
-
-    abstract fun createDescriptorSet(descriptorPool: DescriptorPool, count: Int): DescriptorSet
-
-    companion object {
-
-        fun createDescriptorSetLayout(
-            logicalDevice: LogicalDevice,
-            stack: MemoryStack,
-            bindings: List<VkDescriptorSetLayoutBinding>,
-            createInfo: VkDescriptorSetLayoutCreateInfo = VkDescriptorSetLayoutCreateInfo.calloc(stack).apply {
-                sType(VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO)
-            },
-        ): VkDescriptorSetLayout {
-            val layoutBindings = bindings.toBuffer { size ->
-                VkDescriptorSetLayoutBinding.calloc(size, stack)
-            }
-
-            createInfo.pBindings(layoutBindings)
-
-            val pSetLayout = stack.mallocLong(1)
-            VK10.vkCreateDescriptorSetLayout(logicalDevice.handle, createInfo, null, pSetLayout)
-                .validateVulkanSuccess("Create descriptor set layout", "Failed to create descriptor set layout")
-            return VkDescriptorSetLayout(pSetLayout[0])
-        }
     }
 }

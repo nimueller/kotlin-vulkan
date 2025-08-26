@@ -20,13 +20,10 @@ import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.FrameDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.TextureDescriptorSetLayout
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
+import dev.cryptospace.anvil.vulkan.pipeline.DescriptorSetBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineLayoutBuilder
@@ -44,6 +41,8 @@ import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import java.nio.ByteBuffer
 import java.util.EnumSet
 import kotlin.reflect.KClass
+
+const val MAX_TEXTURE_COUNT = 1024
 
 /**
  * Main Vulkan rendering system implementation that manages the Vulkan graphics API lifecycle.
@@ -117,6 +116,8 @@ class VulkanRenderingSystem(
             commandPool = commandPool,
         )
 
+    val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
+
     /**
      * Descriptor pool for allocating descriptor sets used in the rendering pipeline.
      * This pool manages the allocation of descriptor sets for both per-frame uniforms and material textures.
@@ -127,20 +128,26 @@ class VulkanRenderingSystem(
         DescriptorPool(
             logicalDevice = deviceManager.logicalDevice,
             frameInFlights = FRAMES_IN_FLIGHT,
-            maxTextureCount = TextureDescriptorSetLayout.MAX_TEXTURE_COUNT,
+            maxTextureCount = MAX_TEXTURE_COUNT,
         )
 
     /**
-     * Layout for frame-specific uniform buffer descriptors.
-     * Defines the structure and bindings of uniform buffers used for per-frame data
-     * such as view and projection matrices. This layout is used when creating
-     * descriptor sets for each frame in flight and specifies how shader uniforms
-     * are mapped to memory.
+     * Descriptor set for frame-specific uniform buffers.
+     * Contains descriptor sets allocated for each frame in flight,
+     * managing per-frame uniform buffer bindings used for view/projection matrices
+     * and other frame-specific data.
      */
-    val frameDescriptorSetLayout: DescriptorSetLayout =
-        FrameDescriptorSetLayout(
+    private val frameDescriptorSet: DescriptorSetBuilder.Result =
+        DescriptorSetBuilder(
             logicalDevice = deviceManager.logicalDevice,
-        )
+            descriptorPool = descriptorPool,
+        ).apply {
+            binding(
+                descriptorType = DescriptorSetBuilder.DescriptorType.UNIFORM_BUFFER,
+                descriptorCount = 1,
+                stages = EnumSet.of(ShaderStage.VERTEX),
+            )
+        }.build(setCount = FRAMES_IN_FLIGHT)
 
     /**
      * Layout for texture descriptor bindings used in shaders.
@@ -149,19 +156,24 @@ class VulkanRenderingSystem(
      * updates and variable descriptor counts up to MAX_TEXTURE_COUNT.
      * Created with an update-after-bind flag to allow runtime texture updates.
      */
-    val textureDescriptorSetLayout: DescriptorSetLayout =
-        TextureDescriptorSetLayout(
-            deviceManager.logicalDevice,
-        )
-
-    val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
+    private val textureDescriptorSet: DescriptorSetBuilder.Result =
+        DescriptorSetBuilder(
+            logicalDevice = deviceManager.logicalDevice,
+            descriptorPool = descriptorPool,
+        ).apply {
+            binding(
+                descriptorType = DescriptorSetBuilder.DescriptorType.COMBINED_IMAGE_SAMPLER,
+                descriptorCount = MAX_TEXTURE_COUNT,
+                stages = EnumSet.of(ShaderStage.FRAGMENT),
+            )
+        }.build(setCount = 1)
 
     val pipelineTextured3DLayout =
         PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
             pushConstant(EnumSet.of(ShaderStage.VERTEX), Mat4)
             pushConstant(EnumSet.of(ShaderStage.FRAGMENT), NativeTypeLayout.FLOAT)
-            descriptorSetLayouts.add(frameDescriptorSetLayout)
-            descriptorSetLayouts.add(textureDescriptorSetLayout)
+            descriptorSetLayouts.add(frameDescriptorSet.descriptorSetLayout)
+            descriptorSetLayouts.add(textureDescriptorSet.descriptorSetLayout)
         }.build()
 
     val pipelineTextured3D: Pipeline =
@@ -174,24 +186,6 @@ class VulkanRenderingSystem(
             shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
             shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
         }.build()
-
-    /**
-     * Descriptor set for frame-specific uniform buffers.
-     * Contains descriptor sets allocated for each frame in flight,
-     * managing per-frame uniform buffer bindings used for view/projection matrices
-     * and other frame-specific data.
-     */
-    private val frameDescriptorSet: DescriptorSet =
-        frameDescriptorSetLayout.createDescriptorSet(descriptorPool, FRAMES_IN_FLIGHT)
-
-    /**
-     * Descriptor set for material textures and samplers.
-     * Contains a single descriptor set that manages texture bindings
-     * used across all materials in the rendering pipeline.
-     * Used to bind texture samplers to the fragment shader.
-     */
-    private val materialDescriptorSet: DescriptorSet =
-        textureDescriptorSetLayout.createDescriptorSet(descriptorPool, 1)
 
     /**
      * The swap chain managing presentation of rendered images to the surface.
@@ -209,13 +203,13 @@ class VulkanRenderingSystem(
      * Each frame manages its own command buffers and synchronization objects.
      */
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
-        val descriptorSet = frameDescriptorSet[index]
+        val descriptorSet = frameDescriptorSet.descriptorSet[index]
         Frame(
             deviceManager.logicalDevice,
             bufferManager,
             textureManager,
             descriptorSet,
-            materialDescriptorSet[0],
+            textureDescriptorSet.descriptorSet.handles[0],
             commandPool,
             renderPass,
             this,
@@ -228,8 +222,8 @@ class VulkanRenderingSystem(
         bufferManager,
         textureManager,
         pipelineTextured3D,
-        materialDescriptorSet[0],
-        TextureDescriptorSetLayout.MAX_TEXTURE_COUNT,
+        textureDescriptorSet.descriptorSet.handles[0],
+        MAX_TEXTURE_COUNT,
     )
 
     fun recreateSwapChain() {
@@ -302,8 +296,8 @@ class VulkanRenderingSystem(
         swapChain.close()
         pipelineTextured3D.close()
         renderPass.close()
-        frameDescriptorSetLayout.close()
-        textureDescriptorSetLayout.close()
+        frameDescriptorSet.descriptorSetLayout.close()
+        textureDescriptorSet.descriptorSetLayout.close()
         descriptorPool.close()
 
         textureManager.close()

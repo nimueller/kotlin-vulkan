@@ -1,5 +1,6 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
+import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage.Companion.toBitmask
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
@@ -57,7 +58,7 @@ object PipelineLayoutFactory {
         for (range in pipelineLayoutBuilder.pushConstantRanges) {
             buffer.put(
                 VkPushConstantRange.calloc(stack)
-                    .stageFlags(range.stages.map { stage -> stage.value }.reduce { acc, bit -> acc or bit })
+                    .stageFlags(range.stages.toBitmask())
                     .offset(range.offset)
                     .size(range.size),
             )

@@ -7,10 +7,10 @@ import org.lwjgl.vulkan.VK10
  * These stages define the specific processing steps that geometry and pixel data go through
  * during rendering.
  *
- * @property value The Vulkan shader stage flag bit representing this shader stage.
+ * @property vkValue The Vulkan shader stage flag bit representing this shader stage.
  */
 enum class ShaderStage(
-    val value: Int,
+    val vkValue: Int,
 ) {
 
     /**
@@ -24,4 +24,12 @@ enum class ShaderStage(
      * This stage determines the final color and other attributes of each pixel.
      */
     FRAGMENT(VK10.VK_SHADER_STAGE_FRAGMENT_BIT),
+
+    ;
+
+    companion object {
+        fun Collection<ShaderStage>.toBitmask(): Int = this
+            .map { stage -> stage.vkValue }
+            .reduce { acc, stageBit -> acc or stageBit }
+    }
 }

@@ -288,7 +288,7 @@ object PipelineFactory {
             buffer.put(
                 VkPipelineShaderStageCreateInfo.calloc(stack)
                     .sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO)
-                    .stage(shaderStage.value)
+                    .stage(shaderStage.vkValue)
                     .module(shaderModule.handle.value)
                     .pName(shaderMainFunctionName),
             )
