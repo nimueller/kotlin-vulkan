@@ -2,7 +2,8 @@ package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.NativeTypeLayout
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import java.util.EnumSet
 
 /**

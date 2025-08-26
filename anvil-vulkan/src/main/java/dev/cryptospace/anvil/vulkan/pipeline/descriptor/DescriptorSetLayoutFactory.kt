@@ -1,9 +1,7 @@
-package dev.cryptospace.anvil.vulkan.pipeline
+package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.pipeline.ShaderStage.Companion.toBitmask
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage.Companion.toBitmask
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10

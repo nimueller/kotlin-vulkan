@@ -1,10 +1,6 @@
-package dev.cryptospace.anvil.vulkan.pipeline
+package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10

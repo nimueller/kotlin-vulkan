@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.pipeline
+package dev.cryptospace.anvil.vulkan.pipeline.shader
 
 import dev.cryptospace.anvil.core.debug
 import dev.cryptospace.anvil.core.logger

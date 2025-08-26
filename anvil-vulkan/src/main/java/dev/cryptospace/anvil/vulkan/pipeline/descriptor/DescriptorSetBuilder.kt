@@ -1,9 +1,7 @@
-package dev.cryptospace.anvil.vulkan.pipeline
+package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorPool
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSet
-import dev.cryptospace.anvil.vulkan.graphics.descriptor.DescriptorSetLayout
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import org.lwjgl.vulkan.VK10
 import java.util.EnumSet
 

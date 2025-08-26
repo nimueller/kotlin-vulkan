@@ -1,8 +1,7 @@
-package dev.cryptospace.anvil.vulkan.graphics.descriptor
+package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.handle.VkDescriptorSetLayout
 import org.lwjgl.vulkan.VK10
 
 /**

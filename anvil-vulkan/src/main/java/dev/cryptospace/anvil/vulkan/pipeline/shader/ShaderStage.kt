@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan.pipeline
+package dev.cryptospace.anvil.vulkan.pipeline.shader
 
 import org.lwjgl.vulkan.VK10
 

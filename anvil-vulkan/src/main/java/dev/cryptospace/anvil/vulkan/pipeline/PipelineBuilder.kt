@@ -4,6 +4,8 @@ import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderModule
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import org.lwjgl.vulkan.VK10
 
 /**
