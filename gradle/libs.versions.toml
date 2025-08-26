@@ -3,7 +3,7 @@ lwjgl = "3.3.+"
 slf4j = "2.0.+"
 logback = "1.5.+"
 mockito = "5.4.+"
-ktlint = "12.3.+"
+ktlint = "13.1.+"
 sonarlint = "2.0.+"
 junit = "5.13.+"
 
