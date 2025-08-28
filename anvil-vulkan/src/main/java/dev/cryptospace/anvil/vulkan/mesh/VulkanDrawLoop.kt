@@ -6,6 +6,7 @@ import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.scene.Scene
 import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.vulkan.VulkanTexture
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
@@ -108,6 +109,30 @@ class VulkanDrawLoop(
     fun addMaterial(material: Material) {
     }
 
+    private fun getPipeline(textureId: TextureId) = pipelineTextured3D
+
+    fun drawScene(stack: MemoryStack, commandBuffer: CommandBuffer, scene: Scene) {
+        // TODO introduce a scene dirty flag and keep this groupBy result in a cached variable, instead of
+        //  recreating it every frame.
+        val gameObjectsGroupedByPipeline = scene.gameObjects
+            .groupBy { gameObject ->
+                val materialId = gameObject.renderComponent?.materialId ?: return@groupBy null
+                return@groupBy getPipeline(materialId)
+            }
+
+        for (entry in gameObjectsGroupedByPipeline) {
+            val pipeline = entry.key ?: continue
+            val gameObjects = entry.value
+
+            drawPipelineObjects(
+                stack,
+                commandBuffer,
+                pipeline,
+                gameObjects,
+            )
+        }
+    }
+
     fun drawPipelineObjects(
         stack: MemoryStack,
         commandBuffer: CommandBuffer,
@@ -117,15 +142,19 @@ class VulkanDrawLoop(
         pipeline.bind(commandBuffer)
 
         objects.forEach { gameObject ->
-            drawGameObject(stack, commandBuffer, gameObject)
+            drawGameObject(stack, commandBuffer, pipeline, gameObject)
         }
     }
 
-    private fun drawGameObject(stack: MemoryStack, commandBuffer: CommandBuffer, gameObject: GameObject) {
+    private fun drawGameObject(
+        stack: MemoryStack,
+        commandBuffer: CommandBuffer,
+        pipeline: Pipeline,
+        gameObject: GameObject,
+    ) {
         val renderComponent = gameObject.renderComponent ?: return
         val meshId = renderComponent.meshId ?: return
         val mesh = vulkanMeshCache[meshId.value] ?: return
-        val pipeline = pipelineTextured3D
 
         val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
@@ -142,7 +171,7 @@ class VulkanDrawLoop(
             pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
-            stack.ints(renderComponent.textureId?.value ?: 0),
+            stack.ints(renderComponent.materialId?.value ?: 0),
         )
         VK10.vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
         VK10.vkCmdBindIndexBuffer(

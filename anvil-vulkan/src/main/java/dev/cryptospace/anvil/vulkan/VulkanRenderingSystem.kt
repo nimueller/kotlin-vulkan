@@ -208,13 +208,7 @@ class VulkanRenderingSystem(
             val frame = frames[currentFrameIndex]
             val result = frame.draw(engine) { commandBuffer, renderingContext ->
                 callback(renderingContext)
-
-                drawLoop.drawPipelineObjects(
-                    stack,
-                    commandBuffer,
-                    pipelineManager.pipelineTextured3D,
-                    engine.scene.gameObjects,
-                )
+                drawLoop.drawScene(stack, commandBuffer, engine.scene)
             }
 
             when (result) {
