@@ -6,6 +6,8 @@ import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.core.scene.Material
+import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
@@ -178,6 +180,9 @@ class VulkanRenderingSystem(
         }
     }
 
+    override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId =
+        shaderManager.uploadShader(shaderCode, shaderType)
+
     override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId {
         textureManager.allocateImage(
             Image.CreateInfo(
@@ -192,11 +197,10 @@ class VulkanRenderingSystem(
         }
     }
 
+    override fun uploadMaterial(material: Material): MaterialId = drawLoop.addMaterial(material)
+
     override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId =
         drawLoop.addMesh(vertexType, vertices, indices)
-
-    override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId =
-        shaderManager.uploadShader(shaderCode, shaderType)
 
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) =
         MemoryStack.stackPush().use { stack ->

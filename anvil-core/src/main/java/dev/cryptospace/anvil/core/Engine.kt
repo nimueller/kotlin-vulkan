@@ -4,6 +4,8 @@ import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.rendering.Camera
 import dev.cryptospace.anvil.core.rendering.RenderingContext
+import dev.cryptospace.anvil.core.scene.Material
+import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.Scene
 import dev.cryptospace.anvil.core.scene.TextureId
@@ -33,7 +35,9 @@ open class Engine(
 
     fun mesh(inputStream: InputStream): List<MeshId> = modelManager.loadModel(inputStream)
 
-    fun material(inputStream: InputStream): TextureId = imageManager.loadImage(inputStream)
+    fun texture(inputStream: InputStream): TextureId = imageManager.loadImage(inputStream)
+
+    fun material(block: Material.() -> Unit): MaterialId = renderingSystem.uploadMaterial(Material().apply(block))
 
     internal fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()

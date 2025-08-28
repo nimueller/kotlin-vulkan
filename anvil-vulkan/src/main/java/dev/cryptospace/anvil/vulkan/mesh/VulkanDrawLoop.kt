@@ -5,6 +5,7 @@ import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.Material
+import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.Scene
 import dev.cryptospace.anvil.core.scene.TextureId
@@ -106,10 +107,16 @@ class VulkanDrawLoop(
         return textureId
     }
 
-    fun addMaterial(material: Material) {
-    }
+    fun addMaterial(material: Material): MaterialId = MaterialId(
+        vulkanMaterialCache.add(
+            VulkanMaterial(
+                pipelineTextured3D,
+                material.texture,
+            ),
+        ),
+    )
 
-    private fun getPipeline(textureId: TextureId) = pipelineTextured3D
+    private fun getPipeline(materialId: MaterialId): Pipeline? = vulkanMaterialCache[materialId.value]?.pipeline
 
     fun drawScene(stack: MemoryStack, commandBuffer: CommandBuffer, scene: Scene) {
         // TODO introduce a scene dirty flag and keep this groupBy result in a cached variable, instead of
@@ -141,7 +148,7 @@ class VulkanDrawLoop(
     ) {
         pipeline.bind(commandBuffer)
 
-        objects.forEach { gameObject ->
+        for (gameObject in objects) {
             drawGameObject(stack, commandBuffer, pipeline, gameObject)
         }
     }
@@ -154,10 +161,13 @@ class VulkanDrawLoop(
     ) {
         val renderComponent = gameObject.renderComponent ?: return
         val meshId = renderComponent.meshId ?: return
+        val materialId = renderComponent.materialId ?: return
         val mesh = vulkanMeshCache[meshId.value] ?: return
 
         val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
+
+        val texture = vulkanMaterialCache[materialId.value]?.texture
 
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
@@ -171,7 +181,7 @@ class VulkanDrawLoop(
             pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
-            stack.ints(renderComponent.materialId?.value ?: 0),
+            stack.ints(texture?.value ?: 0),
         )
         VK10.vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
         VK10.vkCmdBindIndexBuffer(
