@@ -7,7 +7,6 @@ import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
-import dev.cryptospace.anvil.vulkan.VulkanMesh
 import dev.cryptospace.anvil.vulkan.VulkanTexture
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties

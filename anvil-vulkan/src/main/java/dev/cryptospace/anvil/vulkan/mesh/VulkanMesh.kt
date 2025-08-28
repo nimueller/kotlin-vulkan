@@ -1,4 +1,4 @@
-package dev.cryptospace.anvil.vulkan
+package dev.cryptospace.anvil.vulkan.mesh
 
 import dev.cryptospace.anvil.vulkan.buffer.BufferAllocation
 import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
