@@ -20,7 +20,7 @@ class Scene {
     }
 
     fun GameObject.renderComponent(block: RenderComponent.() -> Unit): RenderComponent {
-        val renderComponent = RenderComponent(meshId = null, materialId = null)
+        val renderComponent = RenderComponent(meshId = null, textureId = null)
         renderComponent.block()
         this.renderComponent = renderComponent
         return renderComponent

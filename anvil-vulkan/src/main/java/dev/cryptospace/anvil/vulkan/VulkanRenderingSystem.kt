@@ -4,12 +4,10 @@ import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.NativeTypeLayout
-import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
-import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.core.window.Glfw
@@ -24,12 +22,9 @@ import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.mesh.VulkanDrawLoop
-import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
-import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
-import dev.cryptospace.anvil.vulkan.pipeline.PipelineLayoutBuilder
+import dev.cryptospace.anvil.vulkan.pipeline.PipelineManager
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetManager
 import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderManager
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderModule
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.utils.getRequiredVulkanExtensions
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
@@ -40,7 +35,6 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import java.nio.ByteBuffer
-import java.util.EnumSet
 import kotlin.reflect.KClass
 
 const val MAX_TEXTURE_COUNT = 1024
@@ -121,41 +115,15 @@ class VulkanRenderingSystem(
 
     private val shaderManager: ShaderManager = ShaderManager(logicalDevice = deviceManager.logicalDevice)
 
-    private val defaultVertexShader =
-        shaderManager.uploadShader(
-            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/vert.spv")?.readAllBytes()
-                ?: error("Shader not found at classpath"),
-            shaderType = ShaderType.VERTEX,
-        )
+    private val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
-    private val defaultFragmentShader =
-        shaderManager.uploadShader(
-            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/frag.spv")?.readAllBytes()
-                ?: error("Shader not found at classpath"),
-            shaderType = ShaderType.FRAGMENT,
-        )
-
-    val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
-
-    val pipelineTextured3DLayout =
-        PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
-            pushConstant(EnumSet.of(ShaderType.VERTEX), Mat4)
-            pushConstant(EnumSet.of(ShaderType.FRAGMENT), NativeTypeLayout.FLOAT)
-            descriptorSetLayouts.add(descriptorSetManager.frameDescriptorSet.descriptorSetLayout)
-            descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
-        }.build()
-
-    val pipelineTextured3D: Pipeline =
-        PipelineBuilder(
+    private val pipelineManager: PipelineManager =
+        PipelineManager(
             logicalDevice = deviceManager.logicalDevice,
             renderPass = renderPass,
-            pipelineLayout = pipelineTextured3DLayout,
+            descriptorSetManager = descriptorSetManager,
             shaderManager = shaderManager,
-        ).apply {
-            vertexLayout = TexturedVertex3
-            shaderModule(ShaderType.VERTEX, defaultVertexShader)
-            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader)
-        }.build()
+        )
 
     /**
      * The swap chain managing presentation of rendered images to the surface.
@@ -183,7 +151,7 @@ class VulkanRenderingSystem(
             commandPool,
             renderPass,
             this,
-            pipelineTextured3D,
+            pipelineManager.pipelineTextured3D,
         )
     }
 
@@ -191,7 +159,7 @@ class VulkanRenderingSystem(
         deviceManager.logicalDevice,
         bufferManager,
         textureManager,
-        pipelineTextured3D,
+        pipelineManager.pipelineTextured3D,
         descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
         MAX_TEXTURE_COUNT,
     )
@@ -210,7 +178,7 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): MaterialId {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId {
         textureManager.allocateImage(
             Image.CreateInfo(
                 width = width,
@@ -220,7 +188,7 @@ class VulkanRenderingSystem(
             ),
         ).also { image ->
             val texture = textureManager.uploadImage(image, imageData)
-            return drawLoop.addMaterial(texture)
+            return drawLoop.addTexture(texture)
         }
     }
 
@@ -242,7 +210,7 @@ class VulkanRenderingSystem(
                 callback(renderingContext)
 
                 for (gameObject in engine.scene.gameObjects) {
-                    drawLoop.draw(stack, commandBuffer, gameObject)
+                    drawLoop.drawGameObject(stack, commandBuffer, gameObject)
                 }
             }
 
@@ -267,13 +235,14 @@ class VulkanRenderingSystem(
         }
 
         swapChain.close()
-        pipelineTextured3D.close()
-        renderPass.close()
 
+        pipelineManager.close()
         shaderManager.close()
         descriptorSetManager.close()
         textureManager.close()
         bufferManager.close()
+
+        renderPass.close()
 
         commandPool.close()
         allocator.close()

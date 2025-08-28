@@ -23,21 +23,11 @@ class ShaderModule(
 ) : NativeResource() {
 
     /**
-     * Creates a shader module from shader bytecode loaded from the specified resource path.
+     * Creates a shader module from the provided shader bytecode.
      *
      * @param logicalDevice The logical device that will own this shader module
-     * @param path The resource path to the shader bytecode file
-     * @throws IllegalStateException if the shader file cannot be found at the specified path
+     * @param shaderCode The compiled shader bytecode to create the module from
      */
-    constructor(logicalDevice: LogicalDevice, path: String) : this(
-        logicalDevice,
-        createShader(
-            logicalDevice,
-            ShaderModule::class.java.getResourceAsStream(path)?.readAllBytes()
-                ?: error("Shader not found at classpath: $path"),
-        ),
-    )
-
     constructor(logicalDevice: LogicalDevice, shaderCode: ByteArray) : this(
         logicalDevice,
         createShader(logicalDevice, shaderCode),

@@ -5,8 +5,9 @@ import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
-import dev.cryptospace.anvil.core.scene.MaterialId
+import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.vulkan.VulkanTexture
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.buffer.BufferProperties
@@ -38,9 +39,9 @@ class VulkanDrawLoop(
 ) {
 
     private val vulkanMeshCache: Registry<VulkanMesh> = Registry()
+    private val vulkanMaterialCache: Registry<VulkanMaterial> = Registry()
 
-    //    private val vulkanMaterialCache: Registry<VulkanMaterial> = Registry()
-    private var materialCount: Int = 1
+    private var textureCount: Int = 1
 
     fun <V : Vertex> addMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId {
         val verticesBytes = vertices.toByteBuffer()
@@ -81,10 +82,10 @@ class VulkanDrawLoop(
         return MeshId(vulkanMeshCache.add(mesh))
     }
 
-    fun addMaterial(texture: VulkanTexture): MaterialId = MemoryStack.stackPush().use { stack ->
-        check(materialCount < maxMaterialCount) { "Too many materials" }
-        val textureIndex = materialCount++
-        val materialId = MaterialId(textureIndex)
+    fun addTexture(texture: VulkanTexture): TextureId = MemoryStack.stackPush().use { stack ->
+        check(textureCount < maxMaterialCount) { "Too many materials" }
+        val textureIndex = textureCount++
+        val textureId = TextureId(textureIndex)
 
         val imageInfo = VkDescriptorImageInfo.calloc(stack)
             .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -107,10 +108,13 @@ class VulkanDrawLoop(
 
         vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSet, null)
 
-        return materialId
+        return textureId
     }
 
-    fun draw(stack: MemoryStack, commandBuffer: CommandBuffer, gameObject: GameObject) {
+    fun addMaterial(material: Material) {
+    }
+
+    fun drawGameObject(stack: MemoryStack, commandBuffer: CommandBuffer, gameObject: GameObject) {
         val renderComponent = gameObject.renderComponent ?: return
         val meshId = renderComponent.meshId ?: return
         val mesh = vulkanMeshCache[meshId.value] ?: return
@@ -130,7 +134,7 @@ class VulkanDrawLoop(
             mesh.pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
-            stack.ints(renderComponent.materialId?.value ?: 0),
+            stack.ints(renderComponent.textureId?.value ?: 0),
         )
         VK10.vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
         VK10.vkCmdBindIndexBuffer(

@@ -21,7 +21,7 @@ fun main() = vulkan {
         gameObject {
             renderComponent {
                 meshId = mesh(resource("/models/viking-room.obj")).first()
-                materialId = material(resource("/textures/viking-room.png"))
+                textureId = material(resource("/textures/viking-room.png"))
             }
 
             var rotationInDegrees = 0.0

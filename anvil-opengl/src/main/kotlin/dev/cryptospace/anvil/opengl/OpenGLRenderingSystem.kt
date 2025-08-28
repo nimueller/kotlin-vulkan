@@ -5,8 +5,8 @@ import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
-import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.core.window.Glfw
@@ -28,7 +28,7 @@ class OpenGLRenderingSystem(
         GL.createCapabilities()
     }
 
-    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): MaterialId {
+    override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId {
         TODO("Not yet implemented")
     }
 

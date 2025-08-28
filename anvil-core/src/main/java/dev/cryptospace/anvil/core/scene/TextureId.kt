@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.core.scene
 
 @JvmInline
-value class MaterialId(
+value class TextureId(
     val value: Int,
 )
