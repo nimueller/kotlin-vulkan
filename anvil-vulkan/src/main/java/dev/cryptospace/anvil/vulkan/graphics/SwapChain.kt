@@ -31,10 +31,8 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_ASPECT_DEPTH_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_CONCURRENT
 import org.lwjgl.vulkan.VK10.VK_SHARING_MODE_EXCLUSIVE
-import org.lwjgl.vulkan.VK10.vkCmdBindPipeline
 import org.lwjgl.vulkan.VK10.vkCmdSetScissor
 import org.lwjgl.vulkan.VK10.vkCmdSetViewport
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
@@ -181,8 +179,6 @@ class SwapChain(
             }
 
     fun preparePipeline(commandBuffer: CommandBuffer, pipeline: Pipeline) = MemoryStack.stackPush().use { stack ->
-        vkCmdBindPipeline(commandBuffer.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.handle.value)
-
         val viewport = VkViewport.calloc(stack).apply {
             x(0.0f)
             y(0.0f)

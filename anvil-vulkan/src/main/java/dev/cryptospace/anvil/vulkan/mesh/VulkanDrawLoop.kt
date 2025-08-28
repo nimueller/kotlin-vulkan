@@ -1,7 +1,6 @@
 package dev.cryptospace.anvil.vulkan.mesh
 
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
@@ -67,17 +66,12 @@ class VulkanDrawLoop(
             bufferManager.transferBuffer(stagingBuffer, indexBufferResource, fence)
         }
 
-        val graphicsPipeline = when (vertexType) {
-            TexturedVertex3::class -> pipelineTextured3D
-            else -> error("Unsupported vertex type: $vertexType")
-        }
-
         val mesh = VulkanMesh(
+            vertexType = vertexType,
             vertexBufferAllocation = vertexBufferResource,
             indexBufferAllocation = indexBufferResource,
             indexCount = indices.size,
             indexType = VK_INDEX_TYPE_UINT32,
-            pipeline = graphicsPipeline,
         )
         return MeshId(vulkanMeshCache.add(mesh))
     }
@@ -114,24 +108,38 @@ class VulkanDrawLoop(
     fun addMaterial(material: Material) {
     }
 
-    fun drawGameObject(stack: MemoryStack, commandBuffer: CommandBuffer, gameObject: GameObject) {
+    fun drawPipelineObjects(
+        stack: MemoryStack,
+        commandBuffer: CommandBuffer,
+        pipeline: Pipeline,
+        objects: List<GameObject>,
+    ) {
+        pipeline.bind(commandBuffer)
+
+        objects.forEach { gameObject ->
+            drawGameObject(stack, commandBuffer, gameObject)
+        }
+    }
+
+    private fun drawGameObject(stack: MemoryStack, commandBuffer: CommandBuffer, gameObject: GameObject) {
         val renderComponent = gameObject.renderComponent ?: return
         val meshId = renderComponent.meshId ?: return
         val mesh = vulkanMeshCache[meshId.value] ?: return
+        val pipeline = pipelineTextured3D
 
         val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
 
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
-            mesh.pipeline.pipelineLayoutHandle.value,
+            pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_VERTEX_BIT,
             0,
             gameObject.transform.toByteBuffer(stack),
         )
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
-            mesh.pipeline.pipelineLayoutHandle.value,
+            pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
             stack.ints(renderComponent.textureId?.value ?: 0),

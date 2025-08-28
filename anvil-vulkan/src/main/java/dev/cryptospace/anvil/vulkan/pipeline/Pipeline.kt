@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
+import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import org.lwjgl.vulkan.VK10
 
 /**
@@ -18,6 +19,10 @@ class Pipeline(
     /** Native handle to the Vulkan graphics pipeline object */
     val handle: VkPipeline,
 ) : NativeResource() {
+
+    fun bind(commandBuffer: CommandBuffer) {
+        VK10.vkCmdBindPipeline(commandBuffer.handle, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, handle.value)
+    }
 
     /**
      * Destroys the graphics pipeline and its associated pipeline layout.
