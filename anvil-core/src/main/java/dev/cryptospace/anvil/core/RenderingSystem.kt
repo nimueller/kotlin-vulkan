@@ -6,12 +6,16 @@ import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.shader.ShaderId
+import dev.cryptospace.anvil.core.shader.ShaderType
 import java.nio.ByteBuffer
 import kotlin.reflect.KClass
 
 abstract class RenderingSystem : NativeResource() {
 
     abstract fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4
+
+    abstract fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId
 
     abstract fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): MaterialId
 

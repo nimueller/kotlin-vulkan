@@ -10,6 +10,8 @@ import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.shader.ShaderId
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
@@ -26,8 +28,8 @@ import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.PipelineLayoutBuilder
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetManager
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderManager
 import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderModule
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.utils.getRequiredVulkanExtensions
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
@@ -117,12 +119,28 @@ class VulkanRenderingSystem(
 
     private val descriptorSetManager: DescriptorSetManager = DescriptorSetManager(deviceManager.logicalDevice)
 
+    private val shaderManager: ShaderManager = ShaderManager(logicalDevice = deviceManager.logicalDevice)
+
+    private val defaultVertexShader =
+        shaderManager.uploadShader(
+            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/vert.spv")?.readAllBytes()
+                ?: error("Shader not found at classpath"),
+            shaderType = ShaderType.VERTEX,
+        )
+
+    private val defaultFragmentShader =
+        shaderManager.uploadShader(
+            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/frag.spv")?.readAllBytes()
+                ?: error("Shader not found at classpath"),
+            shaderType = ShaderType.FRAGMENT,
+        )
+
     val renderPass: RenderPass = RenderPass(deviceManager.logicalDevice)
 
     val pipelineTextured3DLayout =
         PipelineLayoutBuilder(logicalDevice = deviceManager.logicalDevice).apply {
-            pushConstant(EnumSet.of(ShaderStage.VERTEX), Mat4)
-            pushConstant(EnumSet.of(ShaderStage.FRAGMENT), NativeTypeLayout.FLOAT)
+            pushConstant(EnumSet.of(ShaderType.VERTEX), Mat4)
+            pushConstant(EnumSet.of(ShaderType.FRAGMENT), NativeTypeLayout.FLOAT)
             descriptorSetLayouts.add(descriptorSetManager.frameDescriptorSet.descriptorSetLayout)
             descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
         }.build()
@@ -132,10 +150,11 @@ class VulkanRenderingSystem(
             logicalDevice = deviceManager.logicalDevice,
             renderPass = renderPass,
             pipelineLayout = pipelineTextured3DLayout,
+            shaderManager = shaderManager,
         ).apply {
             vertexLayout = TexturedVertex3
-            shaderModules[ShaderStage.VERTEX] = ShaderModule(deviceManager.logicalDevice, "/shaders/vert.spv")
-            shaderModules[ShaderStage.FRAGMENT] = ShaderModule(deviceManager.logicalDevice, "/shaders/frag.spv")
+            shaderModule(ShaderType.VERTEX, defaultVertexShader)
+            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader)
         }.build()
 
     /**
@@ -208,6 +227,9 @@ class VulkanRenderingSystem(
     override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId =
         drawLoop.addMesh(vertexType, vertices, indices)
 
+    override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId =
+        shaderManager.uploadShader(shaderCode, shaderType)
+
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) =
         MemoryStack.stackPush().use { stack ->
             if (framebufferResized) {
@@ -248,6 +270,7 @@ class VulkanRenderingSystem(
         pipelineTextured3D.close()
         renderPass.close()
 
+        shaderManager.close()
         descriptorSetManager.close()
         textureManager.close()
         bufferManager.close()

@@ -1,10 +1,10 @@
 package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
 import dev.cryptospace.anvil.core.native.NativeResource
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.MAX_TEXTURE_COUNT
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem.Companion.FRAMES_IN_FLIGHT
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import java.util.EnumSet
 
 class DescriptorSetManager(
@@ -35,7 +35,7 @@ class DescriptorSetManager(
             .binding(
                 descriptorType = DescriptorSetBuilder.DescriptorType.UNIFORM_BUFFER,
                 descriptorCount = 1,
-                stages = EnumSet.of(ShaderStage.VERTEX),
+                stages = EnumSet.of(ShaderType.VERTEX),
             )
             .build(
                 logicalDevice = logicalDevice,
@@ -55,7 +55,7 @@ class DescriptorSetManager(
             .variableBinding(
                 descriptorType = DescriptorSetBuilder.DescriptorType.COMBINED_IMAGE_SAMPLER,
                 descriptorCount = MAX_TEXTURE_COUNT,
-                stages = EnumSet.of(ShaderStage.FRAGMENT),
+                stages = EnumSet.of(ShaderType.FRAGMENT),
             )
             .build(
                 logicalDevice = logicalDevice,

@@ -7,6 +7,8 @@ import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
+import dev.cryptospace.anvil.core.shader.ShaderId
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.core.window.Glfw
 import org.lwjgl.glfw.GLFW.glfwMakeContextCurrent
 import org.lwjgl.glfw.GLFW.glfwSwapBuffers
@@ -31,6 +33,10 @@ class OpenGLRenderingSystem(
     }
 
     override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId {
+        TODO("Not yet implemented")
+    }
+
+    override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId {
         TODO("Not yet implemented")
     }
 

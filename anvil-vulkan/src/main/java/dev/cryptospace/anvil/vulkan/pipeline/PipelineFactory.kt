@@ -3,6 +3,7 @@ package dev.cryptospace.anvil.vulkan.pipeline
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.vulkan.utils.getVertexBindingDescription
 import dev.cryptospace.anvil.vulkan.utils.toAttributeDescriptions
+import dev.cryptospace.anvil.vulkan.utils.vkValue
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkGraphicsPipelineCreateInfo

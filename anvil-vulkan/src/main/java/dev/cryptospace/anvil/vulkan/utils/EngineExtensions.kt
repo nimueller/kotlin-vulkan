@@ -2,9 +2,12 @@ package dev.cryptospace.anvil.vulkan.utils
 
 import dev.cryptospace.anvil.core.math.AttributeFormat
 import dev.cryptospace.anvil.core.math.VertexLayout
+import dev.cryptospace.anvil.core.shader.ShaderType
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32_SFLOAT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32_SFLOAT
+import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_FRAGMENT_BIT
+import org.lwjgl.vulkan.VK10.VK_SHADER_STAGE_VERTEX_BIT
 import org.lwjgl.vulkan.VK10.VK_VERTEX_INPUT_RATE_VERTEX
 import org.lwjgl.vulkan.VkVertexInputAttributeDescription
 import org.lwjgl.vulkan.VkVertexInputBindingDescription
@@ -38,3 +41,15 @@ fun VertexLayout<*>.toAttributeDescriptions(stack: MemoryStack): VkVertexInputAt
     buffer.flip()
     return buffer
 }
+
+val ShaderType.vkValue: Int
+    get() {
+        return when (this) {
+            ShaderType.VERTEX -> VK_SHADER_STAGE_VERTEX_BIT
+            ShaderType.FRAGMENT -> VK_SHADER_STAGE_FRAGMENT_BIT
+        }
+    }
+
+fun Collection<ShaderType>.toBitmask(): Int = this
+    .map { stage -> stage.vkValue }
+    .reduce { acc, stageBit -> acc or stageBit }

@@ -29,7 +29,19 @@ class ShaderModule(
      * @param path The resource path to the shader bytecode file
      * @throws IllegalStateException if the shader file cannot be found at the specified path
      */
-    constructor(logicalDevice: LogicalDevice, path: String) : this(logicalDevice, createShader(logicalDevice, path))
+    constructor(logicalDevice: LogicalDevice, path: String) : this(
+        logicalDevice,
+        createShader(
+            logicalDevice,
+            ShaderModule::class.java.getResourceAsStream(path)?.readAllBytes()
+                ?: error("Shader not found at classpath: $path"),
+        ),
+    )
+
+    constructor(logicalDevice: LogicalDevice, shaderCode: ByteArray) : this(
+        logicalDevice,
+        createShader(logicalDevice, shaderCode),
+    )
 
     override fun destroy() {
         VK10.vkDestroyShaderModule(logicalDevice.handle, handle.value, null)
@@ -40,10 +52,8 @@ class ShaderModule(
         @JvmStatic
         private val log = logger<ShaderModule>()
 
-        private fun createShader(logicalDevice: LogicalDevice, path: String): VkShaderModule =
+        private fun createShader(logicalDevice: LogicalDevice, shaderCode: ByteArray): VkShaderModule =
             MemoryStack.stackPush().use { stack ->
-                val shaderCode = ShaderModule::class.java.getResourceAsStream(path)?.readAllBytes()
-                    ?: error("Shader not found at classpath: $path")
                 val shaderCodeBuffer = stack.malloc(shaderCode.size)
                 shaderCodeBuffer.put(shaderCode)
                 shaderCodeBuffer.flip()
@@ -55,7 +65,7 @@ class ShaderModule(
 
                 val shaderModule = stack.mallocLong(1)
                 VK10.vkCreateShaderModule(logicalDevice.handle, createInfo, null, shaderModule)
-                    .validateVulkanSuccess("Create shader module", "Failed to create shader module for $path")
+                    .validateVulkanSuccess("Create shader module", "Failed to create shader module")
 
                 VkShaderModule(shaderModule[0]).also { handle ->
                     log.debug { "Created shader module: $handle" }

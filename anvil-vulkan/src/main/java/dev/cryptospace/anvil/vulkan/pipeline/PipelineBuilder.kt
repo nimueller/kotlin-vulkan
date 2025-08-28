@@ -2,10 +2,12 @@ package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
+import dev.cryptospace.anvil.core.shader.ShaderId
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
+import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderManager
 import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderModule
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import org.lwjgl.vulkan.VK10
 
 /**
@@ -20,10 +22,11 @@ class PipelineBuilder(
     val logicalDevice: LogicalDevice,
     val renderPass: RenderPass,
     val pipelineLayout: VkPipelineLayout,
+    val shaderManager: ShaderManager,
 ) {
 
     /** Map of shader stages to their corresponding shader modules */
-    var shaderModules: MutableMap<ShaderStage, ShaderModule> = mutableMapOf()
+    var shaderModules: MutableMap<ShaderType, ShaderModule> = mutableMapOf()
 
     /** Layout description for vertex input data */
     var vertexLayout: VertexLayout<*> = TexturedVertex3
@@ -41,6 +44,10 @@ class PipelineBuilder(
      * Defaults to COUNTER_CLOCKWISE winding order.
      */
     var frontFace: FrontFace = FrontFace.COUNTER_CLOCKWISE
+
+    fun shaderModule(type: ShaderType, shaderId: ShaderId) {
+        shaderModules[type] = shaderManager.getRegisteredShader(shaderId).shaderModule
+    }
 
     /**
      * Creates a new pipeline using the configured settings.

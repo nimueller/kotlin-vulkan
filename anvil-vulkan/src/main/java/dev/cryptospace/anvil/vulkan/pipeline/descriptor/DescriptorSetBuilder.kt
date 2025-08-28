@@ -1,7 +1,7 @@
 package dev.cryptospace.anvil.vulkan.pipeline.descriptor
 
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import org.lwjgl.vulkan.VK10
 import java.util.EnumSet
 
@@ -43,7 +43,7 @@ class DescriptorSetBuilder {
     fun binding(
         descriptorType: DescriptorType,
         descriptorCount: Int,
-        stages: EnumSet<ShaderStage>,
+        stages: EnumSet<ShaderType>,
     ): DescriptorSetBuilder {
         check(lastBindingHasVariableDescriptorCount.not()) {
             "Last binding already has variable descriptor count." +
@@ -64,7 +64,7 @@ class DescriptorSetBuilder {
     fun variableBinding(
         descriptorType: DescriptorType,
         descriptorCount: Int,
-        stages: EnumSet<ShaderStage>,
+        stages: EnumSet<ShaderType>,
     ): DescriptorSetBuilder {
         binding(descriptorType, descriptorCount, stages)
         lastBindingHasVariableDescriptorCount = true
@@ -101,7 +101,7 @@ class DescriptorSetBuilder {
     data class Binding(
         var descriptorType: DescriptorType,
         var descriptorCount: Int,
-        var stages: EnumSet<ShaderStage>,
+        var stages: EnumSet<ShaderType>,
     )
 
     /**

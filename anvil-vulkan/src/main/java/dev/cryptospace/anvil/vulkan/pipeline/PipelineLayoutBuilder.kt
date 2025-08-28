@@ -1,9 +1,9 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.NativeTypeLayout
+import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetLayout
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderStage
 import java.util.EnumSet
 
 /**
@@ -28,7 +28,7 @@ class PipelineLayoutBuilder(
      * @param stages Set of shader stages that will access this push constant range
      * @param nativeTypeLayout Layout information for the push constant data
      */
-    fun pushConstant(stages: EnumSet<ShaderStage>, nativeTypeLayout: NativeTypeLayout) {
+    fun pushConstant(stages: EnumSet<ShaderType>, nativeTypeLayout: NativeTypeLayout) {
         val offset = pushConstantRanges.sumOf { pushConstantRange -> pushConstantRange.size }
         pushConstantRanges.add(PushConstantRange(stages, offset, nativeTypeLayout.byteSize))
     }
@@ -48,7 +48,7 @@ class PipelineLayoutBuilder(
      * @property size Size in bytes of the push constant range
      */
     data class PushConstantRange(
-        val stages: EnumSet<ShaderStage>,
+        val stages: EnumSet<ShaderType>,
         val offset: Int,
         val size: Int,
     )
