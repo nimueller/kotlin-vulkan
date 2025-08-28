@@ -148,12 +148,12 @@ class VulkanRenderingSystem(
             deviceManager.logicalDevice,
             bufferManager,
             textureManager,
+            pipelineManager,
             descriptorSet,
             descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
             commandPool,
             renderPass,
             this,
-            pipelineManager.pipelineTextured3D,
         )
     }
 
@@ -161,7 +161,7 @@ class VulkanRenderingSystem(
         deviceManager.logicalDevice,
         bufferManager,
         textureManager,
-        pipelineManager.pipelineTextured3D,
+        pipelineManager,
         descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
         MAX_TEXTURE_COUNT,
     )
@@ -210,9 +210,10 @@ class VulkanRenderingSystem(
             }
 
             val frame = frames[currentFrameIndex]
-            val result = frame.draw(engine) { commandBuffer, renderingContext ->
+
+            val result = frame.draw(engine) { commandBuffer, frameDescriptorSet, renderingContext ->
                 callback(renderingContext)
-                drawLoop.drawScene(stack, commandBuffer, engine.scene)
+                drawLoop.drawScene(stack, commandBuffer, frameDescriptorSet, engine.scene)
             }
 
             when (result) {

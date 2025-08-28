@@ -11,7 +11,6 @@ import dev.cryptospace.anvil.vulkan.image.Image
 import dev.cryptospace.anvil.vulkan.image.ImageAllocation
 import dev.cryptospace.anvil.vulkan.image.ImageView
 import dev.cryptospace.anvil.vulkan.image.TextureManager
-import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
 import dev.cryptospace.anvil.vulkan.surface.Surface
 import dev.cryptospace.anvil.vulkan.surface.SurfaceSwapChainDetails
 import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
@@ -178,7 +177,7 @@ class SwapChain(
                 logger.debug { "Created ${framebuffers.size} framebuffers: $framebuffers" }
             }
 
-    fun preparePipeline(commandBuffer: CommandBuffer, pipeline: Pipeline) = MemoryStack.stackPush().use { stack ->
+    fun preparePipeline(commandBuffer: CommandBuffer) = MemoryStack.stackPush().use { stack ->
         val viewport = VkViewport.calloc(stack).apply {
             x(0.0f)
             y(0.0f)

@@ -17,6 +17,7 @@ import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
 import dev.cryptospace.anvil.vulkan.image.TextureManager
 import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
+import dev.cryptospace.anvil.vulkan.pipeline.PipelineManager
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.VkDescriptorSet
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
@@ -34,7 +35,7 @@ class VulkanDrawLoop(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
     private val textureManager: TextureManager,
-    private val pipelineTextured3D: Pipeline,
+    private val pipelineManager: PipelineManager,
     private val materialDescriptorSet: VkDescriptorSet,
     private val maxMaterialCount: Int,
 ) {
@@ -110,7 +111,7 @@ class VulkanDrawLoop(
     fun addMaterial(material: Material): MaterialId = MaterialId(
         vulkanMaterialCache.add(
             VulkanMaterial(
-                pipelineTextured3D,
+                pipelineManager.pipelineTextured3D,
                 material.texture,
             ),
         ),
@@ -118,7 +119,7 @@ class VulkanDrawLoop(
 
     private fun getPipeline(materialId: MaterialId): Pipeline? = vulkanMaterialCache[materialId.value]?.pipeline
 
-    fun drawScene(stack: MemoryStack, commandBuffer: CommandBuffer, scene: Scene) {
+    fun drawScene(stack: MemoryStack, commandBuffer: CommandBuffer, frameDescriptorSet: VkDescriptorSet, scene: Scene) {
         // TODO introduce a scene dirty flag and keep this groupBy result in a cached variable, instead of
         //  recreating it every frame.
         val gameObjectsGroupedByPipeline = scene.gameObjects
@@ -134,6 +135,7 @@ class VulkanDrawLoop(
             drawPipelineObjects(
                 stack,
                 commandBuffer,
+                frameDescriptorSet,
                 pipeline,
                 gameObjects,
             )
@@ -143,10 +145,11 @@ class VulkanDrawLoop(
     fun drawPipelineObjects(
         stack: MemoryStack,
         commandBuffer: CommandBuffer,
+        frameDescriptorSet: VkDescriptorSet,
         pipeline: Pipeline,
         objects: List<GameObject>,
     ) {
-        pipeline.bind(commandBuffer)
+        pipeline.bind(stack, commandBuffer, listOf(frameDescriptorSet, materialDescriptorSet))
 
         for (gameObject in objects) {
             drawGameObject(stack, commandBuffer, pipeline, gameObject)

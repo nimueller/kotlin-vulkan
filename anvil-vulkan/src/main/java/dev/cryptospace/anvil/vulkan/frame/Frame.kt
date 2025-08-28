@@ -18,7 +18,7 @@ import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
 import dev.cryptospace.anvil.vulkan.image.TextureManager
-import dev.cryptospace.anvil.vulkan.pipeline.Pipeline
+import dev.cryptospace.anvil.vulkan.pipeline.PipelineManager
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -31,11 +31,9 @@ import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
-import org.lwjgl.vulkan.VK10.VK_PIPELINE_BIND_POINT_GRAPHICS
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-import org.lwjgl.vulkan.VK10.vkCmdBindDescriptorSets
 import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
@@ -70,12 +68,12 @@ class Frame(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
     private val textureManager: TextureManager,
+    private val pipelineManager: PipelineManager,
     private val frameDescriptorSet: VkDescriptorSet,
     private val materialDescriptorSet: VkDescriptorSet,
     private val commandPool: CommandPool,
     private val renderPass: RenderPass,
     private val renderingSystem: VulkanRenderingSystem,
-    private val pipelineTextured3D: Pipeline,
 ) : NativeResource() {
 
     private val imageCount: Int = renderingSystem.swapChain.images.size
@@ -169,13 +167,13 @@ class Frame(
      *
      * The method uses synchronization primitives to ensure proper timing between operations.
      */
-    fun draw(engine: Engine, callback: (CommandBuffer, RenderingContext) -> Unit): FrameDrawResult =
+    fun draw(engine: Engine, callback: (CommandBuffer, VkDescriptorSet, RenderingContext) -> Unit): FrameDrawResult =
         MemoryStack.stackPush().use { stack ->
             val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
 
             val framebuffer = renderingSystem.swapChain.framebuffers[swapChainImageIndex]
 
-            prepareRecordCommands(stack, framebuffer)
+            prepareRecordCommands(framebuffer)
             recordCommands(stack, engine, callback)
             finishRecordCommands()
 
@@ -210,31 +208,21 @@ class Frame(
         }
     }
 
-    private fun prepareRecordCommands(stack: MemoryStack, framebuffer: Framebuffer) {
+    private fun prepareRecordCommands(framebuffer: Framebuffer) {
         vkResetCommandBuffer(commandBuffer.handle, 0)
 
         commandBuffer.startRecording()
         renderPass.start(commandBuffer, framebuffer)
-
-        val pipeline = pipelineTextured3D
-        renderingSystem.swapChain.preparePipeline(commandBuffer, pipeline)
-        vkCmdBindDescriptorSets(
-            commandBuffer.handle,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.pipelineLayoutHandle.value,
-            0,
-            stack.longs(frameDescriptorSet.value, materialDescriptorSet.value),
-            null,
-        )
+        renderingSystem.swapChain.preparePipeline(commandBuffer)
     }
 
     private fun recordCommands(
         stack: MemoryStack,
         engine: Engine,
-        callback: (CommandBuffer, RenderingContext) -> Unit,
+        callback: (CommandBuffer, VkDescriptorSet, RenderingContext) -> Unit,
     ) {
         val renderingContext = VulkanRenderingContext(engine, renderingSystem.swapChain)
-        callback(commandBuffer, renderingContext)
+        callback(commandBuffer, frameDescriptorSet, renderingContext)
 
         val camera = renderingContext.engine.camera
         bufferManager.uploadData(uniformBuffer, camera.toByteBuffer(stack))

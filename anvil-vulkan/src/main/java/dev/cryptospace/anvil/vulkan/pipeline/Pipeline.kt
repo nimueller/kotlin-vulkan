@@ -3,6 +3,8 @@ package dev.cryptospace.anvil.vulkan.pipeline
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.CommandBuffer
+import dev.cryptospace.anvil.vulkan.pipeline.descriptor.VkDescriptorSet
+import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 
 /**
@@ -20,8 +22,32 @@ class Pipeline(
     val handle: VkPipeline,
 ) : NativeResource() {
 
-    fun bind(commandBuffer: CommandBuffer) {
+    /**
+     * Binds this pipeline and its descriptor sets to the specified command buffer for rendering.
+     * This method must be called before issuing any draw commands that use this pipeline.
+     *
+     * @param stack The memory stack used for allocating temporary buffers
+     * @param commandBuffer The command buffer to record the binding commands into
+     * @param descriptorSets List of descriptor sets containing resource bindings (textures, uniforms, etc.)
+     */
+    fun bind(stack: MemoryStack, commandBuffer: CommandBuffer, descriptorSets: List<VkDescriptorSet>) {
+        val descriptorSetHandles = stack.mallocLong(descriptorSets.size)
+
+        for (descriptorSet in descriptorSets) {
+            descriptorSetHandles.put(descriptorSet.value)
+        }
+
+        descriptorSetHandles.flip()
+
         VK10.vkCmdBindPipeline(commandBuffer.handle, VK10.VK_PIPELINE_BIND_POINT_GRAPHICS, handle.value)
+        VK10.vkCmdBindDescriptorSets(
+            commandBuffer.handle,
+            VK10.VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipelineLayoutHandle.value,
+            0,
+            descriptorSetHandles,
+            null,
+        )
     }
 
     /**
