@@ -76,6 +76,6 @@ class ModelManager(
             index
         }
 
-        return renderingSystem.uploadMesh(TexturedVertex3::class, vertices, indices)
+        return renderingSystem.uploadMesh(TexturedVertex3, vertices, indices)
     }
 }

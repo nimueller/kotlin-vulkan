@@ -38,6 +38,8 @@ class Registry<T>(
         return index
     }
 
+    fun getAll(): List<T> = items.mapNotNull { it?.slotValue }
+
     private fun findFreeSlotIndexInItemsArray(): Int {
         val firstFreeIndex = items.indexOfFirst { it == null }
 

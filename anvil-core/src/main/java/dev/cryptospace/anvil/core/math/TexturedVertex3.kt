@@ -10,7 +10,7 @@ data class TexturedVertex3(
 ) : NativeType,
     Vertex {
 
-    override val byteSize: Int = Companion.byteSize
+    override val vertexLayout: VertexLayout<TexturedVertex3> = Companion
 
     override fun toByteBuffer(byteBuffer: ByteBuffer) {
         position.toByteBuffer(byteBuffer)

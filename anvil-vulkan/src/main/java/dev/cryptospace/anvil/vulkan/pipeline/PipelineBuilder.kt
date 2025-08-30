@@ -45,8 +45,14 @@ class PipelineBuilder(
      */
     var frontFace: FrontFace = FrontFace.COUNTER_CLOCKWISE
 
-    fun shaderModule(type: ShaderType, shaderId: ShaderId) {
+    fun vertexLayout(vertexLayout: VertexLayout<*>): PipelineBuilder {
+        this.vertexLayout = vertexLayout
+        return this
+    }
+
+    fun shaderModule(type: ShaderType, shaderId: ShaderId): PipelineBuilder {
         shaderModules[type] = shaderManager.getRegisteredShader(shaderId).shaderModule
+        return this
     }
 
     /**

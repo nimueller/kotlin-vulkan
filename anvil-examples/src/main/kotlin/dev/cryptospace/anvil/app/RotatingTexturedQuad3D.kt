@@ -60,7 +60,7 @@ class TexturedQuad {
             engine.camera.movementEnabled = false
             engine.camera.rotationEnabled = false
 
-            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
+            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, _ ->
 //                updateModelMatrix(deltaTime, mesh)

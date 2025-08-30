@@ -36,7 +36,7 @@ class RotatingQuad3D {
 
     init {
         VulkanEngine().use { engine ->
-            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
+            val mesh = engine.renderingSystem.uploadMesh(TexturedVertex2, vertices, indices)
 
             MainLoop(engine).loop { deltaTime, glfw, _ ->
 //                updateModelMatrix(deltaTime, mesh)

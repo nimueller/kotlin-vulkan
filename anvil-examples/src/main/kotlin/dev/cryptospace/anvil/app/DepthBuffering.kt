@@ -58,8 +58,8 @@ class DepthBuffering {
             engine.camera.rotationEnabled = true
             engine.window.captureCursor()
 
-            val firstMesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
-            val secondMesh = engine.renderingSystem.uploadMesh(TexturedVertex2::class, vertices, indices)
+            val firstMesh = engine.renderingSystem.uploadMesh(TexturedVertex2, vertices, indices)
+            val secondMesh = engine.renderingSystem.uploadMesh(TexturedVertex2, vertices, indices)
 
             MainLoop(engine).loop { _, glfw, renderingContext ->
 //                firstMesh.modelMatrix = Mat4.identity.translate(Vec3(0f, 0f, -3f))

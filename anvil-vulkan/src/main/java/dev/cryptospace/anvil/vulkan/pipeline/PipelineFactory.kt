@@ -282,6 +282,10 @@ object PipelineFactory {
         stack: MemoryStack,
         pipelineBuilder: PipelineBuilder,
     ): VkPipelineShaderStageCreateInfo.Buffer {
+        check(pipelineBuilder.shaderModules.isNotEmpty()) {
+            "No shader modules provided. The Vulkan spec requires at least one shader module"
+        }
+
         val buffer = VkPipelineShaderStageCreateInfo.malloc(pipelineBuilder.shaderModules.size, stack)
         val shaderMainFunctionName = stack.UTF8(SHADER_MAIN_FUNCTION_NAME)
 

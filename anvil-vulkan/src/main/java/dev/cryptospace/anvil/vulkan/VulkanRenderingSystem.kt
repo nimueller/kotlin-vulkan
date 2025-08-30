@@ -5,6 +5,7 @@ import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
+import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MaterialId
@@ -37,7 +38,6 @@ import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
 import java.nio.ByteBuffer
-import kotlin.reflect.KClass
 
 const val MAX_TEXTURE_COUNT = 1024
 
@@ -199,8 +199,11 @@ class VulkanRenderingSystem(
 
     override fun uploadMaterial(material: Material): MaterialId = drawLoop.addMaterial(material)
 
-    override fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId =
-        drawLoop.addMesh(vertexType, vertices, indices)
+    override fun <V : Vertex> uploadMesh(
+        vertexType: VertexLayout<V>,
+        vertices: Array<V>,
+        indices: Array<UInt>,
+    ): MeshId = drawLoop.addMesh(vertexType, vertices, indices)
 
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) =
         MemoryStack.stackPush().use { stack ->

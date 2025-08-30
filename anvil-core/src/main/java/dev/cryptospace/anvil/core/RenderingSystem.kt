@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.core
 
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
+import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.Material
@@ -11,7 +12,6 @@ import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
 import java.nio.ByteBuffer
-import kotlin.reflect.KClass
 
 abstract class RenderingSystem : NativeResource() {
 
@@ -23,7 +23,7 @@ abstract class RenderingSystem : NativeResource() {
 
     abstract fun uploadMaterial(material: Material): MaterialId
 
-    abstract fun <V : Vertex> uploadMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId
+    abstract fun <V : Vertex> uploadMesh(vertexType: VertexLayout<V>, vertices: Array<V>, indices: Array<UInt>): MeshId
 
     abstract fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit)
 }

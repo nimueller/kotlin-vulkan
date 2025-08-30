@@ -2,6 +2,7 @@ package dev.cryptospace.anvil.vulkan.mesh
 
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
+import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.Material
@@ -29,7 +30,6 @@ import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
 import org.lwjgl.vulkan.VkDescriptorImageInfo
 import org.lwjgl.vulkan.VkWriteDescriptorSet
 import java.util.EnumSet
-import kotlin.reflect.KClass
 
 class VulkanDrawLoop(
     private val logicalDevice: LogicalDevice,
@@ -45,7 +45,7 @@ class VulkanDrawLoop(
 
     private var textureCount: Int = 1
 
-    fun <V : Vertex> addMesh(vertexType: KClass<V>, vertices: Array<V>, indices: Array<UInt>): MeshId {
+    fun <V : Vertex> addMesh(vertexLayout: VertexLayout<V>, vertices: Array<V>, indices: Array<UInt>): MeshId {
         val verticesBytes = vertices.toByteBuffer()
         val indicesBytes = indices.toByteBuffer()
 
@@ -70,7 +70,7 @@ class VulkanDrawLoop(
         }
 
         val mesh = VulkanMesh(
-            vertexType = vertexType,
+            vertexLayout = vertexLayout,
             vertexBufferAllocation = vertexBufferResource,
             indexBufferAllocation = indexBufferResource,
             indexCount = indices.size,
@@ -111,21 +111,23 @@ class VulkanDrawLoop(
     fun addMaterial(material: Material): MaterialId = MaterialId(
         vulkanMaterialCache.add(
             VulkanMaterial(
-                pipelineManager.pipelineTextured3D,
                 material.texture,
+                material.shaders,
             ),
         ),
     )
-
-    private fun getPipeline(materialId: MaterialId): Pipeline? = vulkanMaterialCache[materialId.value]?.pipeline
 
     fun drawScene(stack: MemoryStack, commandBuffer: CommandBuffer, frameDescriptorSet: VkDescriptorSet, scene: Scene) {
         // TODO introduce a scene dirty flag and keep this groupBy result in a cached variable, instead of
         //  recreating it every frame.
         val gameObjectsGroupedByPipeline = scene.gameObjects
             .groupBy { gameObject ->
+                val renderComponent = gameObject.renderComponent ?: return
+                val meshId = renderComponent.meshId ?: return
+                val mesh = vulkanMeshCache[meshId.value] ?: return
                 val materialId = gameObject.renderComponent?.materialId ?: return@groupBy null
-                return@groupBy getPipeline(materialId)
+                val material = vulkanMaterialCache[materialId.value] ?: return@groupBy null
+                return@groupBy pipelineManager.getPipeline(mesh.vertexLayout, materialId, material)
             }
 
         for (entry in gameObjectsGroupedByPipeline) {
