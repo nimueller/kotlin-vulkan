@@ -2,6 +2,8 @@ package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.NativeTypeLayout
+import dev.cryptospace.anvil.core.math.TexturedVertex2
+import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.scene.MaterialId
@@ -12,7 +14,6 @@ import dev.cryptospace.anvil.vulkan.mesh.Registry
 import dev.cryptospace.anvil.vulkan.mesh.VulkanMaterial
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetManager
 import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderManager
-import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderModule
 import java.util.EnumSet
 
 class PipelineManager(
@@ -23,19 +24,33 @@ class PipelineManager(
 ) : NativeResource() {
 
     private val pipelineRegistry: Registry<Pipeline> = Registry()
-    private val pipelineIdRegistry: MutableMap<Pair<VertexLayout<*>, MaterialId>, Int> = mutableMapOf()
+    private val pipelineIdRegistry: MutableMap<Pair<VertexLayout<*>, MaterialId?>, Int> = mutableMapOf()
 
-    private val defaultVertexShader =
+    private fun requireShader(path: String): ByteArray =
+        PipelineManager::class.java.getResourceAsStream(path)?.readAllBytes()
+            ?: error("Shader $path not found at classpath")
+
+    private val defaultVertexShader2D =
         shaderManager.uploadShader(
-            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/vert.spv")?.readAllBytes()
-                ?: error("Shader not found at classpath"),
+            shaderCode = requireShader("/shaders/shader2D.vert.spv"),
             shaderType = ShaderType.VERTEX,
         )
 
-    private val defaultFragmentShader =
+    private val defaultVertexShader3D =
         shaderManager.uploadShader(
-            shaderCode = ShaderModule::class.java.getResourceAsStream("/shaders/frag.spv")?.readAllBytes()
-                ?: error("Shader not found at classpath"),
+            shaderCode = requireShader("/shaders/shader.vert.spv"),
+            shaderType = ShaderType.VERTEX,
+        )
+
+    private val defaultFragmentShader2D =
+        shaderManager.uploadShader(
+            shaderCode = requireShader("/shaders/shader2D.frag.spv"),
+            shaderType = ShaderType.FRAGMENT,
+        )
+
+    private val defaultFragmentShader3D =
+        shaderManager.uploadShader(
+            shaderCode = requireShader("/shaders/shader.frag.spv"),
             shaderType = ShaderType.FRAGMENT,
         )
 
@@ -47,7 +62,7 @@ class PipelineManager(
             descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
         }.build()
 
-    fun getPipeline(vertexLayout: VertexLayout<*>, materialId: MaterialId, material: VulkanMaterial): Pipeline {
+    fun getPipeline(vertexLayout: VertexLayout<*>, materialId: MaterialId?, material: VulkanMaterial?): Pipeline {
         val pipelineId = pipelineIdRegistry[vertexLayout to materialId]
 
         if (pipelineId != null) {
@@ -63,8 +78,8 @@ class PipelineManager(
 
     private fun createPipeline(
         vertexLayout: VertexLayout<*>,
-        materialId: MaterialId,
-        material: VulkanMaterial,
+        materialId: MaterialId?,
+        material: VulkanMaterial?,
     ): Pipeline {
         val pipeline = PipelineBuilder(
             logicalDevice = logicalDevice,
@@ -74,16 +89,27 @@ class PipelineManager(
         ).apply {
             vertexLayout(vertexLayout)
 
-            shaderModule(ShaderType.VERTEX, defaultVertexShader)
-            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader)
+            setDefaultShaders(vertexLayout)
 
-            for ((shaderType, shaderId) in material.shaders) {
-                shaderModule(shaderType, shaderId)
+            material?.let { material ->
+                for ((shaderType, shaderId) in material.shaders) {
+                    shaderModule(shaderType, shaderId)
+                }
             }
         }.build()
         val pipelineId = pipelineRegistry.add(pipeline)
         pipelineIdRegistry[vertexLayout to materialId] = pipelineId
         return pipeline
+    }
+
+    private fun PipelineBuilder.setDefaultShaders(vertexLayout: VertexLayout<*>) {
+        if (vertexLayout == TexturedVertex2) {
+            shaderModule(ShaderType.VERTEX, defaultVertexShader2D)
+            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader2D)
+        } else if (vertexLayout == TexturedVertex3) {
+            shaderModule(ShaderType.VERTEX, defaultVertexShader3D)
+            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader3D)
+        }
     }
 
     override fun destroy() {

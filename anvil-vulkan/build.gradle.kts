@@ -36,8 +36,14 @@ val compileShaders by tasks.registering {
             }
         }
 
-        compileShader(inputDir.resolve("shader.vert"), outputDir.resolve("vert.spv"))
-        compileShader(inputDir.resolve("shader.frag"), outputDir.resolve("frag.spv"))
+        val shaderFiles = inputDir.listFiles { file ->
+            file.extension == "vert" || file.extension == "frag"
+        }
+
+        for (shaderFile in shaderFiles) {
+            val outputFile = outputDir.resolve("${shaderFile.name}.spv")
+            compileShader(shaderFile, outputFile)
+        }
     }
 }
 

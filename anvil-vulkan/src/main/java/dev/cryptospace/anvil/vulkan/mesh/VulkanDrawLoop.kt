@@ -125,13 +125,13 @@ class VulkanDrawLoop(
                 val renderComponent = gameObject.renderComponent ?: return
                 val meshId = renderComponent.meshId ?: return
                 val mesh = vulkanMeshCache[meshId.value] ?: return
-                val materialId = gameObject.renderComponent?.materialId ?: return@groupBy null
-                val material = vulkanMaterialCache[materialId.value] ?: return@groupBy null
+                val materialId = gameObject.renderComponent?.materialId
+                val material = materialId?.let { materialId -> vulkanMaterialCache[materialId.value] }
                 return@groupBy pipelineManager.getPipeline(mesh.vertexLayout, materialId, material)
             }
 
         for (entry in gameObjectsGroupedByPipeline) {
-            val pipeline = entry.key ?: continue
+            val pipeline = entry.key
             val gameObjects = entry.value
 
             drawPipelineObjects(
@@ -166,13 +166,12 @@ class VulkanDrawLoop(
     ) {
         val renderComponent = gameObject.renderComponent ?: return
         val meshId = renderComponent.meshId ?: return
-        val materialId = renderComponent.materialId ?: return
         val mesh = vulkanMeshCache[meshId.value] ?: return
 
         val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
 
-        val texture = vulkanMaterialCache[materialId.value]?.texture
+        val texture = renderComponent.materialId?.let { materialId -> vulkanMaterialCache[materialId.value]?.texture }
 
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
