@@ -4,8 +4,12 @@
 layout (set = 1, binding = 0) uniform sampler2D texSampler[];
 
 layout (push_constant) uniform PushConstants {
-    mat4 model;
-    int materialIndex;
+    layout (offset = 64) int textureIndex;
+    vec4 albedo;
+    float roughness;
+    float metallic;
+    float emissive;
+    float ao;
 } pushConstants;
 
 layout (location = 0) in vec3 fragColor;
@@ -14,9 +18,11 @@ layout (location = 1) in vec2 fragTexCord;
 layout (location = 0) out vec4 outColor;
 
 void main() {
-    if (pushConstants.materialIndex == 0) {
-        outColor = vec4(fragColor, 1.0f);
+    vec4 color;
+    if (pushConstants.textureIndex == 0) {
+        color = vec4(fragColor, 1.0f) * pushConstants.albedo;
     } else {
-        outColor = texture(texSampler[pushConstants.materialIndex], fragTexCord);
+        color = texture(texSampler[pushConstants.textureIndex], fragTexCord) * pushConstants.albedo;
     }
+    outColor = color;
 }

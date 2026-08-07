@@ -2,7 +2,6 @@
 
 layout (push_constant) uniform PushConstants {
     mat4 model;
-    int materialIndex;
 } pushConstants;
 
 layout (location = 0) in vec2 inPosition;

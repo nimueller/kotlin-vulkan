@@ -1,7 +1,7 @@
 package dev.cryptospace.anvil.app
 
+import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vec3
-import dev.cryptospace.anvil.core.math.Vec4
 import dev.cryptospace.anvil.vulkan.vulkan
 
 fun main() = vulkan {
@@ -9,11 +9,21 @@ fun main() = vulkan {
 
     scene {
         gameObject {
+            transform = Mat4.identity.translate(Vec3(0f, 0f, -2f))
+
             renderComponent {
                 meshId = quadMesh()
                 materialId = material {
                     texture = texture(resource("/images/texture.jpg"))
-                    properties.albedo = Vec4(1f, 0.5f, 0.5f, 1f) // Tint it red
+                }
+            }
+        }
+
+        gameObject {
+            renderComponent {
+                meshId = mesh(resource("/models/viking-room.obj")).first()
+                materialId = material {
+                    texture = texture(resource("/textures/viking-room.png"))
                 }
             }
 

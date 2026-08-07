@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.app
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.input.Key
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
@@ -13,7 +12,6 @@ import dev.cryptospace.anvil.core.window.Window
 import java.io.InputStream
 
 private const val ROTATION_DEGREES_PER_SECOND: Float = 45f
-private const val MAX_ROTATION_IN_DEGREES = 360.0
 
 class ExampleUtils
 
@@ -53,13 +51,9 @@ fun Engine.quadMesh(): MeshId {
 }
 
 fun GameObject.rotateOnUpdate() {
-    var rotationInDegrees = 0.0
-
     onUpdate = { deltaTime, window ->
-        val deltaRotation = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
-        rotationInDegrees += deltaRotation
-        rotationInDegrees %= MAX_ROTATION_IN_DEGREES
-        transform = Mat4.identity.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
+        val rotationInDegrees = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
+        transform = transform.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
 
         window.quitIfEscapePressed()
     }

@@ -7,6 +7,7 @@ import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
 import dev.cryptospace.anvil.core.scene.MaterialId
+import dev.cryptospace.anvil.core.scene.MaterialProperties
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
@@ -57,7 +58,16 @@ class PipelineManager(
     val basePipelineLayout =
         PipelineLayoutBuilder(logicalDevice = logicalDevice).apply {
             pushConstant(EnumSet.of(ShaderType.VERTEX), Mat4)
-            pushConstant(EnumSet.of(ShaderType.FRAGMENT), NativeTypeLayout.FLOAT)
+            // Push constant for fragment shader:
+            // - int textureIndex (4 bytes)
+            // - MaterialProperties (32 bytes)
+            // Total: 36 bytes. We'll use a custom layout if needed, but for now we can just specify the size.
+            pushConstant(
+                EnumSet.of(ShaderType.FRAGMENT),
+                object : NativeTypeLayout {
+                    override val byteSize: Int = 4 + MaterialProperties.BYTE_SIZE
+                },
+            )
             descriptorSetLayouts.add(descriptorSetManager.frameDescriptorSet.descriptorSetLayout)
             descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
         }.build()

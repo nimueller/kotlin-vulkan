@@ -7,7 +7,6 @@ layout (binding = 0) uniform Camera {
 
 layout (push_constant) uniform PushConstants {
     mat4 model;
-    int materialIndex;
 } pushConstants;
 
 layout (location = 0) in vec3 inPosition;

@@ -7,6 +7,7 @@ import dev.cryptospace.anvil.core.math.toByteBuffer
 import dev.cryptospace.anvil.core.scene.GameObject
 import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MaterialId
+import dev.cryptospace.anvil.core.scene.MaterialProperties
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.Scene
 import dev.cryptospace.anvil.core.scene.TextureId
@@ -113,6 +114,7 @@ class VulkanDrawLoop(
             VulkanMaterial(
                 material.texture,
                 material.shaders,
+                material.properties,
             ),
         ),
     )
@@ -171,7 +173,9 @@ class VulkanDrawLoop(
         val vertexBuffers = stack.longs(mesh.vertexBufferAllocation.buffer.value)
         val offsets = stack.longs(0L)
 
-        val texture = renderComponent.materialId?.let { materialId -> vulkanMaterialCache[materialId.value]?.texture }
+        val material = renderComponent.materialId?.let { materialId -> vulkanMaterialCache[materialId.value] }
+        val texture = material?.texture
+        val properties = material?.properties ?: MaterialProperties()
 
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
@@ -180,12 +184,17 @@ class VulkanDrawLoop(
             0,
             gameObject.transform.toByteBuffer(stack),
         )
+        val fragPushConstants = stack.malloc(4 + MaterialProperties.BYTE_SIZE)
+        fragPushConstants.putInt(texture?.value ?: 0)
+        properties.toByteBuffer(fragPushConstants)
+        fragPushConstants.flip()
+
         VK10.vkCmdPushConstants(
             commandBuffer.handle,
             pipeline.pipelineLayoutHandle.value,
             VK10.VK_SHADER_STAGE_FRAGMENT_BIT,
             Mat4.BYTE_SIZE,
-            stack.ints(texture?.value ?: 0),
+            fragPushConstants,
         )
         VK10.vkCmdBindVertexBuffers(commandBuffer.handle, 0, vertexBuffers, offsets)
         VK10.vkCmdBindIndexBuffer(
