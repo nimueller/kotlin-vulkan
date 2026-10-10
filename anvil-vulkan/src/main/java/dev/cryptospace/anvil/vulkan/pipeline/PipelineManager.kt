@@ -1,130 +1,101 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
-import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.NativeTypeLayout
+import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.core.scene.MaterialId
-import dev.cryptospace.anvil.core.scene.MaterialProperties
+import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
-import dev.cryptospace.anvil.vulkan.mesh.Registry
-import dev.cryptospace.anvil.vulkan.mesh.VulkanMaterial
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetManager
 import dev.cryptospace.anvil.vulkan.pipeline.shader.ShaderManager
+import org.lwjgl.vulkan.VK10.vkDestroyPipelineLayout
 import java.util.EnumSet
 
+/**
+ * Creates and caches graphics pipelines. Pipelines are shared by all materials with the same [PipelineKey].
+ */
 class PipelineManager(
     private val logicalDevice: LogicalDevice,
     private val renderPass: RenderPass,
-    private val descriptorSetManager: DescriptorSetManager,
+    descriptorSetManager: DescriptorSetManager,
     private val shaderManager: ShaderManager,
 ) : NativeResource() {
 
-    private val pipelineRegistry: Registry<Pipeline> = Registry()
-    private val pipelineIdRegistry: MutableMap<Pair<VertexLayout<*>, MaterialId?>, Int> = mutableMapOf()
+    private val pipelines = mutableMapOf<PipelineKey, Pipeline>()
+
+    val pipelineCount: Int
+        get() = pipelines.size
 
     private fun requireShader(path: String): ByteArray =
-        PipelineManager::class.java.getResourceAsStream(path)?.readAllBytes()
+        PipelineManager::class.java.getResourceAsStream(path)?.use { it.readAllBytes() }
             ?: error("Shader $path not found at classpath")
 
-    private val defaultVertexShader2D =
-        shaderManager.uploadShader(
-            shaderCode = requireShader("/shaders/shader2D.vert.spv"),
-            shaderType = ShaderType.VERTEX,
-        )
+    private fun loadShader(path: String, type: ShaderType) = shaderManager.uploadShader(requireShader(path), type)
 
-    private val defaultVertexShader3D =
-        shaderManager.uploadShader(
-            shaderCode = requireShader("/shaders/shader.vert.spv"),
-            shaderType = ShaderType.VERTEX,
-        )
+    private val defaultShaders2D = PipelineKey.ShaderPair(
+        vertex = loadShader("/shaders/shader2D.vert.spv", ShaderType.VERTEX),
+        fragment = loadShader("/shaders/shader2D.frag.spv", ShaderType.FRAGMENT),
+    )
 
-    private val defaultFragmentShader2D =
-        shaderManager.uploadShader(
-            shaderCode = requireShader("/shaders/shader2D.frag.spv"),
-            shaderType = ShaderType.FRAGMENT,
-        )
+    private val defaultShaders3D = PipelineKey.ShaderPair(
+        vertex = loadShader("/shaders/shader.vert.spv", ShaderType.VERTEX),
+        fragment = loadShader("/shaders/shader.frag.spv", ShaderType.FRAGMENT),
+    )
 
-    private val defaultFragmentShader3D =
-        shaderManager.uploadShader(
-            shaderCode = requireShader("/shaders/shader.frag.spv"),
-            shaderType = ShaderType.FRAGMENT,
-        )
-
-    val basePipelineLayout =
+    /**
+     * The layout shared by all pipelines: per-frame data in set 0, the bindless texture array in set 1,
+     * and the [PushConstants] for per-draw data.
+     */
+    val pipelineLayout =
         PipelineLayoutBuilder(logicalDevice = logicalDevice).apply {
-            pushConstant(EnumSet.of(ShaderType.VERTEX), Mat4)
-            // Push constant for fragment shader:
-            // - int textureIndex (4 bytes)
-            // - MaterialProperties (32 bytes)
-            // Total: 36 bytes. We'll use a custom layout if needed, but for now we can just specify the size.
-            pushConstant(
-                EnumSet.of(ShaderType.FRAGMENT),
-                object : NativeTypeLayout {
-                    override val byteSize: Int = 4 + MaterialProperties.BYTE_SIZE
-                },
-            )
+            pushConstant(EnumSet.of(ShaderType.VERTEX), PushConstants.VERTEX_OFFSET, PushConstants.VERTEX_SIZE)
+            pushConstant(EnumSet.of(ShaderType.FRAGMENT), PushConstants.FRAGMENT_OFFSET, PushConstants.FRAGMENT_SIZE)
             descriptorSetLayouts.add(descriptorSetManager.frameDescriptorSet.descriptorSetLayout)
             descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
         }.build()
 
-    fun getPipeline(vertexLayout: VertexLayout<*>, materialId: MaterialId?, material: VulkanMaterial?): Pipeline {
-        val pipelineId = pipelineIdRegistry[vertexLayout to materialId]
+    fun getPipeline(vertexLayout: VertexLayout<*>, material: Material?): Pipeline =
+        getPipeline(PipelineKey.of(vertexLayout, material, ::defaultShadersFor))
 
-        if (pipelineId != null) {
-            val pipeline = pipelineRegistry[pipelineId]
+    fun getPipeline(key: PipelineKey): Pipeline = pipelines.getOrPut(key) { createPipeline(key) }
 
-            if (pipeline != null) {
-                return pipeline
-            }
-        }
-
-        return createPipeline(vertexLayout, materialId, material)
+    private fun defaultShadersFor(vertexLayout: VertexLayout<*>): PipelineKey.ShaderPair? = when (vertexLayout) {
+        TexturedVertex2 -> defaultShaders2D
+        TexturedVertex3 -> defaultShaders3D
+        else -> null
     }
 
-    private fun createPipeline(
-        vertexLayout: VertexLayout<*>,
-        materialId: MaterialId?,
-        material: VulkanMaterial?,
-    ): Pipeline {
-        val pipeline = PipelineBuilder(
+    private fun createPipeline(key: PipelineKey): Pipeline {
+        logger.debug("Creating pipeline for {}", key)
+
+        return PipelineBuilder(
             logicalDevice = logicalDevice,
             renderPass = renderPass,
-            pipelineLayout = basePipelineLayout,
+            pipelineLayout = pipelineLayout,
             shaderManager = shaderManager,
         ).apply {
-            vertexLayout(vertexLayout)
-
-            setDefaultShaders(vertexLayout)
-
-            material?.let { material ->
-                for ((shaderType, shaderId) in material.shaders) {
-                    shaderModule(shaderType, shaderId)
-                }
-            }
+            vertexLayout(key.vertexLayout)
+            shaderModule(ShaderType.VERTEX, key.vertexShader)
+            shaderModule(ShaderType.FRAGMENT, key.fragmentShader)
+            blendMode = key.blendMode
+            cullMode = key.cullMode
+            depthTest = key.depthTest
+            depthWrite = key.depthWrite
         }.build()
-        val pipelineId = pipelineRegistry.add(pipeline)
-        pipelineIdRegistry[vertexLayout to materialId] = pipelineId
-        return pipeline
-    }
-
-    private fun PipelineBuilder.setDefaultShaders(vertexLayout: VertexLayout<*>) {
-        if (vertexLayout == TexturedVertex2) {
-            shaderModule(ShaderType.VERTEX, defaultVertexShader2D)
-            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader2D)
-        } else if (vertexLayout == TexturedVertex3) {
-            shaderModule(ShaderType.VERTEX, defaultVertexShader3D)
-            shaderModule(ShaderType.FRAGMENT, defaultFragmentShader3D)
-        }
     }
 
     override fun destroy() {
-        pipelineRegistry.getAll().forEach { pipeline ->
-            pipeline.close()
-        }
+        pipelines.values.forEach(Pipeline::close)
+        pipelines.clear()
+        vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayout.value, null)
+    }
+
+    companion object {
+
+        @JvmStatic
+        private val logger = logger<PipelineManager>()
     }
 }

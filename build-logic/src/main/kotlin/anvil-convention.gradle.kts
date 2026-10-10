@@ -35,6 +35,12 @@ idea {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    // Without the JUnit Platform, kotlin("test") falls back to JUnit 4 and silently skips JUnit 5 features
+    // such as parameterized tests.
+    useJUnitPlatform()
+}
+
 powerAssert {
     functions = listOf("kotlin.assert", "kotlin.test.assertEquals")
 }

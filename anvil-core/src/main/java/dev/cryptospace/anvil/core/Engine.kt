@@ -1,5 +1,7 @@
 package dev.cryptospace.anvil.core
 
+import dev.cryptospace.anvil.core.image.Font
+import dev.cryptospace.anvil.core.image.FontManager
 import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
@@ -8,6 +10,7 @@ import dev.cryptospace.anvil.core.rendering.Camera
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.Face
 import dev.cryptospace.anvil.core.scene.Face.Companion.toIndicesArray
+import dev.cryptospace.anvil.core.scene.HUD
 import dev.cryptospace.anvil.core.scene.Material
 import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
@@ -25,9 +28,11 @@ open class Engine(
     val glfw = GlfwFactory.create(renderingApi)
     val window = glfw.window
     val renderingSystem: RenderingSystem = renderingSystemCreator(glfw)
-    val imageManager: ImageManager = ImageManager(renderingSystem)
+    val imageManager: ImageManager = renderingSystem.imageManager
+    val fontManager: FontManager = FontManager(renderingSystem)
     val modelManager: ModelManager = ModelManager(renderingSystem)
     val camera: Camera = Camera(renderingSystem)
+    val hud: HUD = HUD(renderingSystem)
     var scene: Scene = Scene()
 
     fun scene(block: Scene.() -> Unit): Scene {
@@ -52,9 +57,23 @@ open class Engine(
 
     fun mesh(inputStream: InputStream): List<MeshId> = modelManager.loadModel(inputStream)
 
+    /**
+     * Loads a TrueType font rasterized at [pixelHeight] pixels per line.
+     */
+    fun font(inputStream: InputStream, pixelHeight: Float = DEFAULT_FONT_PIXEL_HEIGHT): Font =
+        fontManager.loadFont(inputStream, pixelHeight)
+
     fun texture(inputStream: InputStream): TextureId = imageManager.loadImage(inputStream)
 
     fun material(block: Material.() -> Unit): MaterialId = renderingSystem.uploadMaterial(Material().apply(block))
+
+    /**
+     * Modifies an existing material. The change is visible from the next frame on, for every object using it.
+     */
+    fun updateMaterial(materialId: MaterialId, block: Material.() -> Unit) {
+        val material = renderingSystem.getMaterial(materialId).apply(block)
+        renderingSystem.updateMaterial(materialId, material)
+    }
 
     internal fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()
@@ -71,4 +90,8 @@ open class Engine(
     }
 
     override fun toString(): String = "Engine"
+
+    companion object {
+        const val DEFAULT_FONT_PIXEL_HEIGHT = 32f
+    }
 }

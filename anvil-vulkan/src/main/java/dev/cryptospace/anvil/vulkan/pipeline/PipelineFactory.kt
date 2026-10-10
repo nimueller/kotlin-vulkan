@@ -1,8 +1,11 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.VertexLayout
+import dev.cryptospace.anvil.core.scene.BlendMode
+import dev.cryptospace.anvil.core.scene.CullMode
 import dev.cryptospace.anvil.vulkan.utils.getVertexBindingDescription
 import dev.cryptospace.anvil.vulkan.utils.toAttributeDescriptions
+import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import dev.cryptospace.anvil.vulkan.utils.vkValue
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
@@ -47,8 +50,8 @@ object PipelineFactory {
         val viewportState = setupViewport(stack)
         val rasterizer = setupRasterizer(stack, pipelineBuilder)
         val multisampling = setupMultisampling(stack)
-        val depthStencilState = setupDepthStencilState(stack)
-        val colorBlending = setupColorBlending(stack)
+        val depthStencilState = setupDepthStencilState(stack, pipelineBuilder.depthTest, pipelineBuilder.depthWrite)
+        val colorBlending = setupColorBlending(stack, pipelineBuilder.blendMode)
 
         val pipelineCreateInfo = VkGraphicsPipelineCreateInfo.calloc(stack).apply {
             sType(VK10.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
@@ -79,7 +82,8 @@ object PipelineFactory {
             pipelineCreateInfos,
             null,
             pPipelines,
-        )
+        ).validateVulkanSuccess("Create graphics pipeline", "Failed to create graphics pipeline")
+
         return Pipeline(
             logicalDevice = pipelineBuilder.logicalDevice,
             pipelineLayoutHandle = pipelineBuilder.pipelineLayout,
@@ -91,16 +95,13 @@ object PipelineFactory {
      * Sets up the color blending state for the pipeline.
      *
      * Configures how color outputs from the fragment shader are combined with existing framebuffer colors.
-     * The current configuration:
-     * - Disables blending (color output directly overwrites framebuffer)
-     * - Enables all color component writes (R, G, B, A)
-     * - Uses VK_BLEND_OP_ADD with VK_BLEND_FACTOR_ONE and VK_BLEND_FACTOR_ZERO
-     * - Disables logical operations
+     * All color components are written and logical operations are disabled; the blend factors follow [blendMode].
      *
      * @param stack Memory stack for allocating Vulkan structures
+     * @param blendMode How the fragment output is combined with the framebuffer
      * @return Color blend state configuration
      */
-    private fun setupColorBlending(stack: MemoryStack): VkPipelineColorBlendStateCreateInfo {
+    private fun setupColorBlending(stack: MemoryStack, blendMode: BlendMode): VkPipelineColorBlendStateCreateInfo {
         val colorBlendAttachment = VkPipelineColorBlendAttachmentState.calloc(stack).apply {
             colorWriteMask(
                 VK10.VK_COLOR_COMPONENT_R_BIT
@@ -108,13 +109,34 @@ object PipelineFactory {
                     or VK10.VK_COLOR_COMPONENT_B_BIT
                     or VK10.VK_COLOR_COMPONENT_A_BIT,
             )
-            blendEnable(false)
-            srcColorBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
-            dstColorBlendFactor(VK10.VK_BLEND_FACTOR_ZERO)
             colorBlendOp(VK10.VK_BLEND_OP_ADD)
-            srcAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
-            dstAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ZERO)
             alphaBlendOp(VK10.VK_BLEND_OP_ADD)
+
+            when (blendMode) {
+                BlendMode.OPAQUE -> {
+                    blendEnable(false)
+                    srcColorBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
+                    dstColorBlendFactor(VK10.VK_BLEND_FACTOR_ZERO)
+                    srcAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
+                    dstAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ZERO)
+                }
+
+                BlendMode.ALPHA_BLEND -> {
+                    blendEnable(true)
+                    srcColorBlendFactor(VK10.VK_BLEND_FACTOR_SRC_ALPHA)
+                    dstColorBlendFactor(VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                    srcAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
+                    dstAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+                }
+
+                BlendMode.ADDITIVE -> {
+                    blendEnable(true)
+                    srcColorBlendFactor(VK10.VK_BLEND_FACTOR_SRC_ALPHA)
+                    dstColorBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
+                    srcAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ZERO)
+                    dstAlphaBlendFactor(VK10.VK_BLEND_FACTOR_ONE)
+                }
+            }
         }
         val colorBlendAttachments = VkPipelineColorBlendAttachmentState.calloc(1, stack)
             .put(colorBlendAttachment)
@@ -215,7 +237,7 @@ object PipelineFactory {
         rasterizerDiscardEnable(false)
         polygonMode(VK10.VK_POLYGON_MODE_FILL)
         lineWidth(1.0f)
-        cullMode(pipelineBuilder.cullMode.vkValue)
+        cullMode(pipelineBuilder.cullMode.toVulkanCullMode())
         frontFace(pipelineBuilder.frontFace.vkValue)
         depthBiasEnable(false)
     }
@@ -253,8 +275,8 @@ object PipelineFactory {
      */
     private fun setupDepthStencilState(
         stack: MemoryStack,
-        depthTest: Boolean = true,
-        depthWrite: Boolean = true,
+        depthTest: Boolean,
+        depthWrite: Boolean,
         depthCompareOpOnDepthTest: Int = VK10.VK_COMPARE_OP_LESS_OR_EQUAL,
     ): VkPipelineDepthStencilStateCreateInfo = VkPipelineDepthStencilStateCreateInfo.calloc(stack).apply {
         sType(VK10.VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
@@ -302,4 +324,10 @@ object PipelineFactory {
         buffer.flip()
         return buffer
     }
+}
+
+private fun CullMode.toVulkanCullMode(): Int = when (this) {
+    CullMode.NONE -> VK10.VK_CULL_MODE_NONE
+    CullMode.FRONT -> VK10.VK_CULL_MODE_FRONT_BIT
+    CullMode.BACK -> VK10.VK_CULL_MODE_BACK_BIT
 }

@@ -15,13 +15,16 @@ class MainLoop(
 
     private fun loop(window: Window, logic: (DeltaTime, Glfw, RenderingContext) -> Unit = { _, _, _ -> }) {
         var lastFrameTime = glfwGetTime()
+        var frameCount = 0L
+        val maxFrames = AppConfig.maxFrames
 
-        while (!window.shouldClose()) {
+        while (!window.shouldClose() && (maxFrames == null || frameCount < maxFrames)) {
             val currentFrameTime = glfwGetTime()
             val deltaTime = DeltaTime(seconds = currentFrameTime - lastFrameTime)
 
             engine.update(deltaTime, logic)
             lastFrameTime = currentFrameTime
+            frameCount++
         }
     }
 }

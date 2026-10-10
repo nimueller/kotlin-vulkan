@@ -30,7 +30,14 @@ class PipelineLayoutBuilder(
      */
     fun pushConstant(stages: EnumSet<ShaderType>, nativeTypeLayout: NativeTypeLayout) {
         val offset = pushConstantRanges.sumOf { pushConstantRange -> pushConstantRange.size }
-        pushConstantRanges.add(PushConstantRange(stages, offset, nativeTypeLayout.byteSize))
+        pushConstant(stages, offset, nativeTypeLayout.byteSize)
+    }
+
+    /**
+     * Adds a push constant range at an explicit [offset], for blocks whose layout is defined elsewhere.
+     */
+    fun pushConstant(stages: EnumSet<ShaderType>, offset: Int, size: Int) {
+        pushConstantRanges.add(PushConstantRange(stages, offset, size))
     }
 
     /**

@@ -2,13 +2,13 @@ package dev.cryptospace.anvil.vulkan
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
+import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.Material
-import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
@@ -17,8 +17,8 @@ import dev.cryptospace.anvil.core.window.Glfw
 import dev.cryptospace.anvil.vulkan.buffer.Allocator
 import dev.cryptospace.anvil.vulkan.buffer.BufferManager
 import dev.cryptospace.anvil.vulkan.device.DeviceManager
+import dev.cryptospace.anvil.vulkan.frame.DeferredDeletionQueue
 import dev.cryptospace.anvil.vulkan.frame.Frame
-import dev.cryptospace.anvil.vulkan.frame.FrameDrawResult
 import dev.cryptospace.anvil.vulkan.graphics.CommandPool
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
@@ -33,7 +33,7 @@ import dev.cryptospace.anvil.vulkan.utils.getRequiredVulkanExtensions
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT
 import org.lwjgl.vulkan.VK10.vkDeviceWaitIdle
@@ -145,26 +145,34 @@ class VulkanRenderingSystem(
     private val frames: List<Frame> = List(FRAMES_IN_FLIGHT) { index ->
         val descriptorSet = descriptorSetManager.frameDescriptorSet.descriptorSet[index]
         Frame(
-            deviceManager.logicalDevice,
-            bufferManager,
-            textureManager,
-            pipelineManager,
-            descriptorSet,
-            descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
-            commandPool,
-            renderPass,
-            this,
+            logicalDevice = deviceManager.logicalDevice,
+            bufferManager = bufferManager,
+            frameDescriptorSet = descriptorSet,
+            commandPool = commandPool,
+            renderPass = renderPass,
+            renderingSystem = this,
         )
     }
 
     private val drawLoop = VulkanDrawLoop(
-        deviceManager.logicalDevice,
-        bufferManager,
-        textureManager,
-        pipelineManager,
-        descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
-        MAX_TEXTURE_COUNT,
+        logicalDevice = deviceManager.logicalDevice,
+        bufferManager = bufferManager,
+        textureManager = textureManager,
+        pipelineManager = pipelineManager,
+        materials = materials,
+        textureDescriptorSet = descriptorSetManager.textureDescriptorSet.descriptorSet.handles[0],
+        maxTextureCount = MAX_TEXTURE_COUNT,
     )
+
+    /**
+     * Resources released by the application, waiting for the GPU to finish the frames that may still use them.
+     */
+    private val deletionQueue = DeferredDeletionQueue(FRAMES_IN_FLIGHT)
+
+    /**
+     * Number of frames submitted to the GPU so far.
+     */
+    private var submittedFrames = 0L
 
     fun recreateSwapChain() {
         swapChain = swapChain.recreate(renderPass)
@@ -180,6 +188,8 @@ class VulkanRenderingSystem(
         }
     }
 
+    override val imageManager: ImageManager = ImageManager(this)
+
     override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId =
         shaderManager.uploadShader(shaderCode, shaderType)
 
@@ -188,7 +198,7 @@ class VulkanRenderingSystem(
             Image.CreateInfo(
                 width = width,
                 height = height,
-                format = VK10.VK_FORMAT_R8G8B8A8_SRGB,
+                format = VK_FORMAT_R8G8B8A8_SRGB,
                 usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT,
             ),
         ).also { image ->
@@ -197,13 +207,26 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun uploadMaterial(material: Material): MaterialId = drawLoop.addMaterial(material)
+    override fun shaderTypeOf(shaderId: ShaderId): ShaderType = shaderManager.getRegisteredShader(shaderId).shaderType
+
+    override fun validateMaterial(material: Material) {
+        super.validateMaterial(material)
+
+        material.texture?.let { textureId ->
+            require(drawLoop.isValidTexture(textureId)) { "Unknown texture $textureId" }
+        }
+    }
 
     override fun <V : Vertex> uploadMesh(
         vertexType: VertexLayout<V>,
         vertices: Array<V>,
         indices: Array<UInt>,
     ): MeshId = drawLoop.addMesh(vertexType, vertices, indices)
+
+    override fun removeMesh(meshId: MeshId) {
+        val mesh = drawLoop.removeMesh(meshId)
+        deletionQueue.enqueue(submittedFrames) { drawLoop.freeMesh(mesh) }
+    }
 
     override fun drawFrame(engine: Engine, callback: (RenderingContext) -> Unit) =
         MemoryStack.stackPush().use { stack ->
@@ -215,25 +238,37 @@ class VulkanRenderingSystem(
             val frame = frames[currentFrameIndex]
 
             val result = frame.draw(engine) { commandBuffer, frameDescriptorSet, renderingContext ->
+                // The frame's fence has been waited on at this point, so older frames are done with their resources
+                deletionQueue.flush(submittedFrames)
+
                 callback(renderingContext)
                 drawLoop.drawScene(stack, commandBuffer, frameDescriptorSet, engine.scene)
+                drawLoop.drawHUD(
+                    stack,
+                    commandBuffer,
+                    frameDescriptorSet,
+                    engine.hud,
+                    renderingContext.width,
+                    renderingContext.height,
+                )
             }
 
-            when (result) {
-                FrameDrawResult.FRAMEBUFFER_RESIZED -> {
-                    framebufferResized = false
-                    recreateSwapChain()
-                }
+            if (result.submitted) {
+                submittedFrames++
+                currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
+            }
 
-                FrameDrawResult.SUCCESS -> {
-                    currentFrameIndex = (currentFrameIndex + 1).mod(frames.size)
-                }
+            if (result.swapChainOutdated) {
+                framebufferResized = false
+                recreateSwapChain()
             }
         }
 
     override fun destroy() {
         vkDeviceWaitIdle(deviceManager.logicalDevice.handle)
             .validateVulkanSuccess()
+
+        deletionQueue.flushAll()
 
         frames.forEach { frame ->
             frame.close()

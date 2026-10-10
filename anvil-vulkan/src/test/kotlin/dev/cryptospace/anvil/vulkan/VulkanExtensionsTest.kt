@@ -4,8 +4,6 @@ import dev.cryptospace.anvil.vulkan.utils.VulkanUnknownException
 import dev.cryptospace.anvil.vulkan.utils.queryVulkanBuffer
 import dev.cryptospace.anvil.vulkan.utils.queryVulkanIntBuffer
 import dev.cryptospace.anvil.vulkan.utils.queryVulkanPointerBuffer
-import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertThrows
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.Struct
 import org.lwjgl.system.StructBuffer
@@ -13,6 +11,8 @@ import org.lwjgl.vulkan.VK10.VK_ERROR_UNKNOWN
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
 import java.nio.ByteBuffer
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFailsWith
 
 class VulkanExtensionsTest {
     class DummyStruct(
@@ -81,7 +81,7 @@ class VulkanExtensionsTest {
 
     @Test
     fun `getVulkanPointerBuffer should throw on error code`() {
-        assertThrows(VulkanUnknownException::class.java) {
+        assertFailsWith<VulkanUnknownException> {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanPointerBuffer { _, _ -> VK_ERROR_UNKNOWN }
             }
@@ -115,12 +115,12 @@ class VulkanExtensionsTest {
         }
 
         assert(buffer?.limit() == data.size)
-        assertArrayEquals(data, IntArray(buffer!!.remaining()) { buffer[it] })
+        assertContentEquals(data, IntArray(buffer!!.remaining()) { buffer[it] })
     }
 
     @Test
     fun `getVulkanBuffer should throw on error code`() {
-        assertThrows(VulkanUnknownException::class.java) {
+        assertFailsWith<VulkanUnknownException> {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanIntBuffer { _, _ -> VK_ERROR_UNKNOWN }
             }
@@ -158,7 +158,7 @@ class VulkanExtensionsTest {
 
     @Test
     fun `getVulkanBuffer for StructBuffer should throw on error code`() {
-        assertThrows(VulkanUnknownException::class.java) {
+        assertFailsWith<VulkanUnknownException> {
             MemoryStack.stackPush().use { stack ->
                 stack.queryVulkanBuffer(
                     bufferInitializer = { DummyStruct.Buffer(ByteBuffer.allocateDirect(0)) },

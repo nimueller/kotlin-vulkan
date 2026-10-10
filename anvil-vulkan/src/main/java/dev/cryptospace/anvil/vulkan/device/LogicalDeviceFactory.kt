@@ -91,7 +91,7 @@ object LogicalDeviceFactory {
             .sType(VK10.VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO)
             .pNext(indexingFeatures)
             .pQueueCreateInfos(queueCreateInfoBuffer)
-            .ppEnabledLayerNames(stack.mallocPointer(0))
+            .ppEnabledLayerNames(null)
             .ppEnabledExtensionNames(enabledExtensions)
             .pEnabledFeatures(features)
         return deviceCreateInfo

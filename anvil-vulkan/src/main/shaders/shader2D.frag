@@ -3,13 +3,14 @@
 
 layout (set = 1, binding = 0) uniform sampler2D texSampler[];
 
+// Must match dev.cryptospace.anvil.vulkan.pipeline.PushConstants
 layout (push_constant) uniform PushConstants {
-    layout (offset = 64) int textureIndex;
-    vec4 albedo;
+    layout (offset = 64) vec4 albedo;
     float roughness;
     float metallic;
     float emissive;
     float ao;
+    int textureIndex;
 } pushConstants;
 
 layout (location = 0) in vec3 fragColor;

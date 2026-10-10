@@ -15,9 +15,10 @@ class ModelManager(
 ) {
 
     fun loadModel(inputStream: InputStream): List<MeshId> {
-        val size = inputStream.available()
-        val byteBuffer = MemoryUtil.memAlloc(size)
-            .put(inputStream.readNBytes(size))
+        // available() is only an estimate for many streams (e.g. jar resources), so read everything
+        val bytes = inputStream.readAllBytes()
+        val byteBuffer = MemoryUtil.memAlloc(bytes.size)
+            .put(bytes)
             .flip()
         try {
             val scene = Assimp.aiImportFileFromMemory(
@@ -30,22 +31,18 @@ class ModelManager(
                 null as CharSequence?,
             )
 
-            checkNotNull(scene) { error("Failed to load model") }
-            val meshes = scene.mMeshes()
+            checkNotNull(scene) { "Failed to load model: ${Assimp.aiGetErrorString()}" }
 
-            checkNotNull(meshes) { error("Failed to load model meshes") }
-            val numMeshes = scene.mNumMeshes()
-            val result = mutableListOf<MeshId>()
+            try {
+                val meshes = checkNotNull(scene.mMeshes()) { "Model contains no meshes" }
 
-            for (i in 0 until numMeshes) {
-                val mesh = AIMesh.createSafe(meshes[i])
-                checkNotNull(mesh) { error("Failed to load model mesh $i") }
-
-                val resultingMesh = loadMesh(mesh, renderingSystem)
-                result.add(resultingMesh)
+                return List(scene.mNumMeshes()) { index ->
+                    val mesh = checkNotNull(AIMesh.createSafe(meshes[index])) { "Failed to load model mesh $index" }
+                    loadMesh(mesh, renderingSystem)
+                }
+            } finally {
+                Assimp.aiReleaseImport(scene)
             }
-
-            return result
         } finally {
             MemoryUtil.memFree(byteBuffer)
         }

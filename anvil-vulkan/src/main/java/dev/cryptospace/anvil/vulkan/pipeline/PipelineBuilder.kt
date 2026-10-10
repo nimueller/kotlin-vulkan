@@ -2,6 +2,8 @@ package dev.cryptospace.anvil.vulkan.pipeline
 
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.VertexLayout
+import dev.cryptospace.anvil.core.scene.BlendMode
+import dev.cryptospace.anvil.core.scene.CullMode
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
@@ -38,6 +40,15 @@ class PipelineBuilder(
      */
     var cullMode: CullMode = CullMode.BACK
 
+    /** How fragment output is combined with the framebuffer */
+    var blendMode: BlendMode = BlendMode.OPAQUE
+
+    /** Whether fragments are tested against the depth buffer */
+    var depthTest: Boolean = true
+
+    /** Whether fragments write to the depth buffer */
+    var depthWrite: Boolean = true
+
     /**
      * Specifies the winding order that determines which side of a polygon is considered the front face.
      * Used in conjunction with cullMode to determine which faces should be culled.
@@ -61,28 +72,6 @@ class PipelineBuilder(
      * @return The created pipeline object
      */
     fun build(): Pipeline = PipelineFactory.createPipeline(this)
-
-    /**
-     * Defines face culling modes for the graphics pipeline.
-     * Controls which polygon faces are discarded during rendering to improve performance.
-     *
-     * @property vkValue The Vulkan enum value corresponding to this culling mode
-     */
-    enum class CullMode(
-        val vkValue: Int,
-    ) {
-        /** Disables face culling - all faces are rendered */
-        NONE(VK10.VK_CULL_MODE_NONE),
-
-        /** Culls front-facing polygons */
-        FRONT(VK10.VK_CULL_MODE_FRONT_BIT),
-
-        /** Culls back-facing polygons */
-        BACK(VK10.VK_CULL_MODE_BACK_BIT),
-
-        /** Culls both front and back-facing polygons */
-        FRONT_AND_BACK(VK10.VK_STENCIL_FRONT_AND_BACK),
-    }
 
     /**
      * Defines the winding order for determining front-facing polygons in the graphics pipeline.

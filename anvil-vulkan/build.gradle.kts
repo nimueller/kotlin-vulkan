@@ -10,15 +10,17 @@ dependencies {
 }
 
 val compileShaders by tasks.registering {
-    val sourceSet = sourceSets["main"]
-    val inputDir = file("${sourceSet.resources.srcDirs.first()}/shaders")
-    val outputDir = file("${sourceSet.output.resourcesDir}/shaders")
+    description = "Compiles GLSL shaders to SPIR-V using glslc"
+
+    val inputDir = file("src/main/shaders")
+    val outputDir = layout.buildDirectory.dir("generated/shaders")
 
     inputs.dir(inputDir)
     outputs.dir(outputDir)
 
     doLast {
-        outputDir.mkdirs()
+        val shaderOutputDir = outputDir.get().dir("shaders").asFile
+        shaderOutputDir.mkdirs()
 
         fun compileShader(shaderFile: File, outputFile: File) {
             val process = ProcessBuilder(
@@ -26,35 +28,32 @@ val compileShaders by tasks.registering {
                 shaderFile.absolutePath,
                 "-o",
                 outputFile.absolutePath,
-            ).start()
+            ).redirectErrorStream(true).start()
 
+            val output = process.inputStream.bufferedReader().readText()
             val exitCode = process.waitFor()
 
             if (exitCode != 0) {
-                val error = process.errorStream.bufferedReader().readText()
-                throw GradleException("Shader compilation failed for ${shaderFile.name}:\n$error")
+                throw GradleException("Shader compilation failed for ${shaderFile.name}:\n$output")
             }
         }
 
         val shaderFiles = inputDir.listFiles { file ->
             file.extension == "vert" || file.extension == "frag"
-        }
+        }.orEmpty()
 
         for (shaderFile in shaderFiles) {
-            val outputFile = outputDir.resolve("${shaderFile.name}.spv")
-            compileShader(shaderFile, outputFile)
+            compileShader(shaderFile, shaderOutputDir.resolve("${shaderFile.name}.spv"))
         }
     }
 }
 
-tasks.build {
-    dependsOn(compileShaders)
-}
-
-tasks.jar {
-    dependsOn(compileShaders)
+// Registering the task output as a resource directory makes processResources (and therefore jar, run and test)
+// depend on it, and keeps the compiled SPIR-V out of the source tree.
+sourceSets.main {
+    resources.srcDir(compileShaders)
 }
 
 tasks.named("sonarlintMain") {
-    dependsOn(tasks.named("compileShaders"))
+    dependsOn(compileShaders)
 }

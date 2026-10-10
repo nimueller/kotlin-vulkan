@@ -17,8 +17,6 @@ import dev.cryptospace.anvil.vulkan.graphics.Framebuffer
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
-import dev.cryptospace.anvil.vulkan.image.TextureManager
-import dev.cryptospace.anvil.vulkan.pipeline.PipelineManager
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -27,9 +25,7 @@ import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
-import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_SUBMIT_INFO
@@ -38,7 +34,6 @@ import org.lwjgl.vulkan.VK10.vkQueueSubmit
 import org.lwjgl.vulkan.VK10.vkResetCommandBuffer
 import org.lwjgl.vulkan.VK10.vkUpdateDescriptorSets
 import org.lwjgl.vulkan.VkDescriptorBufferInfo
-import org.lwjgl.vulkan.VkDescriptorImageInfo
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
 import org.lwjgl.vulkan.VkWriteDescriptorSet
@@ -60,18 +55,14 @@ import java.util.EnumSet
  * - In-flight fences prevent CPU-GPU race conditions by controlling frame pacing
  *
  * @property logicalDevice The logical device used for executing commands
+ * @property frameDescriptorSet Descriptor set holding this frame's uniform buffer
  * @property renderPass The render pass defining the frame rendering sequence
- * @property graphicsPipeline The pipeline specifying the graphics state for rendering
- * @property swapChain The swap chain used for image presentation
  */
 class Frame(
     private val logicalDevice: LogicalDevice,
     private val bufferManager: BufferManager,
-    private val textureManager: TextureManager,
-    private val pipelineManager: PipelineManager,
     private val frameDescriptorSet: VkDescriptorSet,
-    private val materialDescriptorSet: VkDescriptorSet,
-    private val commandPool: CommandPool,
+    commandPool: CommandPool,
     private val renderPass: RenderPass,
     private val renderingSystem: VulkanRenderingSystem,
 ) : NativeResource() {
@@ -102,7 +93,7 @@ class Frame(
         updateDescriptorSets()
     }
 
-    fun updateDescriptorSets() {
+    private fun updateDescriptorSets() {
         MemoryStack.stackPush().use { stack ->
             val descriptorBufferInfo = VkDescriptorBufferInfo.calloc(stack)
                 .offset(0)
@@ -124,34 +115,9 @@ class Frame(
                 .pImageInfo(null)
                 .pTexelBufferView(null)
 
-            // TODO this is temporary and texture should be dynamic per model
-            val texture = textureManager.textureImages.firstOrNull()
-
-            val writeDescriptorSets = if (texture == null) {
-                VkWriteDescriptorSet.calloc(1, stack)
-                    .put(uniformBufferDescriptorWrite)
-                    .flip()
-            } else {
-                val imageInfo = VkDescriptorImageInfo.calloc(stack)
-                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .imageView(texture.textureImageView.handle.value)
-                    .sampler(textureManager.sampler.value)
-                val imageInfos = VkDescriptorImageInfo.calloc(1, stack)
-                    .put(imageInfo)
-                    .flip()
-                val imageInfoDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
-                    .dstSet(materialDescriptorSet.value)
-                    .dstBinding(0)
-                    .dstArrayElement(0)
-                    .descriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-                    .descriptorCount(1)
-                    .pImageInfo(imageInfos)
-                VkWriteDescriptorSet.calloc(2, stack)
-                    .put(uniformBufferDescriptorWrite)
-                    .put(imageInfoDescriptorWrite)
-                    .flip()
-            }
+            val writeDescriptorSets = VkWriteDescriptorSet.calloc(1, stack)
+                .put(uniformBufferDescriptorWrite)
+                .flip()
 
             vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSets, null)
         }
@@ -169,7 +135,8 @@ class Frame(
      */
     fun draw(engine: Engine, callback: (CommandBuffer, VkDescriptorSet, RenderingContext) -> Unit): FrameDrawResult =
         MemoryStack.stackPush().use { stack ->
-            val swapChainImageIndex = acquireSwapChainImage(stack) ?: return FrameDrawResult.FRAMEBUFFER_RESIZED
+            val swapChainImageIndex = acquireSwapChainImage(stack)
+                ?: return FrameDrawResult.SKIPPED_SWAP_CHAIN_OUTDATED
 
             val framebuffer = renderingSystem.swapChain.framebuffers[swapChainImageIndex]
 
@@ -177,35 +144,44 @@ class Frame(
             recordCommands(stack, engine, callback)
             finishRecordCommands()
 
-            presentFrame(renderingSystem.swapChain, swapChainImageIndex)
-            return FrameDrawResult.SUCCESS
+            return when (val result = presentFrame(renderingSystem.swapChain, swapChainImageIndex)) {
+                VK_ERROR_OUT_OF_DATE_KHR, VK_SUBOPTIMAL_KHR -> FrameDrawResult.PRESENTED_SWAP_CHAIN_OUTDATED
+
+                else -> {
+                    result.validateVulkanSuccess("Present frame", "Failed to present frame")
+                    FrameDrawResult.SUCCESS
+                }
+            }
         }
 
+    /**
+     * Waits until this frame's previous submission finished and acquires the next swap chain image.
+     *
+     * @return The image index, or null if the swap chain is out of date and must be recreated first
+     */
     private fun acquireSwapChainImage(stack: MemoryStack): Int? {
         syncObjects.waitForInFlightFence()
 
-        try {
-            val pImageIndex = stack.mallocInt(1)
+        val pImageIndex = stack.mallocInt(1)
+        val result = vkAcquireNextImageKHR(
+            logicalDevice.handle,
+            renderingSystem.swapChain.handle.value,
+            Long.MAX_VALUE,
+            syncObjects.imageAvailableSemaphores.value,
+            VK_NULL_HANDLE,
+            pImageIndex,
+        )
 
-            val result = vkAcquireNextImageKHR(
-                logicalDevice.handle,
-                renderingSystem.swapChain.handle.value,
-                Long.MAX_VALUE,
-                syncObjects.imageAvailableSemaphores.value,
-                VK_NULL_HANDLE,
-                pImageIndex,
-            )
-
-            if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-                return null
-            } else {
-                result.validateVulkanSuccess("Acquire swap chain image", "Acquire swap chain image failed")
-            }
-
-            return pImageIndex[0]
-        } finally {
-            syncObjects.resetInFlightFence()
+        // Only reset the fence once work is guaranteed to be submitted, otherwise the next wait would never return.
+        // A suboptimal swap chain still delivered an image, so render it and let presentation trigger the recreation.
+        when (result) {
+            VK_ERROR_OUT_OF_DATE_KHR -> return null
+            VK_SUBOPTIMAL_KHR -> Unit
+            else -> result.validateVulkanSuccess("Acquire swap chain image", "Acquire swap chain image failed")
         }
+
+        syncObjects.resetInFlightFence()
+        return pImageIndex[0]
     }
 
     private fun prepareRecordCommands(framebuffer: Framebuffer) {
@@ -233,7 +209,12 @@ class Frame(
         commandBuffer.endRecording()
     }
 
-    private fun presentFrame(swapChain: SwapChain, imageIndex: Int) = MemoryStack.stackPush().use { stack ->
+    /**
+     * Submits the recorded commands and queues the image for presentation.
+     *
+     * @return The result of `vkQueuePresentKHR`
+     */
+    private fun presentFrame(swapChain: SwapChain, imageIndex: Int): Int = MemoryStack.stackPush().use { stack ->
         val signalSemaphores = submitCommandBuffer(stack, imageIndex)
         val swapChains = stack.longs(swapChain.handle.value)
 

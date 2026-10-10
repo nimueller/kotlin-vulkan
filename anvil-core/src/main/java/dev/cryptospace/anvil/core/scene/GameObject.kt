@@ -5,8 +5,8 @@ import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.window.Window
 
 data class GameObject(
-    var visible: Boolean,
-    var transform: Mat4,
+    var visible: Boolean = true,
+    var transform: Mat4 = Mat4.identity,
     var renderComponent: RenderComponent? = null,
     var onUpdate: (DeltaTime, Window) -> Unit = { _, _ -> },
 )

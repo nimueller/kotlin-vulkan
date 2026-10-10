@@ -37,12 +37,14 @@ class ShaderManager(
      *
      * @param shaderId The unique identifier of the shader
      * @return The registered shader information
+     * @throws IllegalArgumentException if no shader with this identifier was uploaded
      */
-    fun getRegisteredShader(shaderId: ShaderId): RegisteredShader = shaders[shaderId.value.toInt()]
+    fun getRegisteredShader(shaderId: ShaderId): RegisteredShader =
+        shaders.getOrNull(shaderId.value.toInt()) ?: throw IllegalArgumentException("Unknown shader $shaderId")
 
     override fun destroy() {
-        for (shaders in shaders) {
-            shaders.shaderModule.close()
+        for (shader in shaders) {
+            shader.shaderModule.close()
         }
     }
 

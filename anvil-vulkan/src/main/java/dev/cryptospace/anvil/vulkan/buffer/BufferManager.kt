@@ -35,7 +35,7 @@ class BufferManager(
     private val commandPool: CommandPool,
 ) : NativeResource() {
 
-    private val buffers = mutableListOf<BufferAllocation>()
+    private val buffers = mutableSetOf<BufferAllocation>()
 
     /**
      * Allocates a Vulkan buffer with the specified size, usage flags, and memory properties.
@@ -76,7 +76,7 @@ class BufferManager(
 
         return BufferAllocation(allocator, buffer, memory, size).also { bufferAllocation ->
             buffers.add(bufferAllocation)
-            log.info("Allocated buffer $buffer size $size with memory $memory")
+            log.debug("Allocated buffer {} size {} with memory {}", buffer, size, memory)
         }
     }
 
@@ -137,8 +137,7 @@ class BufferManager(
                 VK10.vkWaitForFences(logicalDevice.handle, fence.handle.value, true, Long.MAX_VALUE)
                 return value
             } finally {
-                stagingBuffer.close()
-                buffers.remove(stagingBuffer)
+                freeBuffer(stagingBuffer)
             }
         }
     }
@@ -174,6 +173,14 @@ class BufferManager(
                 bufferCopies,
             )
         }
+    }
+
+    /**
+     * Destroys a buffer immediately. The caller must ensure the GPU no longer uses it.
+     */
+    fun freeBuffer(allocation: BufferAllocation) {
+        check(buffers.remove(allocation)) { "Buffer ${allocation.buffer} is not managed by this BufferManager" }
+        allocation.close()
     }
 
     /**

@@ -41,7 +41,9 @@ class ImageManager(
             channelCount,
         )
 
-        check(data != null) { throw FailedToLoadImageException(STBImage.stbi_failure_reason()) }
+        if (data == null) {
+            throw FailedToLoadImageException(STBImage.stbi_failure_reason())
+        }
 
         try {
             val width = widthBuffer[0]

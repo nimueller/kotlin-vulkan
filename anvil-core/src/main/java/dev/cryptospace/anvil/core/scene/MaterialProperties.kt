@@ -33,6 +33,10 @@ data class MaterialProperties(
      */
     var ao: Float = 1.0f,
 ) {
+    /**
+     * Writes the properties using the std430 layout of a `vec4` followed by four `float`s.
+     * The destination must be 16-byte aligned relative to the start of the shader block.
+     */
     fun toByteBuffer(buffer: ByteBuffer) {
         buffer.putFloat(albedo.x)
         buffer.putFloat(albedo.y)

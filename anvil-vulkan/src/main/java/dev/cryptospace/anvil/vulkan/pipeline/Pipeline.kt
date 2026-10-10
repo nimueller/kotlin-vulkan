@@ -16,7 +16,7 @@ import org.lwjgl.vulkan.VK10
 class Pipeline(
     /** The logical device that this pipeline is associated with */
     val logicalDevice: LogicalDevice,
-    /** Handle to the pipeline layout defining descriptor set layouts and push constants */
+    /** Handle to the pipeline layout defining descriptor set layouts and push constants. Not owned by the pipeline. */
     val pipelineLayoutHandle: VkPipelineLayout,
     /** Native handle to the Vulkan graphics pipeline object */
     val handle: VkPipeline,
@@ -51,11 +51,9 @@ class Pipeline(
     }
 
     /**
-     * Destroys the graphics pipeline and its associated pipeline layout.
-     * This releases all Vulkan resources associated with this pipeline.
+     * Destroys the graphics pipeline. The pipeline layout is shared between pipelines and destroyed by its owner.
      */
     override fun destroy() {
         VK10.vkDestroyPipeline(logicalDevice.handle, handle.value, null)
-        VK10.vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayoutHandle.value, null)
     }
 }

@@ -56,14 +56,10 @@ data class Mat4(
         }
     }
 
-    fun translate(translation: Vec3): Mat4 = translate(Vec4(translation, 1f))
-
-    fun translate(translation: Vec4): Mat4 = Mat4(
-        row0 = Vec4(row0.x, row0.y, row0.z, row0.w + translation.x),
-        row1 = Vec4(row1.x, row1.y, row1.z, row1.w + translation.y),
-        row2 = Vec4(row2.x, row2.y, row2.z, row2.w + translation.z),
-        row3 = Vec4(row3.x, row3.y, row3.z, row3.w + translation.w),
-    )
+    /**
+     * Applies a translation in this matrix's local space (`this * T`), consistent with [rotate] and [scale].
+     */
+    fun translate(translation: Vec3): Mat4 = this * Mat4.translation(translation)
 
     fun scale(scale: Vec3): Mat4 = scale(Vec4(scale, 1f))
 
@@ -153,6 +149,20 @@ data class Mat4(
          * @param up Approximate up direction in world space (will be orthonormalized)
          * @return View transformation matrix that transforms world space to view space
          */
+        fun translation(translation: Vec3): Mat4 = Mat4(
+            row0 = Vec4(1f, 0f, 0f, translation.x),
+            row1 = Vec4(0f, 1f, 0f, translation.y),
+            row2 = Vec4(0f, 0f, 1f, translation.z),
+            row3 = Vec4(0f, 0f, 0f, 1f),
+        )
+
+        fun scaling(scale: Vec3): Mat4 = Mat4(
+            row0 = Vec4(scale.x, 0f, 0f, 0f),
+            row1 = Vec4(0f, scale.y, 0f, 0f),
+            row2 = Vec4(0f, 0f, scale.z, 0f),
+            row3 = Vec4(0f, 0f, 0f, 1f),
+        )
+
         fun lookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {
             val direction = (target - eye).normalized()
             val left = (direction cross up).normalized()

@@ -2,12 +2,11 @@ package dev.cryptospace.anvil.opengl
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
+import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
-import dev.cryptospace.anvil.core.scene.Material
-import dev.cryptospace.anvil.core.scene.MaterialId
 import dev.cryptospace.anvil.core.scene.MeshId
 import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
@@ -30,6 +29,8 @@ class OpenGLRenderingSystem(
         GL.createCapabilities()
     }
 
+    override val imageManager: ImageManager = ImageManager(this)
+
     override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId {
         TODO("Not yet implemented")
     }
@@ -42,7 +43,11 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun uploadMaterial(material: Material): MaterialId {
+    override fun removeMesh(meshId: MeshId) {
+        TODO("Not yet implemented")
+    }
+
+    override fun shaderTypeOf(shaderId: ShaderId): ShaderType {
         TODO("Not yet implemented")
     }
 
