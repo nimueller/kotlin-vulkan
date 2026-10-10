@@ -53,7 +53,7 @@ fun Engine.quadMesh(): MeshId {
 fun GameObject.rotateOnUpdate() {
     onUpdate = { deltaTime, window ->
         val rotationInDegrees = deltaTime.seconds * ROTATION_DEGREES_PER_SECOND
-        transform = transform.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
+        transform.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
 
         window.quitIfEscapePressed()
     }

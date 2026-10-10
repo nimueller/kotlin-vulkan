@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
-import dev.cryptospace.anvil.core.math.NativeTypeLayout
+import dev.cryptospace.anvil.core.gpu.GpuStruct
 import dev.cryptospace.anvil.core.shader.ShaderType
 import dev.cryptospace.anvil.vulkan.device.LogicalDevice
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.DescriptorSetLayout
@@ -26,18 +26,10 @@ class PipelineLayoutBuilder(
      * Adds a push constant range to the pipeline layout.
      *
      * @param stages Set of shader stages that will access this push constant range
-     * @param nativeTypeLayout Layout information for the push constant data
+     * @param struct Layout of the push constant data, including its offset
      */
-    fun pushConstant(stages: EnumSet<ShaderType>, nativeTypeLayout: NativeTypeLayout) {
-        val offset = pushConstantRanges.sumOf { pushConstantRange -> pushConstantRange.size }
-        pushConstant(stages, offset, nativeTypeLayout.byteSize)
-    }
-
-    /**
-     * Adds a push constant range at an explicit [offset], for blocks whose layout is defined elsewhere.
-     */
-    fun pushConstant(stages: EnumSet<ShaderType>, offset: Int, size: Int) {
-        pushConstantRanges.add(PushConstantRange(stages, offset, size))
+    fun pushConstant(stages: EnumSet<ShaderType>, struct: GpuStruct) {
+        pushConstantRanges.add(PushConstantRange(stages, struct.startOffset, struct.size))
     }
 
     /**

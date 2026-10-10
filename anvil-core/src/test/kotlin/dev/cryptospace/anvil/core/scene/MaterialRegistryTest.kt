@@ -70,6 +70,22 @@ class MaterialRegistryTest {
     }
 
     @Test
+    fun `versions change on every update and are never reused`() {
+        val registry = MaterialRegistry()
+        val first = registry.add(Material())
+        val firstVersion = registry.versionOf(first)
+
+        registry.update(first, Material(blendMode = BlendMode.ADDITIVE))
+        val updatedVersion = registry.versionOf(first)
+        registry.remove(first)
+        val recycled = registry.add(Material())
+
+        assertEquals(first, recycled)
+        assertEquals(setOf(firstVersion, updatedVersion, registry.versionOf(recycled)).size, 3)
+        assertEquals(-1, registry.versionOf(MaterialId(99)))
+    }
+
+    @Test
     fun `unknown ids are rejected`() {
         val registry = MaterialRegistry()
 

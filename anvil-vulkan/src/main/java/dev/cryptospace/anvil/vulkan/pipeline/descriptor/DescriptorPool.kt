@@ -6,6 +6,7 @@ import dev.cryptospace.anvil.vulkan.utils.toBuffer
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK10.VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
 import org.lwjgl.vulkan.VK10.vkCreateDescriptorPool
@@ -54,6 +55,10 @@ data class DescriptorPool(
                 val poolSizes = listOf(
                     VkDescriptorPoolSize.calloc(stack).apply {
                         type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                        descriptorCount(frameInFlights)
+                    },
+                    VkDescriptorPoolSize.calloc(stack).apply {
+                        type(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                         descriptorCount(frameInFlights)
                     },
                     VkDescriptorPoolSize.calloc(stack).apply {

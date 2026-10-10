@@ -16,6 +16,8 @@ import java.util.EnumSet
 
 /**
  * Creates and caches graphics pipelines. Pipelines are shared by all materials with the same [PipelineKey].
+ *
+ * Every pipeline gets a dense index, so render queues can identify and sort by pipelines using plain integers.
  */
 class PipelineManager(
     private val logicalDevice: LogicalDevice,
@@ -24,7 +26,8 @@ class PipelineManager(
     private val shaderManager: ShaderManager,
 ) : NativeResource() {
 
-    private val pipelines = mutableMapOf<PipelineKey, Pipeline>()
+    private val pipelines = ArrayList<Pipeline>()
+    private val pipelineIndices = HashMap<PipelineKey, Int>()
 
     val pipelineCount: Int
         get() = pipelines.size
@@ -46,21 +49,32 @@ class PipelineManager(
     )
 
     /**
-     * The layout shared by all pipelines: per-frame data in set 0, the bindless texture array in set 1,
-     * and the [PushConstants] for per-draw data.
+     * The layout shared by all pipelines: per-frame camera and instance data in set 0, the bindless texture array
+     * in set 1, and the [MaterialPushConstants].
      */
     val pipelineLayout =
         PipelineLayoutBuilder(logicalDevice = logicalDevice).apply {
-            pushConstant(EnumSet.of(ShaderType.VERTEX), PushConstants.VERTEX_OFFSET, PushConstants.VERTEX_SIZE)
-            pushConstant(EnumSet.of(ShaderType.FRAGMENT), PushConstants.FRAGMENT_OFFSET, PushConstants.FRAGMENT_SIZE)
+            pushConstant(EnumSet.of(ShaderType.FRAGMENT), MaterialPushConstants)
             descriptorSetLayouts.add(descriptorSetManager.frameDescriptorSet.descriptorSetLayout)
             descriptorSetLayouts.add(descriptorSetManager.textureDescriptorSet.descriptorSetLayout)
         }.build()
 
-    fun getPipeline(vertexLayout: VertexLayout<*>, material: Material?): Pipeline =
-        getPipeline(PipelineKey.of(vertexLayout, material, ::defaultShadersFor))
+    /**
+     * Returns the index of the pipeline for drawing [vertexLayout] meshes with [material], creating it if needed.
+     * Callers on hot paths should cache the result, as deriving the key allocates.
+     */
+    fun getPipelineIndex(vertexLayout: VertexLayout<*>, material: Material?): Int =
+        getPipelineIndex(PipelineKey.of(vertexLayout, material, ::defaultShadersFor))
 
-    fun getPipeline(key: PipelineKey): Pipeline = pipelines.getOrPut(key) { createPipeline(key) }
+    fun getPipelineIndex(key: PipelineKey): Int = pipelineIndices.getOrPut(key) {
+        pipelines += createPipeline(key)
+        pipelines.lastIndex
+    }
+
+    fun getPipeline(vertexLayout: VertexLayout<*>, material: Material?): Pipeline =
+        pipelines[getPipelineIndex(vertexLayout, material)]
+
+    fun pipeline(index: Int): Pipeline = pipelines[index]
 
     private fun defaultShadersFor(vertexLayout: VertexLayout<*>): PipelineKey.ShaderPair? = when (vertexLayout) {
         TexturedVertex2 -> defaultShaders2D
@@ -88,8 +102,9 @@ class PipelineManager(
     }
 
     override fun destroy() {
-        pipelines.values.forEach(Pipeline::close)
+        pipelines.forEach(Pipeline::close)
         pipelines.clear()
+        pipelineIndices.clear()
         vkDestroyPipelineLayout(logicalDevice.handle, pipelineLayout.value, null)
     }
 

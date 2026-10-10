@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.app
 
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.vulkan.vulkan
@@ -17,7 +16,7 @@ fun main() = vulkan {
 
     scene {
         gameObject {
-            transform = Mat4.identity.translate(Vec3(0f, 0f, -2f))
+            transform.position = Vec3(0f, 0f, -2f)
 
             renderComponent {
                 meshId = quadMesh()
@@ -37,7 +36,7 @@ fun main() = vulkan {
 
             onUpdate = { deltaTime, window ->
                 val rotationInDegrees = deltaTime.seconds * 45f
-                transform = transform.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
+                transform.rotate(Math.toRadians(rotationInDegrees).toFloat(), Vec3(0f, 0f, 1f))
 
                 // Average over an interval, so the label is readable and its mesh is not rebuilt every frame
                 framesSinceUpdate++

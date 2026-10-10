@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.app
 
-import dev.cryptospace.anvil.core.math.Mat4
 import dev.cryptospace.anvil.core.math.Vec2
 import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.core.math.Vec4
@@ -42,7 +41,7 @@ fun main() = vulkan {
 
     scene {
         gameObject {
-            transform = Mat4.translation(Vec3(-1.1f, 0f, 0f))
+            transform.position = Vec3(-1.1f, 0f, 0f)
             renderComponent {
                 meshId = quad
                 materialId = textured
@@ -50,7 +49,6 @@ fun main() = vulkan {
         }
 
         gameObject {
-            transform = Mat4.translation(Vec3(0f, 0f, 0f))
             renderComponent {
                 meshId = quad
                 materialId = tinted
@@ -58,7 +56,7 @@ fun main() = vulkan {
         }
 
         gameObject {
-            transform = Mat4.translation(Vec3(1.1f, 0f, 0f))
+            transform.position = Vec3(1.1f, 0f, 0f)
             renderComponent {
                 meshId = quad
                 materialId = pulsing
@@ -76,7 +74,8 @@ fun main() = vulkan {
         }
 
         gameObject {
-            transform = Mat4.translation(Vec3(-0.55f, -0.3f, 0.3f)).scale(Vec3(2f, 1f, 1f))
+            transform.position = Vec3(-0.55f, -0.3f, 0.3f)
+            transform.scale = Vec3(2f, 1f, 1f)
             renderComponent {
                 meshId = quad
                 materialId = glass

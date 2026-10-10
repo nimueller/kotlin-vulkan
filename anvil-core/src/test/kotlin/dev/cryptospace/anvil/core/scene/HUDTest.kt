@@ -36,7 +36,7 @@ class HUDTest {
 
         val mesh = assertNotNull(renderingSystem.meshes[assertNotNull(label.meshId)])
         assertEquals(TexturedVertex2, mesh.vertexLayout)
-        assertEquals(8, mesh.vertices.size)
+        assertEquals(8, mesh.vertexCount)
         assertEquals(listOf(label), hud.labels)
     }
 
@@ -73,7 +73,7 @@ class HUDTest {
 
         assertEquals("12", label.text)
         assertEquals(listOf(oldMeshId), renderingSystem.removedMeshes)
-        assertEquals(8, renderingSystem.meshes.getValue(assertNotNull(label.meshId)).vertices.size)
+        assertEquals(8, renderingSystem.meshes.getValue(assertNotNull(label.meshId)).vertexCount)
     }
 
     @Test

@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.core
 
 import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.MaterialRegistry
@@ -11,6 +10,7 @@ import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * In-memory rendering system for testing engine logic without a GPU.
@@ -19,8 +19,9 @@ class FakeRenderingSystem : RenderingSystem() {
 
     class UploadedMesh(
         val vertexLayout: VertexLayout<*>,
-        val vertices: List<Vertex>,
-        val indices: List<UInt>,
+        val vertexCount: Int,
+        val vertexData: ByteBuffer,
+        val indices: IntArray,
     )
 
     val meshes = mutableMapOf<MeshId, UploadedMesh>()
@@ -35,7 +36,8 @@ class FakeRenderingSystem : RenderingSystem() {
 
     override val imageManager: ImageManager = ImageManager(this)
 
-    override fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4 = Mat4.identity
+    override fun perspective(fov: Float, aspect: Float, near: Float, far: Float): Mat4 =
+        Mat4.perspectiveVulkan(fov, aspect, near, far)
 
     override fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId {
         shaders += shaderType
@@ -45,13 +47,17 @@ class FakeRenderingSystem : RenderingSystem() {
     override fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId =
         TextureId(++textureCount)
 
-    override fun <V : Vertex> uploadMesh(
-        vertexType: VertexLayout<V>,
-        vertices: Array<V>,
-        indices: Array<UInt>,
+    override fun uploadMesh(
+        vertexLayout: VertexLayout<*>,
+        vertexCount: Int,
+        indices: IntArray,
+        writeVertices: (ByteBuffer) -> Unit,
     ): MeshId {
+        val vertexData = ByteBuffer.allocate(vertexCount * vertexLayout.byteSize).order(ByteOrder.nativeOrder())
+        writeVertices(vertexData)
+
         val meshId = MeshId(nextMeshId++)
-        meshes[meshId] = UploadedMesh(vertexType, vertices.toList(), indices.toList())
+        meshes[meshId] = UploadedMesh(vertexLayout, vertexCount, vertexData, indices.copyOf())
         return meshId
     }
 

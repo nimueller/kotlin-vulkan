@@ -4,7 +4,6 @@ import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.MeshId
@@ -35,10 +34,11 @@ class OpenGLRenderingSystem(
         TODO("Not yet implemented")
     }
 
-    override fun <V : Vertex> uploadMesh(
-        vertexType: VertexLayout<V>,
-        vertices: Array<V>,
-        indices: Array<UInt>,
+    override fun uploadMesh(
+        vertexLayout: VertexLayout<*>,
+        vertexCount: Int,
+        indices: IntArray,
+        writeVertices: (ByteBuffer) -> Unit,
     ): MeshId {
         TODO("Not yet implemented")
     }

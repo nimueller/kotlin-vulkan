@@ -2,7 +2,6 @@ package dev.cryptospace.anvil.vulkan.frame
 
 import dev.cryptospace.anvil.core.Engine
 import dev.cryptospace.anvil.core.native.NativeResource
-import dev.cryptospace.anvil.core.native.UniformBufferObject
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanRenderingContext
 import dev.cryptospace.anvil.vulkan.VulkanRenderingSystem
@@ -17,6 +16,8 @@ import dev.cryptospace.anvil.vulkan.graphics.Framebuffer
 import dev.cryptospace.anvil.vulkan.graphics.RenderPass
 import dev.cryptospace.anvil.vulkan.graphics.SwapChain
 import dev.cryptospace.anvil.vulkan.graphics.SyncObjects
+import dev.cryptospace.anvil.vulkan.pipeline.CameraUniform
+import dev.cryptospace.anvil.vulkan.pipeline.InstanceData
 import dev.cryptospace.anvil.vulkan.pipeline.descriptor.VkDescriptorSet
 import dev.cryptospace.anvil.vulkan.utils.validateVulkanSuccess
 import org.lwjgl.system.MemoryStack
@@ -25,6 +26,7 @@ import org.lwjgl.vulkan.KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR
 import org.lwjgl.vulkan.KHRSwapchain.VK_SUBOPTIMAL_KHR
 import org.lwjgl.vulkan.KHRSwapchain.vkAcquireNextImageKHR
 import org.lwjgl.vulkan.KHRSwapchain.vkQueuePresentKHR
+import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
 import org.lwjgl.vulkan.VK10.VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 import org.lwjgl.vulkan.VK10.VK_NULL_HANDLE
 import org.lwjgl.vulkan.VK10.VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -37,6 +39,7 @@ import org.lwjgl.vulkan.VkDescriptorBufferInfo
 import org.lwjgl.vulkan.VkPresentInfoKHR
 import org.lwjgl.vulkan.VkSubmitInfo
 import org.lwjgl.vulkan.VkWriteDescriptorSet
+import java.nio.ByteBuffer
 import java.nio.LongBuffer
 import java.util.EnumSet
 
@@ -81,47 +84,77 @@ class Frame(
 
     private val uniformBuffer: BufferAllocation =
         bufferManager.allocateBuffer(
-            size = UniformBufferObject.BYTE_SIZE.toLong(),
+            size = CameraUniform.size.toLong(),
             usage = EnumSet.of(BufferUsage.UNIFORM_BUFFER),
             preferredProperties = EnumSet.of(
                 BufferProperties.HOST_VISIBLE,
                 BufferProperties.HOST_COHERENT,
             ),
+            persistentlyMapped = true,
         )
+    private val uniformData = checkNotNull(uniformBuffer.mappedData)
+
+    private var instanceBuffer: BufferAllocation = allocateInstanceBuffer(INITIAL_INSTANCE_CAPACITY)
+
+    /** Number of instances the instance buffer can hold. */
+    var instanceCapacity: Int = INITIAL_INSTANCE_CAPACITY
+        private set
 
     init {
-        updateDescriptorSets()
+        writeBufferDescriptor(BINDING_CAMERA, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, uniformBuffer)
+        writeBufferDescriptor(BINDING_INSTANCES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, instanceBuffer)
     }
 
-    private fun updateDescriptorSets() {
+    private fun allocateInstanceBuffer(capacity: Int): BufferAllocation = bufferManager.allocateBuffer(
+        size = capacity.toLong() * InstanceData.size,
+        usage = EnumSet.of(BufferUsage.STORAGE_BUFFER),
+        preferredProperties = EnumSet.of(BufferProperties.HOST_VISIBLE, BufferProperties.HOST_COHERENT),
+        persistentlyMapped = true,
+    )
+
+    /**
+     * Returns this frame's mapped instance memory, with room for at least [count] [InstanceData] elements.
+     *
+     * Must be called while recording this frame, before its descriptor set is bound: growing the buffer rewrites the
+     * descriptor. That is safe at this point because the frame's fence was waited on, so the GPU no longer uses either
+     * the old buffer or the descriptor set.
+     */
+    fun reserveInstances(count: Int): ByteBuffer {
+        if (count > instanceCapacity) {
+            var capacity = instanceCapacity
+            while (capacity < count) {
+                capacity = Math.multiplyExact(capacity, 2)
+            }
+
+            bufferManager.freeBuffer(instanceBuffer)
+            instanceBuffer = allocateInstanceBuffer(capacity)
+            instanceCapacity = capacity
+            writeBufferDescriptor(BINDING_INSTANCES, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, instanceBuffer)
+        }
+
+        return checkNotNull(instanceBuffer.mappedData)
+    }
+
+    private fun writeBufferDescriptor(binding: Int, descriptorType: Int, buffer: BufferAllocation) =
         MemoryStack.stackPush().use { stack ->
-            val descriptorBufferInfo = VkDescriptorBufferInfo.calloc(stack)
+            val bufferInfos = VkDescriptorBufferInfo.calloc(1, stack)
+            bufferInfos[0]
+                .buffer(buffer.buffer.value)
                 .offset(0)
-                .range(UniformBufferObject.BYTE_SIZE.toLong())
-                .buffer(uniformBuffer.buffer.value)
+                .range(buffer.size)
 
-            val descriptorBufferInfos = VkDescriptorBufferInfo.calloc(1, stack)
-                .put(descriptorBufferInfo)
-                .flip()
-
-            val uniformBufferDescriptorWrite = VkWriteDescriptorSet.calloc(stack)
+            val writes = VkWriteDescriptorSet.calloc(1, stack)
+            writes[0]
                 .sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                 .dstSet(frameDescriptorSet.value)
-                .dstBinding(0)
+                .dstBinding(binding)
                 .dstArrayElement(0)
-                .descriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                .descriptorType(descriptorType)
                 .descriptorCount(1)
-                .pBufferInfo(descriptorBufferInfos)
-                .pImageInfo(null)
-                .pTexelBufferView(null)
+                .pBufferInfo(bufferInfos)
 
-            val writeDescriptorSets = VkWriteDescriptorSet.calloc(1, stack)
-                .put(uniformBufferDescriptorWrite)
-                .flip()
-
-            vkUpdateDescriptorSets(logicalDevice.handle, writeDescriptorSets, null)
+            vkUpdateDescriptorSets(logicalDevice.handle, writes, null)
         }
-    }
 
     /**
      * Executes the frame's drawing operations and presents the result to the screen.
@@ -200,8 +233,12 @@ class Frame(
         val renderingContext = VulkanRenderingContext(engine, renderingSystem.swapChain)
         callback(commandBuffer, frameDescriptorSet, renderingContext)
 
+        // Safe to overwrite: this frame's fence was waited on, so the GPU no longer reads the previous contents
         val camera = renderingContext.engine.camera
-        bufferManager.uploadData(uniformBuffer, camera.toByteBuffer(stack))
+        CameraUniform.view.put(uniformData, camera.view)
+        CameraUniform.projection.put(uniformData, camera.projection)
+        bufferManager.flush(uniformBuffer)
+        bufferManager.flush(instanceBuffer)
     }
 
     private fun finishRecordCommands() {
@@ -252,5 +289,11 @@ class Frame(
 
     override fun destroy() {
         syncObjects.close()
+    }
+
+    private companion object {
+        const val BINDING_CAMERA = 0
+        const val BINDING_INSTANCES = 1
+        const val INITIAL_INSTANCE_CAPACITY = 1024
     }
 }

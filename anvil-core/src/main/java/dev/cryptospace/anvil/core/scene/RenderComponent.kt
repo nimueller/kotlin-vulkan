@@ -1,6 +1,6 @@
 package dev.cryptospace.anvil.core.scene
 
-data class RenderComponent(
-    var meshId: MeshId?,
-    var materialId: MaterialId?,
+class RenderComponent(
+    var meshId: MeshId? = null,
+    var materialId: MaterialId? = null,
 )

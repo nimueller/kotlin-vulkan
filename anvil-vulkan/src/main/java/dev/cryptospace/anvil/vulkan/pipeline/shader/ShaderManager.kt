@@ -23,8 +23,14 @@ class ShaderManager(
      * @param shaderCode The binary SPIR-V shader code
      * @param shaderType The type of shader (vertex, fragment, etc.)
      * @return The unique identifier for the registered shader
+     * @throws IllegalArgumentException if the code is not SPIR-V or its blocks do not match the engine's layout
      */
     fun uploadShader(shaderCode: ByteArray, shaderType: ShaderType): ShaderId {
+        val problems = ShaderInterfaceValidator.validate(SpirvReflection(shaderCode), shaderType)
+        require(problems.isEmpty()) {
+            "$shaderType shader is incompatible with the engine's shader interface:\n" + problems.joinToString("\n")
+        }
+
         val shaderModule = ShaderModule(logicalDevice, shaderCode)
         val index = shaders.size
         val registeredShader = RegisteredShader(ShaderId(index.toLong()), shaderModule, shaderType)

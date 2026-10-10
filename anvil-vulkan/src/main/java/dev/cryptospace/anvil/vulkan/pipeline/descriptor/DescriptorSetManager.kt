@@ -25,15 +25,19 @@ class DescriptorSetManager(
         )
 
     /**
-     * Descriptor set for frame-specific uniform buffers.
-     * Contains descriptor sets allocated for each frame in flight,
-     * managing per-frame uniform buffer bindings used for view/projection matrices
-     * and other frame-specific data.
+     * Descriptor set for frame-specific data, one per frame in flight:
+     * - binding 0: camera uniform buffer
+     * - binding 1: instance storage buffer holding the model matrices of all draws
      */
     val frameDescriptorSet: DescriptorSetBuilder.Result =
         DescriptorSetBuilder()
             .binding(
                 descriptorType = DescriptorSetBuilder.DescriptorType.UNIFORM_BUFFER,
+                descriptorCount = 1,
+                stages = EnumSet.of(ShaderType.VERTEX),
+            )
+            .binding(
+                descriptorType = DescriptorSetBuilder.DescriptorType.STORAGE_BUFFER,
                 descriptorCount = 1,
                 stages = EnumSet.of(ShaderType.VERTEX),
             )

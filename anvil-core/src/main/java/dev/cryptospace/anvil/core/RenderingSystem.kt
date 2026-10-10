@@ -30,7 +30,23 @@ abstract class RenderingSystem : NativeResource() {
 
     abstract fun uploadImage(imageSize: Int, width: Int, height: Int, imageData: ByteBuffer): TextureId
 
-    abstract fun <V : Vertex> uploadMesh(vertexType: VertexLayout<V>, vertices: Array<V>, indices: Array<UInt>): MeshId
+    /**
+     * Uploads a mesh, letting [writeVertices] write the vertex data directly into upload memory.
+     *
+     * @param vertexCount Number of vertices [writeVertices] writes
+     * @param indices Triangle list indices, interpreted as unsigned 32-bit integers
+     * @param writeVertices Receives a buffer of exactly `vertexCount * vertexLayout.byteSize` bytes and must fill it
+     *   using absolute writes starting at index 0, e.g. via the layout's attribute writers
+     */
+    abstract fun uploadMesh(
+        vertexLayout: VertexLayout<*>,
+        vertexCount: Int,
+        indices: IntArray,
+        writeVertices: (ByteBuffer) -> Unit,
+    ): MeshId
+
+    fun <V : Vertex> uploadMesh(vertexLayout: VertexLayout<V>, vertices: Array<out V>, indices: IntArray): MeshId =
+        uploadMesh(vertexLayout, vertices.size, indices) { buffer -> vertexLayout.write(vertices, buffer) }
 
     /**
      * Releases a mesh. Backends may defer freeing GPU memory until in-flight frames no longer use it,

@@ -1,13 +1,11 @@
 package dev.cryptospace.anvil.core.math
 
-import java.nio.ByteBuffer
-
 data class Vec4(
     val x: Float,
     val y: Float,
     val z: Float,
     val w: Float,
-) : NativeType {
+) {
 
     constructor(vec3: Vec3, w: Float) : this(
         vec3.x,
@@ -15,16 +13,6 @@ data class Vec4(
         vec3.z,
         w,
     )
-
-    override val byteSize: Int
-        get() = BYTE_SIZE
-
-    override fun toByteBuffer(byteBuffer: ByteBuffer) {
-        byteBuffer.putFloat(x)
-        byteBuffer.putFloat(y)
-        byteBuffer.putFloat(z)
-        byteBuffer.putFloat(w)
-    }
 
     infix fun dot(other: Vec4): Float = x * other.x + y * other.y + z * other.z + w * other.w
 
@@ -47,8 +35,6 @@ data class Vec4(
     }
 
     companion object {
-
-        const val BYTE_SIZE = 4 * Float.SIZE_BYTES
 
         val zero = Vec4(0f, 0f, 0f, 0f)
         val one = Vec4(1f, 1f, 1f, 1f)

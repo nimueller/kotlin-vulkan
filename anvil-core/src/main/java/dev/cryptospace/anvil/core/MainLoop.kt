@@ -22,7 +22,9 @@ class MainLoop(
             val currentFrameTime = glfwGetTime()
             val deltaTime = DeltaTime(seconds = currentFrameTime - lastFrameTime)
 
+            engine.frameStats.beginFrame()
             engine.update(deltaTime, logic)
+            engine.frameStats.endFrame()
             lastFrameTime = currentFrameTime
             frameCount++
         }

@@ -1,6 +1,5 @@
 package dev.cryptospace.anvil.vulkan.pipeline
 
-import dev.cryptospace.anvil.core.math.AttributeDescription
 import dev.cryptospace.anvil.core.math.TexturedVertex2
 import dev.cryptospace.anvil.core.math.TexturedVertex3
 import dev.cryptospace.anvil.core.math.Vec4
@@ -12,7 +11,7 @@ import dev.cryptospace.anvil.core.scene.MaterialProperties
 import dev.cryptospace.anvil.core.scene.TextureId
 import dev.cryptospace.anvil.core.shader.ShaderId
 import dev.cryptospace.anvil.core.shader.ShaderType
-import kotlin.reflect.KProperty1
+import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -73,12 +72,12 @@ class PipelineKeyTest {
 
     @Test
     fun `layouts without defaults need shaders from the material`() {
-        val unknownLayout = object : VertexLayout<TexturedVertex3> {
-            override val byteSize = 0
+        val unknownLayout = object : VertexLayout<TexturedVertex3>() {
+            val position = float3()
 
-            override fun offset(property: KProperty1<TexturedVertex3, *>) = 0
-
-            override fun getAttributeDescriptions(binding: Int) = emptyList<AttributeDescription>()
+            override fun write(vertex: TexturedVertex3, buffer: ByteBuffer, offset: Int) {
+                position.put(buffer, offset, vertex.position)
+            }
         }
 
         assertFailsWith<IllegalArgumentException> { keyOf(Material(), unknownLayout) }

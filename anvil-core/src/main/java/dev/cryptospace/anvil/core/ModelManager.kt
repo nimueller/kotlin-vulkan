@@ -1,8 +1,7 @@
 package dev.cryptospace.anvil.core
 
 import dev.cryptospace.anvil.core.math.TexturedVertex3
-import dev.cryptospace.anvil.core.math.Vec2
-import dev.cryptospace.anvil.core.math.Vec3
+import dev.cryptospace.anvil.core.scene.Face
 import dev.cryptospace.anvil.core.scene.MeshId
 import org.lwjgl.assimp.AIMesh
 import org.lwjgl.assimp.AIVector3D
@@ -49,30 +48,36 @@ class ModelManager(
     }
 
     private fun loadMesh(mesh: AIMesh, renderingSystem: RenderingSystem): MeshId {
-        val numFaces = mesh.mNumFaces()
-        val numVertices = mesh.mNumVertices()
-        val vertices = Array(numVertices) { index ->
-            val vertex = mesh.mVertices()[index]
+        val positions = mesh.mVertices()
+        val textureCoordinates: AIVector3D.Buffer? = mesh.mTextureCoords(0)
+        val faces = mesh.mFaces()
 
-            val position = Vec3(vertex.x(), vertex.y(), vertex.z())
-            val mTextureCoords: AIVector3D.Buffer? = mesh.mTextureCoords(0)
-            val texture = if (mTextureCoords == null) {
-                Vec2.zero
-            } else {
-                Vec2(mTextureCoords[index].x(), mTextureCoords[index].y())
+        val indices = IntArray(mesh.mNumFaces() * Face.INDICES_SIZE)
+        for (faceIndex in 0 until mesh.mNumFaces()) {
+            val face = faces[faceIndex]
+            check(face.mNumIndices() == Face.INDICES_SIZE) { "Expected 3 indices per face, got ${face.mNumIndices()}" }
+            val faceIndices = face.mIndices()
+            for (corner in 0 until Face.INDICES_SIZE) {
+                indices[faceIndex * Face.INDICES_SIZE + corner] = faceIndices[corner]
             }
-
-            TexturedVertex3(position, Vec3.one, texture)
         }
 
-        val indices = Array(numFaces * 3) { index ->
-            val face = mesh.mFaces()[index / 3]
-            val numIndices = face.mNumIndices()
-            check(numIndices == 3) { "Expected 3 indices per face, got $numIndices" }
-            val index = face.mIndices()[index % 3].toUInt()
-            index
-        }
+        // Stream vertex data straight from Assimp's memory into the upload buffer, without intermediate objects
+        val stride = TexturedVertex3.byteSize
+        return renderingSystem.uploadMesh(TexturedVertex3, mesh.mNumVertices(), indices) { buffer ->
+            for (index in 0 until mesh.mNumVertices()) {
+                val offset = index * stride
+                val position = positions[index]
+                TexturedVertex3.position.put(buffer, offset, position.x(), position.y(), position.z())
+                TexturedVertex3.color.put(buffer, offset, 1f, 1f, 1f)
 
-        return renderingSystem.uploadMesh(TexturedVertex3, vertices, indices)
+                if (textureCoordinates == null) {
+                    TexturedVertex3.texture.put(buffer, offset, 0f, 0f)
+                } else {
+                    val textureCoordinate = textureCoordinates[index]
+                    TexturedVertex3.texture.put(buffer, offset, textureCoordinate.x(), textureCoordinate.y())
+                }
+            }
+        }
     }
 }

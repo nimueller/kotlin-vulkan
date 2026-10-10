@@ -26,4 +26,7 @@ enum class BufferUsage(
 
     /** Buffer can be used to store uniform data accessible by shaders. */
     UNIFORM_BUFFER(VK10.VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+
+    /** Buffer can be used as a storage buffer that shaders read or write by index. */
+    STORAGE_BUFFER(VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
 }

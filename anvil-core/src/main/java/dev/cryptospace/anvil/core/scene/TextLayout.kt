@@ -15,7 +15,7 @@ object TextLayout {
 
     class Mesh(
         val vertices: Array<TexturedVertex2>,
-        val indices: Array<UInt>,
+        val indices: IntArray,
     )
 
     /**
@@ -24,7 +24,7 @@ object TextLayout {
      */
     fun build(font: Font, text: String): Mesh {
         val vertices = mutableListOf<TexturedVertex2>()
-        val indices = mutableListOf<UInt>()
+        val indices = mutableListOf<Int>()
 
         var penX = 0f
         var baseline = font.ascent
@@ -48,12 +48,12 @@ object TextLayout {
             penX += glyph.xAdvance
         }
 
-        return Mesh(vertices.toTypedArray(), indices.toTypedArray())
+        return Mesh(vertices.toTypedArray(), indices.toIntArray())
     }
 
     private fun addQuad(
         vertices: MutableList<TexturedVertex2>,
-        indices: MutableList<UInt>,
+        indices: MutableList<Int>,
         font: Font,
         glyph: Font.Glyph,
         x0: Float,
@@ -66,12 +66,12 @@ object TextLayout {
         val u1 = glyph.atlasX1.toFloat() / font.atlasWidth
         val v1 = glyph.atlasY1.toFloat() / font.atlasHeight
 
-        val base = vertices.size.toUInt()
+        val base = vertices.size
         vertices += TexturedVertex2(Vec2(x0, y0), Vec3.one, Vec2(u0, v0))
         vertices += TexturedVertex2(Vec2(x1, y0), Vec3.one, Vec2(u1, v0))
         vertices += TexturedVertex2(Vec2(x1, y1), Vec3.one, Vec2(u1, v1))
         vertices += TexturedVertex2(Vec2(x0, y1), Vec3.one, Vec2(u0, v1))
 
-        indices += listOf(base, base + 1U, base + 2U, base + 2U, base + 3U, base)
+        indices += listOf(base, base + 1, base + 2, base + 2, base + 3, base)
     }
 }

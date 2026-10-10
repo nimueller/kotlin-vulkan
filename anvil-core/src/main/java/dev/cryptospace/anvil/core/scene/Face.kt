@@ -16,10 +16,8 @@ data class Face(
 
         const val INDICES_SIZE = 3
 
-        fun Array<Face>.toIndicesArray(): Array<UInt> = Array(size * INDICES_SIZE) { index ->
-            val face = this[index / INDICES_SIZE]
-            val index = face[index % INDICES_SIZE]
-            index
+        fun Array<Face>.toIndicesArray(): IntArray = IntArray(size * INDICES_SIZE) { index ->
+            this[index / INDICES_SIZE][index % INDICES_SIZE].toInt()
         }
     }
 }

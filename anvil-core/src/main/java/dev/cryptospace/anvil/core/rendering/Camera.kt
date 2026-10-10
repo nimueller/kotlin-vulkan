@@ -4,10 +4,8 @@ import dev.cryptospace.anvil.core.DeltaTime
 import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.input.Input
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.NativeType
 import dev.cryptospace.anvil.core.math.Vec3
 import dev.cryptospace.anvil.core.window.Window
-import java.nio.ByteBuffer
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -20,17 +18,25 @@ private const val DEFAULT_FAR_PLANE = 100f
 private const val PITCH_CONSTRAINT_LOWER_BOUND = -89f
 private const val PITCH_CONSTRAINT_UPPER_BOUND = 89f
 
-data class Camera(
+class Camera(
     private val renderingSystem: RenderingSystem,
-    private var viewMatrix: Mat4 = Mat4.identity,
-    private var projectionMatrix: Mat4 = Mat4.identity,
-) : NativeType {
+) {
+
+    /** World space to view space. */
+    var view: Mat4 = Mat4.identity
+        private set
+
+    /** View space to clip space. */
+    var projection: Mat4 = Mat4.identity
+        private set
+
+    private var projectionAspectRatio: Float = Float.NaN
 
     // Projection
     var fov: Float = DEFAULT_FOV
         set(value) {
             field = value
-            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+            invalidateProjection()
         }
     var aspectRatio: Float? = DYNAMIC_ASPECT_RATIO
         set(value) {
@@ -40,12 +46,12 @@ data class Camera(
     var near: Float = DEFAULT_NEAR_PLANE
         set(value) {
             field = value
-            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+            invalidateProjection()
         }
     var viewDistance: Float = DEFAULT_FAR_PLANE
         set(value) {
             field = value
-            aspectRatio?.let { ratio -> updateProjectionMatrix(ratio) }
+            invalidateProjection()
         }
 
     // Movement
@@ -65,14 +71,6 @@ data class Camera(
         private set
     var pitch: Float = 0f
         private set
-
-    override val byteSize: Int
-        get() = Mat4.BYTE_SIZE * 2
-
-    override fun toByteBuffer(byteBuffer: ByteBuffer) {
-        viewMatrix.toByteBuffer(byteBuffer)
-        projectionMatrix.toByteBuffer(byteBuffer)
-    }
 
     fun lookInDirection(yaw: Float, pitch: Float) {
         val newPitch = pitch.coerceIn(PITCH_CONSTRAINT_LOWER_BOUND, PITCH_CONSTRAINT_UPPER_BOUND)
@@ -107,7 +105,7 @@ data class Camera(
     }
 
     private fun updateViewMatrix() {
-        viewMatrix = Mat4.lookAt(position, position + front, up)
+        view = Mat4.lookAt(position, position + front, up)
     }
 
     fun update(window: Window, renderingContext: RenderingContext, deltaTime: DeltaTime) {
@@ -117,7 +115,9 @@ data class Camera(
 
             if (renderCanvasWidth > 0f && renderCanvasHeight > 0f) {
                 val ratio = renderCanvasWidth / renderCanvasHeight
-                updateProjectionMatrix(ratio)
+                if (ratio != projectionAspectRatio) {
+                    updateProjectionMatrix(ratio)
+                }
             }
         }
 
@@ -125,8 +125,19 @@ data class Camera(
         processMouseEvents(window, deltaTime)
     }
 
+    private fun invalidateProjection() {
+        val fixedRatio = aspectRatio
+        if (fixedRatio == null) {
+            // Rebuilt with the render target's aspect ratio on the next update
+            projectionAspectRatio = Float.NaN
+        } else {
+            updateProjectionMatrix(fixedRatio)
+        }
+    }
+
     private fun updateProjectionMatrix(ratio: Float) {
-        projectionMatrix = renderingSystem.perspective(fov, ratio, near, viewDistance)
+        projection = renderingSystem.perspective(fov, ratio, near, viewDistance)
+        projectionAspectRatio = ratio
     }
 
     private fun processKeyboardEvents(window: Window, deltaTime: DeltaTime) {

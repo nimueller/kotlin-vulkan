@@ -47,7 +47,7 @@ class TextLayoutTest {
             listOf(Vec2(1f, 3f), Vec2(11f, 3f), Vec2(11f, 23f), Vec2(1f, 23f)),
             mesh.vertices.map { vertex -> vertex.position },
         )
-        assertEquals(listOf(0U, 1U, 2U, 2U, 3U, 0U), mesh.indices.toList())
+        assertEquals(listOf(0, 1, 2, 2, 3, 0), mesh.indices.toList())
     }
 
     @Test
@@ -67,7 +67,7 @@ class TextLayoutTest {
         assertEquals(8, mesh.vertices.size)
         // Second glyph starts after A's advance (12) and the space's advance (5), plus its offset
         assertEquals(18f, mesh.vertices[4].position.x)
-        assertEquals(listOf(4U, 5U, 6U, 6U, 7U, 4U), mesh.indices.drop(6))
+        assertEquals(listOf(4, 5, 6, 6, 7, 4), mesh.indices.drop(6))
     }
 
     @Test

@@ -5,7 +5,7 @@ layout (set = 1, binding = 0) uniform sampler2D texSampler[];
 
 // Must match dev.cryptospace.anvil.vulkan.pipeline.PushConstants
 layout (push_constant) uniform PushConstants {
-    layout (offset = 64) vec4 albedo;
+    vec4 albedo;
     float roughness;
     float metallic;
     float emissive;

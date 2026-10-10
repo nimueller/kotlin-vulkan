@@ -9,6 +9,12 @@ object AppConfig {
     /**
      * Closes the main loop after this many frames when set. Used for automated smoke runs of the examples.
      */
+
+    /**
+     * Periodically logs CPU frame timings and allocation rates.
+     */
+    val frameStats by lazy { exists("frame-stats") }
+
     val maxFrames by lazy { System.getProperty("max-frames")?.toLong() }
 
     private fun exists(key: String): Boolean = System.getProperty(key) != null

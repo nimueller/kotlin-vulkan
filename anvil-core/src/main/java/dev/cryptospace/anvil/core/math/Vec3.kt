@@ -1,22 +1,12 @@
 package dev.cryptospace.anvil.core.math
 
-import java.nio.ByteBuffer
 import kotlin.math.sqrt
 
 data class Vec3(
     val x: Float,
     val y: Float,
     val z: Float,
-) : NativeType {
-
-    override val byteSize: Int
-        get() = BYTE_SIZE
-
-    override fun toByteBuffer(byteBuffer: ByteBuffer) {
-        byteBuffer.putFloat(x)
-        byteBuffer.putFloat(y)
-        byteBuffer.putFloat(z)
-    }
+) {
 
     fun normalized(): Vec3 = this / length()
 
@@ -41,8 +31,6 @@ data class Vec3(
     operator fun unaryMinus(): Vec3 = Vec3(-x, -y, -z)
 
     companion object {
-
-        const val BYTE_SIZE = 3 * Float.SIZE_BYTES
 
         val zero = Vec3(0f, 0f, 0f)
         val one = Vec3(1f, 1f, 1f)

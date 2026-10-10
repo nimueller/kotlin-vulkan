@@ -5,7 +5,6 @@ import dev.cryptospace.anvil.core.RenderingSystem
 import dev.cryptospace.anvil.core.image.ImageManager
 import dev.cryptospace.anvil.core.logger
 import dev.cryptospace.anvil.core.math.Mat4
-import dev.cryptospace.anvil.core.math.Vertex
 import dev.cryptospace.anvil.core.math.VertexLayout
 import dev.cryptospace.anvil.core.rendering.RenderingContext
 import dev.cryptospace.anvil.core.scene.Material
@@ -217,11 +216,12 @@ class VulkanRenderingSystem(
         }
     }
 
-    override fun <V : Vertex> uploadMesh(
-        vertexType: VertexLayout<V>,
-        vertices: Array<V>,
-        indices: Array<UInt>,
-    ): MeshId = drawLoop.addMesh(vertexType, vertices, indices)
+    override fun uploadMesh(
+        vertexLayout: VertexLayout<*>,
+        vertexCount: Int,
+        indices: IntArray,
+        writeVertices: (ByteBuffer) -> Unit,
+    ): MeshId = drawLoop.addMesh(vertexLayout, vertexCount, indices, writeVertices)
 
     override fun removeMesh(meshId: MeshId) {
         val mesh = drawLoop.removeMesh(meshId)
@@ -242,6 +242,12 @@ class VulkanRenderingSystem(
                 deletionQueue.flush(submittedFrames)
 
                 callback(renderingContext)
+
+                val recordStart = System.nanoTime()
+                // Reserve instance space for both passes up front: growing rebinds the frame's descriptor set,
+                // which is not allowed once it has been bound in this command buffer
+                val maxInstances = engine.scene.gameObjects.size + engine.hud.labels.size
+                drawLoop.beginFrame(frame.reserveInstances(maxInstances), frame.instanceCapacity)
                 drawLoop.drawScene(stack, commandBuffer, frameDescriptorSet, engine.scene)
                 drawLoop.drawHUD(
                     stack,
@@ -251,6 +257,7 @@ class VulkanRenderingSystem(
                     renderingContext.width,
                     renderingContext.height,
                 )
+                engine.frameStats.addRecordTime(System.nanoTime() - recordStart)
             }
 
             if (result.submitted) {

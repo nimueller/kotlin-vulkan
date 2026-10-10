@@ -34,6 +34,7 @@ open class Engine(
     val camera: Camera = Camera(renderingSystem)
     val hud: HUD = HUD(renderingSystem)
     var scene: Scene = Scene()
+    val frameStats: FrameStats = FrameStats()
 
     fun scene(block: Scene.() -> Unit): Scene {
         val scene = Scene()
@@ -48,12 +49,8 @@ open class Engine(
         faces.toIndicesArray(),
     )
 
-    fun <V : Vertex> mesh(vertexLayout: VertexLayout<V>, vertices: Array<V>, indices: Array<UInt>): MeshId =
-        renderingSystem.uploadMesh(
-            vertexLayout,
-            vertices,
-            indices,
-        )
+    fun <V : Vertex> mesh(vertexLayout: VertexLayout<V>, vertices: Array<V>, indices: IntArray): MeshId =
+        renderingSystem.uploadMesh(vertexLayout, vertices, indices)
 
     fun mesh(inputStream: InputStream): List<MeshId> = modelManager.loadModel(inputStream)
 
@@ -77,7 +74,11 @@ open class Engine(
 
     internal fun update(deltaTime: DeltaTime, logic: (DeltaTime, Glfw, RenderingContext) -> Unit) {
         glfw.update()
+
+        val updateStart = System.nanoTime()
         scene.update(deltaTime, window)
+        frameStats.addUpdateTime(System.nanoTime() - updateStart)
+
         renderingSystem.drawFrame(this) { renderingContext ->
             camera.update(window, renderingContext, deltaTime)
             logic(deltaTime, glfw, renderingContext)
