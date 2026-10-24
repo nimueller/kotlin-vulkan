@@ -2,7 +2,8 @@
 lwjgl = "3.3.+"
 slf4j = "2.0.+"
 logback = "1.5.+"
-mockito = "5.4.+"
+mockito = "5.24.+"
+mockito-kotlin = "5.4.+"
 ktlint = "13.1.+"
 sonarlint = "2.0.+"
 junit = "5.13.+"
@@ -23,7 +24,7 @@ junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "jun
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 
 [plugins]
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

@@ -101,7 +101,7 @@ object LogicalDeviceFactory {
         VkPhysicalDeviceDescriptorIndexingFeatures.calloc(stack).apply {
             sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES)
             runtimeDescriptorArray(true)
-            shaderInputAttachmentArrayDynamicIndexing(true)
+            shaderSampledImageArrayNonUniformIndexing(true)
             descriptorBindingVariableDescriptorCount(true)
             descriptorBindingPartiallyBound(true)
             descriptorBindingSampledImageUpdateAfterBind(true)

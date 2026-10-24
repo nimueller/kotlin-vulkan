@@ -22,34 +22,9 @@ dependencies {
         // Vulkan driver must be manually included for macOS and is pre-installed on Windows and Linux
         if (System.getProperty("os.name").lowercase().contains("mac")) {
             artifact {
-                classifier = "natives-macos"
+                classifier = lwjglNativesClassifier()
             }
         }
-    }
-}
-
-fun ExternalModuleDependency.natives() {
-    val osName = System.getProperty("os.name").lowercase()
-    when {
-        osName.contains("win") -> {
-            artifact {
-                classifier = "natives-windows"
-            }
-        }
-
-        osName.contains("linux") -> {
-            artifact {
-                classifier = "natives-linux"
-            }
-        }
-
-        osName.contains("mac") -> {
-            artifact {
-                classifier = "natives-macos"
-            }
-        }
-
-        else -> error("Unsupported operating system: $osName")
     }
 }
 

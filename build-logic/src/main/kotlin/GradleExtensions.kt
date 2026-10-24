@@ -11,26 +11,31 @@ fun VersionCatalog.getLibrary(alias: String): Provider<MinimalExternalModuleDepe
     findLibrary(alias).orElseThrow { NoSuchElementException("Version catalog does not contain library '$alias'") }
 
 fun ExternalModuleDependency.natives() {
-    val osName = System.getProperty("os.name").lowercase()
-    when {
-        osName.contains("win") -> {
-            artifact {
-                classifier = "natives-windows"
-            }
-        }
-
-        osName.contains("linux") -> {
-            artifact {
-                classifier = "natives-linux"
-            }
-        }
-
-        osName.contains("mac") -> {
-            artifact {
-                classifier = "natives-macos"
-            }
-        }
-
-        else -> error("Unsupported operating system: $osName")
+    artifact {
+        classifier = lwjglNativesClassifier()
     }
+}
+
+/**
+ * Returns the LWJGL natives classifier for the current OS and CPU architecture, e.g. `natives-linux` on x86_64 or
+ * `natives-linux-arm64` on aarch64.
+ */
+fun lwjglNativesClassifier(): String {
+    val osName = System.getProperty("os.name").lowercase()
+    val os =
+        when {
+            osName.contains("win") -> "windows"
+            osName.contains("linux") -> "linux"
+            osName.contains("mac") -> "macos"
+            else -> error("Unsupported operating system: $osName")
+        }
+
+    val arch =
+        when (val osArch = System.getProperty("os.arch").lowercase()) {
+            "amd64", "x86_64" -> ""
+            "aarch64", "arm64" -> "-arm64"
+            else -> error("Unsupported CPU architecture: $osArch")
+        }
+
+    return "natives-$os$arch"
 }
